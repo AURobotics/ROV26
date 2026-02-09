@@ -50,6 +50,12 @@ class CustomDataType(ABC):
         if not is_valid:
             raise ValueError(f"Validation failed for {self.__class__.__name__}: {error}")
     
+    @classmethod
+    @abstractmethod
+    def from_config(cls, config: Dict[str, Any]) -> 'CustomDataType':
+        """Create an instance of the custom data type from a configuration dictionary instead of init parameters"""
+        pass
+
     @abstractmethod
     def validate(self) -> tuple[bool, str]:
         pass
@@ -58,7 +64,7 @@ class CustomDataType(ABC):
     Schema definition for a single field
 """
 @dataclass
-class FieldSchema(CustomDataType): # it is a dataclass to make nested objects
+class FieldSchema(CustomDataType): # it is a CustomDataType to make nested objects
     name: str
     data_type: DataType
     value: Any = None
@@ -67,6 +73,19 @@ class FieldSchema(CustomDataType): # it is a dataclass to make nested objects
     pattern: Optional[str] = None  # For regex pattern matching on strings
     allowed_values: Optional[List[Any]] = None
     description: Optional[str] = ""
+
+    @classmethod
+    def from_config(cls, config: Dict[str, Any]) -> 'FieldSchema':
+        return cls(
+            name=config["name"],
+            data_type=DataType(config["type"]),
+            value=config.get("value"),
+            min_value=config.get("min_value"),
+            max_value=config.get("max_value"),
+            pattern=config.get("pattern"),
+            allowed_values=config.get("allowed_values"),
+            description=config.get("description", "")
+        ) # this method return the FieldSchema object created from the config dictionary -> validation will occur
 
     def validate(self) -> tuple[bool, str]: # tuple of (is_valid, error_message)
         """Validate a single field value"""
@@ -158,6 +177,14 @@ class MainFieldSchema: # not a custom datatype because it shouldn't be nested
         self.value = value 
         self.description = description
 
+    @classmethod
+    def from_config(cls, config: Dict[str, Any]) -> 'MainFieldSchema':
+        return cls(
+            name=config["name"],
+            value=[FieldSchema.from_config(field) for field in config["value"]],
+            description=config.get("description", "")
+        )
+
 """
     Complete schema definition
 """
@@ -178,6 +205,13 @@ class MainSchema:
         self.value = value 
         self.description = description
 
+    @classmethod
+    def from_config(cls, config: Dict[str, Any]) -> 'MainSchema':
+        return cls(
+            name=config["name"],
+            value=[MainFieldSchema.from_config(field) for field in config["value"]],
+            description=config.get("description", "")
+        )
 
 
 
