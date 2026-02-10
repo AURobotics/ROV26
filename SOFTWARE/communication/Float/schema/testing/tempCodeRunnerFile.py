@@ -1,1 +1,1 @@
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Temporary scratch file (intentionally left blank and not used in production).
