@@ -8,9 +8,6 @@ from typing import Any, Dict, List, Optional, Union, Callable, get_type_hints
 from dataclasses import dataclass, field, asdict, is_dataclass
 from enum import Enum
 
-from paho.mqtt.client import Client as pahoMC
-from paho.mqtt.enums import CallbackAPIVersion
-
 """
     Schema configuration classes:
 
@@ -38,6 +35,9 @@ class DataType(str, Enum):
     JSON = "json"
     CUSTOM = "custom"
 
+    def __str__(self):
+        return self.value
+
 
 """
     Base class for custom data types
@@ -58,6 +58,10 @@ class CustomDataType(ABC):
 
     @abstractmethod
     def validate(self) -> tuple[bool, str]:
+        pass
+
+    @abstractmethod
+    def to_config(self) -> Dict[str, Any]:
         pass
 
 """
@@ -86,6 +90,29 @@ class FieldSchema(CustomDataType): # it is a CustomDataType to make nested objec
             allowed_values=config.get("allowed_values"),
             description=config.get("description", "")
         ) # this method return the FieldSchema object created from the config dictionary -> validation will occur
+
+    def to_config(self):
+        config = {
+            "name": self.name,
+            "type": str(self.data_type),
+            "value": self.value.to_config() if isinstance(self.value, CustomDataType) else self.value,
+            "description": self.description
+        }
+        
+        # Define optional fields and their keys
+        optional_fields = [
+            ("min_value", self.min_value),
+            ("max_value", self.max_value),
+            ("pattern", self.pattern),
+            ("allowed_values", [v.to_config() if isinstance(v, CustomDataType) else v for v in self.allowed_values] if isinstance(self.allowed_values, list) else self.allowed_values)
+        ]
+        
+        # Add non-None optional fields
+        for key, value in optional_fields:
+            if value is not None:
+                config[key] = value
+                
+        return config
 
     def validate(self) -> tuple[bool, str]: # tuple of (is_valid, error_message)
         """Validate a single field value"""
@@ -142,7 +169,7 @@ class FieldSchema(CustomDataType): # it is a CustomDataType to make nested objec
         # Pattern regex validation for strings
         if self.data_type == DataType.STRING and self.pattern:
             if not re.match(self.pattern, str(value)):
-                return False, f"Field '{self.name}' doesn't match pattern '{self.pattern}'"
+                return False, f"Value '{str(value)}' in Field '{self.name}' doesn't match pattern '{self.pattern}'"
         
         # Allowed values validation
         if self.allowed_values and value not in self.allowed_values:
