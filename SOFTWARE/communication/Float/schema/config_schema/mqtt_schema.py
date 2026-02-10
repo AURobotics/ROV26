@@ -1,6 +1,6 @@
-from SOFTWARE.communication.Float.mqtt_schema.config.abstract_schema import CustomDataType, DataType, MainSchema, MainFieldSchema, FieldSchema
+from SOFTWARE.communication.Float.schema.config_schema.abstract_schema import CustomDataType, DataType, MainSchema, MainFieldSchema, FieldSchema
 
-from typing import Any, Dict, Sequence, Optional, Union, Callable, get_type_hints
+from typing import Any, Dict, Sequence, Optional, Union, Callable, cast, get_type_hints
 from dataclasses import dataclass, field, asdict, is_dataclass
 
 """
@@ -63,6 +63,35 @@ class AllTopicsSchema(MainFieldSchema):
     def add_topic(self, name: str, topic: TopicSchema, description: str = "") -> AllTopicsSchema:
         self.value.append(topic) # TopicSchema is a FieldSchema; hence, already validated 
         return self
+    
+    def get_topic(self, name: str) -> Optional[TopicSchema]:
+        """Get a topic schema by name"""
+        for topic in self.value:
+            if topic.name == name:
+                return cast(TopicSchema, topic)
+        return None
+    
+    def remove_topic(self, name: str) -> AllTopicsSchema:
+        """Remove a topic schema by name"""
+        if self.get_topic(name) is None:
+            raise KeyError(f"Topic '{name}' not found in configuration.")
+        self.value = [topic for topic in self.value if topic.name != name]
+        return self
+    
+    def update_topic(self, name: str, topic_schema: TopicSchema) -> AllTopicsSchema:
+        """Update a topic schema by name"""
+        if self.get_topic(name) is None:
+            raise KeyError(f"Topic '{name}' not found in configuration.")
+        self.value = [topic if topic.name != name else topic_schema for topic in self.value]
+        return self
+    
+    def to_config(self) -> Dict[str, Any]:
+        """Convert AllTopicsSchema to a dictionary for YAML serialization"""
+        return {
+            "name": self.name,
+            "value": [topic.to_config() for topic in self.value],
+            "description": self.description
+            }
 
 # class MessagesTypesSchema(MainFieldSchema):
 #     """Message types schema for defining custom message payloads"""
@@ -78,7 +107,7 @@ class TopicSchema(FieldSchema):
     def __init__(self, name: str, message_schema: MessageSchema):
         if(name == None):
             raise ValueError("Topic name cannot be None")
-        if(len(message_schema.fields) == 0):
+        if(len(message_schema.value) == 0):
             raise ValueError("Message schema must have at least one field")
         
         self.name = name
@@ -88,7 +117,28 @@ class TopicSchema(FieldSchema):
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> 'TopicSchema':
-        return cls(name=config["name"], message_schema=MessageSchema.from_config(config["value"]))
+        # print(f"Creating TopicSchema from config: {config}")
+        # temp1 = config.get("name")
+        # print(f"Creating TopicSchema from config: name={temp1}")
+        # temp2 = config.get("value")
+        # print(f"Creating TopicSchema from config: value={temp2}")
+        
+        try:
+            return cls(
+                name=config.get("name"), # type: ignore
+                message_schema=MessageSchema.from_config(config.get("value"))
+            )
+        except Exception as e:
+            print(f"Error creating TopicSchema from config: {e}")
+            raise e 
+    
+    def to_config(self) -> Dict[str, Any]:
+        """Convert TopicSchema to a dictionary for YAML serialization"""
+        return {
+            "name": self.name,
+            "value": self.value.to_config() if isinstance(self.value, MessageSchema) else self.value,
+            "description": self.description
+        }
 
 
 class MessageSchema(FieldSchema):
@@ -107,9 +157,24 @@ class MessageSchema(FieldSchema):
         self.description = f"Message '{name}' schema"
 
     @classmethod
-    def from_config(cls, config: Dict[str, Any]) -> 'MessageSchema':
-        fields = [FieldSchema.from_config(field) for field in config["value"]]
-        return cls(name=config["name"], fields=fields)
+    def from_config(cls, config: Any) -> 'MessageSchema':
+        # print(f"Creating MessageSchema from config: {config}")
+        getFeilds = config.get("value")
+        # print(f"Creating MessageSchema from config: fields={getFeilds}")
+        fields = [FieldSchema.from_config(field) for field in getFeilds]
+        # print(f"Created fields for MessageSchema: {fields}")
+        return cls(
+            name=config["name"],
+            fields=fields,
+            )
 
     def add_field(self, field_schema: FieldSchema):
         self.value.append(field_schema)
+
+    def to_config(self) -> Dict[str, Any]:
+        """Convert MessageSchema to a dictionary for YAML serialization"""
+        return {
+            "name": self.name,
+            "value": [field.to_config() for field in self.value],
+            "description": self.description
+        }
