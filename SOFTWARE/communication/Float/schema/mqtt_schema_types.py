@@ -63,11 +63,15 @@ from dataclasses import dataclass, field, asdict, is_dataclass
 
 class MessageSchema(FieldSchemaList): # FieldSchemaList since it can hold multiple fields representing the message structure
     """Schema for an MQTT message payload"""
-    def __init__(self, name: str, fields: Optional[list[FieldSchema]] = None):
+    def __init__(self, name: str, fields: Optional[list[FieldSchema]] = None, description: Optional[str] = None):
         # NOTE: yoy can't set default value for fields as [] in the function signature because it will be shared across all instances of MessageSchema, which can lead to unexpected behavior. Hence, we set it to None and then initialize it to an empty list inside the function.
         if fields is None:
             fields = []
-        super().__init__(name=name, fields=cast(list[Union[FieldSchema, FieldSchemaList]], fields), description=f"Message schema for '{name}'")
+
+        if description is None:
+            description = f"Schema for MQTT message '{name}'"
+            
+        super().__init__(name=name, fields=cast(list[Union[FieldSchema, FieldSchemaList]], fields), description=description)
 
     @classmethod
     def create_from_config(cls, config: Any) -> 'MessageSchema':

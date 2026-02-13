@@ -46,17 +46,21 @@ class MQTTConfigManager:
         with open(config_path, 'w') as f:
             config_data = {
                 "mqtt_broker": self._mqtt_settings.to_config(),
-                "topics": {field.name: field.to_config() for field in self._topics.fields}
+                "topics": [field.to_config() for field in self._topics.fields]
             }
             yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
 
     def _load_all(self):
         """Load all configurations"""
-        # Load MQTT broker settings
-        self._mqtt_settings = MQTTBrokerConfig.create_from_config(self.config_data["mqtt_broker"]) if "mqtt_broker" in self.config_data else MQTTBrokerConfig()
         
-        # Load topics - topics_config should be a dict where keys are topic names
-        self._topics = AllTopicsSchema.create_from_config(self.config_data["topics"]) if "topics" in self.config_data else AllTopicsSchema()
+        self._mqtt_settings = MQTTBrokerConfig.create_from_config(
+            self.config_data["mqtt_broker"]
+        ) if "mqtt_broker" in self.config_data else MQTTBrokerConfig()
+        
+        # Wrap topics list in expected format
+        self._topics = AllTopicsSchema.create_from_config(
+            {"topics": self.config_data["topics"]}  # Wrap in dict with "topics" key
+        ) if "topics" in self.config_data else AllTopicsSchema()
 
     def _load_config(self, config_path) -> Dict[str, Any]:
         """Load YAML configuration file"""
