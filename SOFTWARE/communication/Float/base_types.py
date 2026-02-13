@@ -3,7 +3,8 @@ import json
 from typing import Any, Dict, List, Optional, Union, Callable, get_type_hints
 
 class MqttMessage(ABC):
-    args: Dict[str, Any] = {}
+    def __init__(self):
+        self.args: Dict[str, Any] = {}
 
     def add_variable(self, name: str, value: Any):
         self.args[name] = value

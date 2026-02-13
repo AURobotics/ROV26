@@ -137,7 +137,7 @@ class MQTTConfigManager:
         """Get all topic configurations"""
         return [field.name for field in self._topics.fields]
     
-    def get_topic(self, name: str) -> Optional[TopicSchema]:
+    def get_topic_schema(self, name: str) -> Optional[TopicSchema]:
         """Get specific topic configuration"""
         return self._topics.get_topic(name)
     
@@ -146,27 +146,16 @@ class MQTTConfigManager:
         topic = self._topics.get_topic(topic_name)
         return topic.value if topic else None
     
-    def publish(self, topic_name):
-        """Publish a message to a topic (placeholder)"""
-        topicSchema = self._topics.get_topic(topic_name)
-        if topicSchema is not None:
-            topic = Topic(topicSchema.name, self.mqtt)
-            message = MessageSchema_to_MqttMessage_Adapter(topicSchema.name)
-            # Here you would set the message variables based on the schema before publishing
-            topic.publish(message.encode())
-        else:
-            raise KeyError(f"Topic '{topic_name}' not found in configuration.")
-        
-    def subscribe(self, topic_name):
-        """Subscribe to a topic with a message handler (placeholder)"""
-        topicSchema = self._topics.get_topic(topic_name)
-        if topicSchema is not None:
-            topic = Topic(topicSchema.name, self.mqtt)
-            message_handler = MessageSchema_to_MqttMessage_Adapter(topicSchema.name)
-            topic.subscribe(message_handler)
-        else:
-            raise KeyError(f"Topic '{topic_name}' not found in configuration.")
+    # return topics and their message schemas if schema is used for reading only
+    def get_all_topics_messages(self) -> Dict[Topic, MqttMessage]:
+        res = {}
+        for topic_schema in self._topics.fields:
+            casted_topic_schema = cast(TopicSchema, topic_schema)
+            topic = Topic(casted_topic_schema.name, self.mqtt)
+            message = MessageSchema_to_MqttMessage_Adapter(casted_topic_schema.value)
+            res[topic] = message
 
+        return res
 
 if __name__ == "__main__":
     # Example usage

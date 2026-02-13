@@ -1,3 +1,5 @@
+import logging
+import threading
 from SOFTWARE.communication.Float.base_types import MqttMessage
 
 
@@ -14,11 +16,11 @@ class Mqtt():
     def __init__(self, address = 'localhost', port = 1883):
         self.address = address
         self.port = port
+        self.unacked_publish = set()
+        self._lock = threading.Lock()
         self._pubSetup()
-        print("Mqtt initialised")
 
     def _pubSetup(self):
-        self.unacked_publish = set()
         self.pub = pahoMC(CallbackAPIVersion.VERSION2)
         self.pub.user_data_set(self.unacked_publish)
         self.pub.on_publish = self._on_publish
@@ -28,11 +30,12 @@ class Mqtt():
     def _on_publish(self, client, userdata, mid, *args, **kwargs):
         # paho-mqtt (MQTT v5) may pass extra parameters (reason_code, properties).
         # Accept extras defensively so the callback works across versions.
-        try:
-            if userdata is not None:
-                userdata.discard(mid)
-        except Exception:
-            pass
+        with self._lock:
+            try:
+                if userdata is not None:
+                    userdata.discard(mid)
+            except Exception as e:
+                logging.error(f"Error in on_publish callback: {e}")
 
     def reset_address(self, address):
         self.address = address
@@ -43,12 +46,31 @@ class Mqtt():
         self.port = port
         self.pub.disconnect()
         self._pubSetup()
+
+    def cleanup(self):
+        """Clean up MQTT resources"""
+        self.pub.loop_stop()
+        self.pub.disconnect()
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.cleanup()
     
 
 class Topic():
-    def __init__(self, topic, mqtt_connection:Mqtt):
+    def __init__(self, topic: str, mqtt_connection:Mqtt):
         self.topic = topic
         self.mqtt = mqtt_connection
+
+    @property
+    def get_topic(self) -> str:
+        return self.topic
+    
+    @property
+    def get_mqtt_connection(self) -> Mqtt:
+        return self.mqtt
 
     def publish(self, message:str):
         self._pub_thread = Thread(target=self._publishing, args=[self.topic, message], daemon=True)
