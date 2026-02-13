@@ -1,0 +1,21 @@
+mqtt_broker:
+  address: localhost
+  port: 1883
+topics:
+  new/topic:
+    name: new/topic
+    type: custom
+    description: Schema for topic 'new/topic'
+    value:
+      name: NewMessage
+      type: custom
+      description: Message schema for 'NewMessage'
+      value:
+      - name: field1
+        type: string
+        description: A string field
+        value: example
+      - name: field2
+        type: integer
+        description: An integer field
+        value: 42
