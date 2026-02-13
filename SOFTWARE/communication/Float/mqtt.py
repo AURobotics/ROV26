@@ -33,6 +33,16 @@ class Mqtt():
                 userdata.discard(mid)
         except Exception:
             pass
+
+    def reset_address(self, address):
+        self.address = address
+        self.pub.disconnect()
+        self._pubSetup()
+
+    def reset_port(self, port):
+        self.port = port
+        self.pub.disconnect()
+        self._pubSetup()
     
 
 class Topic():
@@ -92,8 +102,8 @@ class Topic():
 
 if __name__ == "__main__":
     class SensorDataMessage(MqttMessage):
-        def __init__(self, topic: str):
-            super().__init__(topic)
+        def __init__(self):
+            super().__init__()
             # Initialize default values
             self.add_variable("temperature", 0.0)
             self.add_variable("humidity", 0.0)
@@ -113,8 +123,8 @@ if __name__ == "__main__":
 
     # 2. Another message type for testing different data
     class DeviceStatusMessage(MqttMessage):
-        def __init__(self, topic: str):
-            super().__init__(topic)
+        def __init__(self):
+            super().__init__()
             self.add_variable("device_id", "")
             self.add_variable("status", "offline")
             self.add_variable("battery_level", 0)
@@ -136,8 +146,8 @@ if __name__ == "__main__":
     device_topic = Topic("home/devices/status", mqtt_connection)
 
     # Create message handlers
-    sensor_handler = SensorDataMessage("home/livingroom/sensor")
-    device_handler = DeviceStatusMessage("home/devices/status")
+    sensor_handler = SensorDataMessage()
+    device_handler = DeviceStatusMessage()
 
     # Subscribe to topics
     print("\nSubscribing to topics...")
@@ -151,8 +161,8 @@ if __name__ == "__main__":
     print("\nPublishing sensor data...")
 
     # Create a publisher message handler
-    publisher_sensor = SensorDataMessage("home/livingroom/sensor")
-    publisher_device = DeviceStatusMessage("home/devices/status")
+    publisher_sensor = SensorDataMessage()
+    publisher_device = DeviceStatusMessage()
 
     # Publish some sensor readings
     for i in range(3):
@@ -200,7 +210,7 @@ if __name__ == "__main__":
     print("=" * 50)
 
     # Create a simple message
-    simple_message = SensorDataMessage("test/topic")
+    simple_message = SensorDataMessage()
     simple_message.args["custom_field"] = "custom_value"  # Direct access
 
     print(f"Message with custom field: {simple_message.args}")
@@ -217,7 +227,7 @@ if __name__ == "__main__":
     print("=" * 50)
 
     # Create another subscriber for the same topic
-    sensor_handler2 = SensorDataMessage("home/livingroom/sensor")
+    sensor_handler2 = SensorDataMessage()
     sensor_topic2 = Topic("home/livingroom/sensor", mqtt_connection)
     sensor_topic2.subscribe(sensor_handler2)
 

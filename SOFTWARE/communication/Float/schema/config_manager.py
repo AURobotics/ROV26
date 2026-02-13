@@ -1,8 +1,11 @@
 from dataclasses import asdict
 import json
+from SOFTWARE.communication.Float.base_types import MqttMessage
 from SOFTWARE.communication.Float.schema.abstract_schema_configuration.abstract_schema import FieldSchema
 from SOFTWARE.communication.Float.schema.abstract_schema_configuration.abstract_schema_data_types import DataType
+from SOFTWARE.communication.Float.schema.mqtt_schema_adapter import MessageSchema_to_MqttMessage_Adapter
 from SOFTWARE.communication.Float.schema.mqtt_schema_types import MQTTBrokerConfig, AllTopicsSchema, MessageSchema, TopicSchema
+from SOFTWARE.communication.Float.mqtt import Mqtt, Topic
 
 from typing import Any, Dict, List, Optional, Union, Callable, cast, get_type_hints
 import yaml
@@ -31,6 +34,8 @@ class MQTTConfigManager:
         else:
             self._topics: AllTopicsSchema = AllTopicsSchema()
         
+        self.mqtt = Mqtt(address=self._mqtt_settings.to_config()["address"], port=self._mqtt_settings.to_config()["port"])
+        
         if config_path is not None:
             self.config_data = self._load_config(Path(config_path))
             self._load_all()
@@ -52,7 +57,7 @@ class MQTTConfigManager:
         
         # Load topics - topics_config should be a dict where keys are topic names
         self._topics = AllTopicsSchema.create_from_config(self.config_data["topics"]) if "topics" in self.config_data else AllTopicsSchema()
-            
+
     def _load_config(self, config_path) -> Dict[str, Any]:
         """Load YAML configuration file"""
         with open(config_path, 'r') as f:
@@ -65,7 +70,7 @@ class MQTTConfigManager:
     def remove_topic(self, name: str):
         """Remove a topic configuration"""
         self._topics.remove_topic(name)
-        
+
     def update_topic(self, topic_schema: TopicSchema):
         """Update an existing topic configuration"""
         self._topics.update_topic(topic_schema)
@@ -128,13 +133,39 @@ class MQTTConfigManager:
         return self._mqtt_settings.to_config()
     
     @property
-    def topics(self) -> Dict[str, TopicSchema]:
+    def topic_names(self) -> list[str]:
         """Get all topic configurations"""
-        return self._topics.to_config()
+        return [field.name for field in self._topics.fields]
     
     def get_topic(self, name: str) -> Optional[TopicSchema]:
         """Get specific topic configuration"""
         return self._topics.get_topic(name)
+    
+    def get_message_schema(self, topic_name: str) -> Optional[MessageSchema]:
+        """Get message schema for a specific topic"""
+        topic = self._topics.get_topic(topic_name)
+        return topic.value if topic else None
+    
+    def publish(self, topic_name):
+        """Publish a message to a topic (placeholder)"""
+        topicSchema = self._topics.get_topic(topic_name)
+        if topicSchema is not None:
+            topic = Topic(topicSchema.name, self.mqtt)
+            message = MessageSchema_to_MqttMessage_Adapter(topicSchema.name)
+            # Here you would set the message variables based on the schema before publishing
+            topic.publish(message.encode())
+        else:
+            raise KeyError(f"Topic '{topic_name}' not found in configuration.")
+        
+    def subscribe(self, topic_name):
+        """Subscribe to a topic with a message handler (placeholder)"""
+        topicSchema = self._topics.get_topic(topic_name)
+        if topicSchema is not None:
+            topic = Topic(topicSchema.name, self.mqtt)
+            message_handler = MessageSchema_to_MqttMessage_Adapter(topicSchema.name)
+            topic.subscribe(message_handler)
+        else:
+            raise KeyError(f"Topic '{topic_name}' not found in configuration.")
 
 
 if __name__ == "__main__":
