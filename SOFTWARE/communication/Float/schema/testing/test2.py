@@ -8,10 +8,10 @@ from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from SOFTWARE.communication.Float.schema.config_schema.abstract_schema import (
+from SOFTWARE.communication.Float.schema.schema.abstract_schema import (
     DataType, FieldSchema, MainFieldSchema, MainSchema
 )
-from SOFTWARE.communication.Float.schema.config_schema.mqtt_schema import (
+from SOFTWARE.communication.Float.schema.mqtt_schema_types import (
     MQTTBrokerConfig, AllTopicsSchema, TopicSchema, MessageSchema, ConfigManager
 )
 from config_manager import (
@@ -432,7 +432,7 @@ def test_config_update_workflow():
         
         # 5. Save updated configuration to a new file
         new_config_path = config_path.with_name(f"updated_{config_path.name}")
-        config_manager.update_config(str(new_config_path))
+        config_manager.save_config(str(new_config_path))
         print(f"6. ✓ Saved updated configuration to: {new_config_path}")
         
         # 6. Verify the saved configuration

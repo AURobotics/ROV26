@@ -1,8 +1,8 @@
 from dataclasses import asdict
 import json
-from SOFTWARE.communication.Float.base_types import MqttMessage
-from SOFTWARE.communication.Float.schema.config_schema.abstract_schema import DataType, FieldSchema
-from SOFTWARE.communication.Float.schema.config_schema.mqtt_schema import AllTopicsSchema, MessageSchema, TopicSchema
+from SOFTWARE.communication.Float.schema.abstract_schema_configuration.abstract_schema import FieldSchema
+from SOFTWARE.communication.Float.schema.abstract_schema_configuration.abstract_schema_data_types import DataType
+from SOFTWARE.communication.Float.schema.mqtt_schema_types import MQTTBrokerConfig, AllTopicsSchema, MessageSchema, TopicSchema
 
 from typing import Any, Dict, List, Optional, Union, Callable, cast, get_type_hints
 import yaml
@@ -15,125 +15,60 @@ import time
 
 class MQTTConfigManager:
     """Manages MQTT configuration from YAML file"""
-    
-    def __init__(self, config_path: str):
-        self.config_data = self._load_config(Path(config_path))
-        self._mqtt_settings: Dict[str, Any] = {} # dictionary holding MQTT broker settings
-        self._topics: AllTopicsSchema = AllTopicsSchema() # dictionary holding topics
-        # self._data_formats: Dict[str, MessageSchema] = {} # dictionary holding data formats
-        self._load_all()
-        # print(f"MQTTConfigManager initialized with config: {self.config_data}")
 
-    @classmethod
-    def manual_init(cls, mqtt_settings: Dict[str, Any], topics: AllTopicsSchema) -> 'MQTTConfigManager':
-        """Manual initialization of MQTTConfigManager"""
-        instance = cls.__new__(cls)  # Create an uninitialized instance
-        instance._mqtt_settings = mqtt_settings
-        instance._topics = topics
-        # instance._data_formats = data_formats
-        return instance
+    def __init__(self, 
+                 config_path: str|None = None,
+                 mqtt_settings: MQTTBrokerConfig | None = None,
+                 topics: AllTopicsSchema | None = None):
+        
+        if mqtt_settings is not None:
+            self._mqtt_settings = mqtt_settings
+        else:
+            self._mqtt_settings: MQTTBrokerConfig = MQTTBrokerConfig() 
 
-    # def _topic_to_config(self, topic: AllTopicsSchema) -> Dict:
-    #     """Convert TopicSchema to dictionary with serializable values"""
-    #     result = asdict(topic)
+        if topics is not None:
+            self._topics = topics
+        else:
+            self._topics: AllTopicsSchema = AllTopicsSchema()
         
-    #     # Convert any DataType objects to strings/dicts
-    #     def convert_value(obj):
-    #         if isinstance(obj, DataType):
-    #             # Return a string representation or a dict
-    #             return str(obj)  # or obj.value if DataType has a value attribute
-    #         return obj
-        
-    #     # Recursively convert all values
-    #     def recursive_convert(d):
-    #         if isinstance(d, dict):
-    #             return {k: recursive_convert(v) for k, v in d.items()}
-    #         # elif isinstance(d, list):
-    #         #     return [recursive_convert(v) for v in d]
-    #         else:
-    #             return convert_value(d)
-        
-    #     return recursive_convert(result) # no worries, last return will be a dict
+        if config_path is not None:
+            self.config_data = self._load_config(Path(config_path))
+            self._load_all()
 
-    def update_config(self, config_path: str):
+
+    def save_config(self, config_path: str):
         """Write updated configuration to YAML file"""
         with open(config_path, 'w') as f:
-            # Create a dictionary where keys are topic names
-            topics_dict = {}
-            for topic in self._topics.value:
-                topics_dict[topic.name] = {
-                    "name": topic.name,
-                    "type": "custom",
-                    "value": topic.value.to_config() if hasattr(topic.value, 'to_config') else topic.value,
-                    "description": topic.description
-                }
-            
             config_data = {
-                "mqtt_broker_config": self._mqtt_settings,
-                "all_topics_schema": topics_dict,
+                "mqtt_broker": self._mqtt_settings.to_config(),
+                "topics": {field.name: field.to_config() for field in self._topics.fields}
             }
             yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
 
     def _load_all(self):
         """Load all configurations"""
         # Load MQTT broker settings
-        self._mqtt_settings = self.config_data.get("mqtt_broker_config", {})
+        self._mqtt_settings = MQTTBrokerConfig.create_from_config(self.config_data["mqtt_broker"]) if "mqtt_broker" in self.config_data else MQTTBrokerConfig()
         
         # Load topics - topics_config should be a dict where keys are topic names
-        topics_config = self.config_data.get("all_topics_schema", {})
-        
-        # Clear existing topics
-        self._topics.value = []
-        
-        for name, config in topics_config.items():
-            try:
-                # The config should already have "name" key matching the topic name
-                if "name" not in config:
-                    config["name"] = name
-                
-                # Create TopicSchema from config
-                topic_schema = TopicSchema.from_config(config)
-                self._topics.add_topic(name, topic_schema)
-                # print(f"Loaded topic '{name}': {self._topics.get_topic(name)}")
-            except Exception as e:
-                print(f"Error loading topic '{name}': {e}")
-    
+        self._topics = AllTopicsSchema.create_from_config(self.config_data["topics"]) if "topics" in self.config_data else AllTopicsSchema()
+            
     def _load_config(self, config_path) -> Dict[str, Any]:
         """Load YAML configuration file"""
         with open(config_path, 'r') as f:
             return yaml.safe_load(f)
-    
-    # def _load_all(self):
-    #     """Load all configurations"""
-    #     # Load MQTT broker settings
-    #     self._mqtt_settings = self.config_data.get("mqtt_broker_config", {})
-    #     # Load topics
-    #     topics_config = self.config_data.get("all_topics_schema", {})
-    #     for name, config in topics_config.items():
-    #         # print(f"Loading topic '{name}' from config: {config}")
-    #         self._topics.add_topic(name, TopicSchema.from_config({'name': name, 'value': config}))
-    #         print(f"Loaded topic '{name}': {self._topics.get_topic(name)}")
         
-    #     # Load data formats
-    #     # self._data_formats = self.config_data.get("data_formats", {})
-    
-    def add_topic(self, name: str, topic_schema: TopicSchema):
+    def add_topic(self, topic_schema: TopicSchema):
         """Add a new topic configuration"""
-        self._topics.add_topic(name, topic_schema)
-
-    def create_topic(self, name: str, message_schema: MessageSchema) -> TopicSchema:
-        """Create a new TopicSchema and add it to the configuration"""
-        new_topic = TopicSchema(name=name, message_schema=message_schema)
-        self.add_topic(name, new_topic)
-        return new_topic
+        self._topics.add_topic(topic_schema)
 
     def remove_topic(self, name: str):
         """Remove a topic configuration"""
         self._topics.remove_topic(name)
         
-    def update_topic(self, name: str, topic_schema: TopicSchema):
+    def update_topic(self, topic_schema: TopicSchema):
         """Update an existing topic configuration"""
-        self._topics.update_topic(name, topic_schema)
+        self._topics.update_topic(topic_schema)
         
     def change_topic_message(self, topic_name: str, new_message_schema: MessageSchema):
         """Change the message schema of an existing topic"""
@@ -148,7 +83,8 @@ class MQTTConfigManager:
         topic = self._topics.get_topic(old_name)
         if topic is not None:
             topic.name = new_name
-            self._topics.update_topic(old_name, topic)
+            self._topics.remove_topic(old_name)
+            self._topics.add_topic(topic)
         else:
             raise KeyError(f"Topic '{old_name}' not found in configuration.")
         
@@ -156,64 +92,62 @@ class MQTTConfigManager:
         """Create a new MessageSchema from a list of FieldSchema objects"""
         return MessageSchema(name="NewMessage", fields=fields)
     
-    def create_message_variable(self, name: str, data_type: DataType) -> FieldSchema:
-        """Create a new FieldSchema for a message field"""
-        return FieldSchema(name=name, data_type=data_type, value=None)
+    def update_message_schema(self, topic_name: str, message_schema: MessageSchema):
+        """Update the message schema of an existing topic with new fields"""
+        topic = self._topics.get_topic(topic_name)
+        if topic is not None:
+            topic.value.fields = message_schema.fields
+        else:
+            raise KeyError(f"Topic '{topic_name}' not found in configuration.")
+    
+    def create_field(self, name: str, data_type: DataType, value: Any) -> FieldSchema:
+        """Create a validated field"""
+        factory_map = {
+            DataType.STRING: FieldSchema.string,
+            DataType.INTEGER: FieldSchema.integer,
+            DataType.FLOAT: FieldSchema.float_field,
+            DataType.BOOLEAN: FieldSchema.boolean,
+            DataType.JSON: FieldSchema.json_field,
+        }
+        factory = factory_map.get(data_type)
+        if factory:
+            return factory(name, value=value)
+        raise ValueError(f"Unsupported data type: {data_type}")
     
     def change_mqtt_address(self, new_address: str):
         """Change MQTT broker address"""
-        self._mqtt_settings["address"] = new_address
+        self._mqtt_settings.set_address(new_address)
+
     def change_mqtt_port(self, new_port: int):
         """Change MQTT broker port"""
-        self._mqtt_settings["port"] = new_port
+        self._mqtt_settings.set_port(new_port)
 
     @property
     def mqtt_settings(self) -> Dict[str, Any]:
         """Get MQTT broker settings"""
-        return self.config_data.get("mqtt_broker_config", {})
+        return self._mqtt_settings.to_config()
     
     @property
     def topics(self) -> Dict[str, TopicSchema]:
         """Get all topic configurations"""
-        return {topic.name: cast(TopicSchema, topic) for topic in self._topics.value}
+        return self._topics.to_config()
     
     def get_topic(self, name: str) -> Optional[TopicSchema]:
         """Get specific topic configuration"""
         return self._topics.get_topic(name)
-    
-    # def get_data_format(self, name: str) -> Optional[Dict[str, Any]]:
-    #     """Get data format definition"""
-    #     return self._data_formats.get(name)
-
-class TopicDataType(MqttMessage):
-    """Defines the data type of a topic field"""
-    args: Dict[str, Any] = {}
-    def __init__(self, topic: str):
-        self.topic = topic
-
-    def add_variable(self, name: str, value: Any):
-        self.args[name] = value
-
-    def set_variable(self, name: str, value: Any):
-        if name in self.args:
-            self.args[name] = value
-        else:
-            raise KeyError(f"Variable '{name}' not found in message arguments.")
-
-
-    def encode(self):
-        """Encode topic data to a dictionary for MQTT payload"""
-        return json.dumps(self.args)
-    
-    def decode(self, payload: str):
-        """Decode MQTT payload to topic data"""
-        # we assume the payload is a string representation of a dictionary because that's how we encode it
-        try:
-            self.args = json.loads(payload)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON payload: {e}")
-
 
 
 if __name__ == "__main__":
-    ...
+    # Example usage
+    config_manager = MQTTConfigManager()
+    
+    # Add a new topic
+    new_message_schema = MessageSchema(name="NewMessage", fields=[
+        FieldSchema.string(name="field1", value="example", description="A string field"),
+        FieldSchema.integer(name="field2", value=42, description="An integer field")
+    ])
+    new_topic = TopicSchema(name="new/topic", message_schema=new_message_schema)
+    config_manager.add_topic(new_topic)
+    
+    # Save updated configuration
+    config_manager.save_config("./SOFTWARE/communication/Float/schema/testing/mqtt_config1.yaml")
