@@ -23,6 +23,7 @@
 # Ignore build output directories.
 # These are not needed in the repository as they are generated during the build process.
 Debug/
+build/
 Release/
 
 # Ignore common binary and object files generated during compilation.
