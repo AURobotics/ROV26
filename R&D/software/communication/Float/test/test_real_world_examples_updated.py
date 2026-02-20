@@ -355,7 +355,7 @@ def demo_smart_home():
     logger.info("Configuration saved to /tmp/smart_home_config.yaml")
     
     time.sleep(2)
-    mqtt.cleanup()
+    mqtt.disconnect()
     
     logger.info("Smart Home demo completed\n")
 
@@ -398,7 +398,7 @@ def demo_industrial_sensors():
     logger.info("Configuration saved to /tmp/industrial_config.yaml")
     
     time.sleep(2)
-    mqtt.cleanup()
+    mqtt.disconnect()
     
     logger.info("Industrial Sensors demo completed\n")
 
@@ -449,7 +449,7 @@ def demo_vehicle_fleet():
     logger.info("Configuration saved to /tmp/fleet_config.yaml")
     
     time.sleep(2)
-    mqtt.cleanup()
+    mqtt.disconnect()
     
     logger.info("Vehicle Fleet demo completed\n")
 
