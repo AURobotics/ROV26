@@ -3,7 +3,7 @@ import json
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
 
-from schema.abstract_schema_configuration.abstract_schema_data_types import DataType, CustomDataType
+from .abstract_schema_data_types import DataType, CustomDataType
 
 """
     Schema configuration classes:
