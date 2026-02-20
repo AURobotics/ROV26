@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 try:
     from base_types import MqttMessage
     from mqtt import Mqtt, Topic
-    from config_manager import MQTTConfigManager
-    from mqtt_schema_adapter import MessageSchema_to_MqttMessage_Adapter
-    from mqtt_schema_types import MessageSchema, TopicSchema
-    from abstract_schema_data_types import DataType
+    from schema.config_manager import MQTTConfigManager
+    from schema.mqtt_schema_adapter import MessageSchema_to_MqttMessage_Adapter
+    from schema.mqtt_schema_types import MessageSchema, TopicSchema
+    from schema.abstract_schema_configuration.abstract_schema_data_types import DataType
 except ImportError as e:
     logger.error(f"Import error: {e}")
     raise
