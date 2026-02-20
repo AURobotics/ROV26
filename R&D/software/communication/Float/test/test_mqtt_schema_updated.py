@@ -29,16 +29,13 @@ logger = logging.getLogger(__name__)
 
 # Import only public modules
 try:
-    from base_types import MqttMessage
-    from mqtt import Mqtt, Topic
-    from schema.config_manager import MQTTConfigManager
-    from schema.mqtt_schema_adapter import MessageSchema_to_MqttMessage_Adapter
-    from schema.mqtt_schema_types import MQTTBrokerConfig, AllTopicsSchema, MessageSchema, TopicSchema
-    from schema.abstract_schema_configuration.abstract_schema_data_types import DataType
+    from ..mqtt import Mqtt, Topic
+    from ..schema.config_manager import MQTTConfigManager
+    from ..schema.mqtt_schema_adapter import MessageSchema_to_MqttMessage_Adapter
+    from ..schema.mqtt_schema_types import MQTTBrokerConfig, AllTopicsSchema, MessageSchema, TopicSchema
+    from ..schema.abstract_schema_configuration.abstract_schema_data_types import DataType
 
 except ImportError as e:
-    print(f"Import error: {e}")
-    print("Make sure all modules are in the Python path")
     raise
 
 
@@ -184,7 +181,7 @@ def test_3_yaml_persistence(results: TestResults):
     print("TEST 3: YAML Persistence")
     print("=" * 70)
     
-    yaml_file = "./Software/communication/Float/test/tmp/test_mqtt_config.yaml"
+    yaml_file = "./R&D/software/communication/Float/test/tmp/test_mqtt_config.yaml"
     
     try:
         # Create config manager with topics
@@ -344,8 +341,8 @@ def test_5_publish_subscribe(results: TestResults):
         results.record("5.3: Receive published messages",
                       last_received["sensor_id"] == "SENSOR_003")
         
-        # Cleanup
-        mqtt_conn.cleanup()
+        # disconnect
+        mqtt_conn.disconnect()
         
     except Exception as e:
         print(f"Test 5 failed with exception: {e}")
@@ -407,8 +404,8 @@ def test_6_multi_topic_communication(results: TestResults):
         subscribers = {}
         for topic, message_handler in all_topics_messages.items():
             topic.subscribe(message_handler)
-            subscribers[topic.get_topic] = message_handler
-            print(f"Subscribed to: {topic.get_topic}")
+            subscribers[topic.topic_name] = message_handler
+            print(f"Subscribed to: {topic.topic_name}")
         
         results.record("6.3: Subscribe to all topics", len(subscribers) == 3)
         
@@ -448,8 +445,8 @@ def test_6_multi_topic_communication(results: TestResults):
         results.record("6.4: Verify multi-topic message delivery",
                       verification_count >= 1)
         
-        # Cleanup
-        config_manager.mqtt.cleanup()
+        # disconnect
+        config_manager.mqtt.disconnect()
         
     except Exception as e:
         print(f"Test 6 failed with exception: {e}")
@@ -505,7 +502,7 @@ def test_8_integration(results: TestResults):
     print("TEST 8: ConfigManager Integration")
     print("=" * 70)
     
-    yaml_file = "./Software/communication/Float/test/tmp/test_integration_config.yaml"
+    yaml_file = "./R&D/software/communication/Float/test/tmp/test_integration_config.yaml"
     
     try:
         # Create comprehensive config
@@ -567,7 +564,7 @@ def test_8_integration(results: TestResults):
         temp_topic = None
         temp_handler = None
         for topic, handler in all_topics.items():
-            if topic.get_topic == "home/living_room/temperature":
+            if topic.topic_name == "home/living_room/temperature":
                 temp_topic = topic
                 temp_handler = handler
                 topic.subscribe(handler)
@@ -604,8 +601,8 @@ def test_8_integration(results: TestResults):
             results.record("8.6: Publish/Subscribe with loaded config",
                           verify_handler.args.get("celsius", 0) > 0)
         
-        # Cleanup
-        new_manager.mqtt.cleanup()
+        # disconnect
+        new_manager.mqtt.disconnect()
         
     except Exception as e:
         print(f"Test 8 failed with exception: {e}")
