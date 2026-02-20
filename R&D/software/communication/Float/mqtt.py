@@ -1,6 +1,6 @@
 import logging
 import threading
-from SOFTWARE.communication.Float.base_types import MqttMessage
+from base_types import MqttMessage
 
 
 from threading import Thread
