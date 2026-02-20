@@ -29,12 +29,12 @@ logger = logging.getLogger(__name__)
 
 # Import only public modules
 try:
-    from SOFTWARE.communication.Float.base_types import MqttMessage
-    from SOFTWARE.communication.Float.mqtt import Mqtt, Topic
-    from SOFTWARE.communication.Float.schema.config_manager import MQTTConfigManager
-    from SOFTWARE.communication.Float.schema.mqtt_schema_adapter import MessageSchema_to_MqttMessage_Adapter
-    from SOFTWARE.communication.Float.schema.mqtt_schema_types import MQTTBrokerConfig, AllTopicsSchema, MessageSchema, TopicSchema
-    from SOFTWARE.communication.Float.schema.abstract_schema_configuration.abstract_schema_data_types import DataType
+    from base_types import MqttMessage
+    from mqtt import Mqtt, Topic
+    from schema.config_manager import MQTTConfigManager
+    from schema.mqtt_schema_adapter import MessageSchema_to_MqttMessage_Adapter
+    from schema.mqtt_schema_types import MQTTBrokerConfig, AllTopicsSchema, MessageSchema, TopicSchema
+    from schema.abstract_schema_configuration.abstract_schema_data_types import DataType
 
 except ImportError as e:
     print(f"Import error: {e}")
