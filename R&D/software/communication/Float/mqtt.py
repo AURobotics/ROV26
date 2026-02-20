@@ -25,7 +25,7 @@ class Mqtt():
         self.unacked_publish = set()
         self._lock = threading.Lock()
         # Registry mapping topic string -> list of MqttMessage handlers
-        self._topic_handlers: dict[str, list[MqttMessage]] = {}
+        self._topic_handlers: dict[str, list[MqttMessage]] = {} # for subscribed topics
         self._connect()
 
     def _connect(self):
