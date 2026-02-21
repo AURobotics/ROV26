@@ -27,14 +27,14 @@
 #endif
 
 /* Includes ------------------------------------------------------------------*/
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "main.h"
 #include "stm32f4xx.h"
 #include "stm32f4xx_hal.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-/* USER CODE BEGIN INCLUDE */
+ /* USER CODE BEGIN INCLUDE */
 
 /* USER CODE END INCLUDE */
 
