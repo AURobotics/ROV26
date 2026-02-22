@@ -1,58 +1,80 @@
-/* USER CODE BEGIN Header */
-/**
- ******************************************************************************
- * @file           : main.c
- * @brief          : Main program body
- ******************************************************************************
- * @attention
- *
- * Copyright (c) 2026 STMicroelectronics.
- * All rights reserved.
- *
- * This software is licensed under terms that can be found in the LICENSE file
- * in the root directory of this software component.
- * If no LICENSE file comes with this software, it is provided AS-IS.
- *
- ******************************************************************************
- */
-/* USER CODE END Header */
-/* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "PID.h"
 #include "adc.h"
 #include "gpio.h"
 #include "i2c.h"
 #include "tim.h"
 #include "usb_device.h"
-#include "PID.h"
+#include <cmath>
+#include <cstdio>
 
+#include <cmath>
+#include <optional>
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
+float output[8];
+float A_inv[8][6] = {
+    {0.25, -0.25, 0.0, 0.0, 0.0, 0.25},  {0.25, 0.25, 0.0, 0.0, 0.0, -0.25},
+    {-0.25, 0.25, 0.0, 0.0, 0.0, 0.25},  {-0.25, -0.25, 0.0, 0.0, 0.0, -0.25},
 
-/* USER CODE END Includes */
+    {0.0, 0.0, 0.25, -0.25, 0.25, 0.0},  {0.0, 0.0, 0.25, 0.25, 0.25, 0.0},
+    {0.0, 0.0, 0.25, -0.25, -0.25, 0.0}, {0.0, 0.0, 0.25, 0.25, -0.25, 0.0}};
 
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
+void normalize_thrusters(float output[8]);
 
-/* USER CODE END PTD */
+void multiply_matrix(float V[6]) {
+  for (int i = 0; i < 8; i++) {
+    output[i] = 0.0f;
+    for (int j = 0; j < 6; j++) {
+      output[i] += A_inv[i][j] * V[j];
+    }
+  }
+  normalize_thrusters(output);
+}
 
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
+void normalize_thrusters(float output[8]) {
+  float maxH = 0.0f;
+  float maxV = 0.0f;
+  for (int i = 0; i < 4; i++) {
+    float val = fabs(output[i]);
+    if (val > maxH) {
+      maxH = val;
+    }
+  }
+  if (maxH > 1.0f) {
 
-/* USER CODE END PD */
+    for (int i = 0; i < 4; i++) {
+      output[i] /= maxH;
+    }
+  }
 
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
+  for (int i = 4; i < 8; i++) {
+    float val = fabs(output[i]);
+    if (val > maxV) {
+      maxV = val;
+    }
+  }
+  if (maxV > 1.0f) {
 
-/* USER CODE END PM */
+    for (int i = 4; i < 8; i++) {
+      output[i] /= maxV;
+    }
+  }
+}
 
-/* Private variables ---------------------------------------------------------*/
+struct Controller {
+  explicit constexpr Controller(const PID &angle_pid,
+                                const std::optional<PID> &rate_pid)
+      : angle_pid(angle_pid), rate_pid(rate_pid) {}
 
-/* USER CODE BEGIN PV */
+private:
+  PID angle_pid;
+  std::optional<PID> rate_pid = std::nullopt;
 
-/* USER CODE END PV */
+public:
+  float output(float setpoint, float angle,
+               std::optional<float> rate = std::nullopt) {}
+};
 
-/* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
@@ -100,20 +122,9 @@ int main(void) {
   MX_TIM4_Init();
   MX_TIM5_Init();
   MX_USB_DEVICE_Init();
-  /* USER CODE BEGIN 2 */
 
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   while (1) {
-    static PID pid = PID();
-    pid.test_fn();
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
   }
-  /* USER CODE END 3 */
 }
 
 /**
