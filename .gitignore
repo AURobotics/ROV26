@@ -2,21 +2,6 @@
 frames/
 *.mp4
 
-# Virtual environment
-venv/
-env/
-.venv/
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# IDE files
-.vscode/
-.idea/
-
 # OS files
 .DS_Store
 Thumbs.db
