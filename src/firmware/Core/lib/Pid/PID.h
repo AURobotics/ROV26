@@ -16,7 +16,7 @@ class PID
   double integral;
 
 public:
-  PID(double kp, double kd, double ki, double integral_max, double integral_min);
+  PID(double kp, double kd, double ki);
 
   void set_gains(double kp, double kd, double ki);
   void set_integral_limits(double integral_max, double integral_min);
