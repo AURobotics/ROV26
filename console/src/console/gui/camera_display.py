@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QWidget, QLabel, QSizePolicy
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QImage, QPixmap, QResizeEvent
-from cv import Camera
+from console.core.vision.camera import Camera
 
 class CameraDisplay(QWidget):
     def __init__(self, camera_device, parent: QWidget | None = None):

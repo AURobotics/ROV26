@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QWidget, QGridLayout, QPushButton, QLabel
 from PySide6.QtGui import QPixmap
-from camera_display import CameraDisplay
+from console.gui.camera_display import CameraDisplay
+from console.resources import get_resource
 
 class CoPilotTab(QWidget):
     def __init__(self, toggle_sidebar, cam1):
@@ -11,7 +12,8 @@ class CoPilotTab(QWidget):
         self.camera1 = CameraDisplay(cam1)
 
         self.image1 = QLabel()
-        self.image1.setPixmap(QPixmap("pic.png"))
+        with get_resource('pic.png') as temp:
+            self.image1.setPixmap(QPixmap(temp))
 
         self.sidebar_button = QPushButton("Control")
         self.sidebar_button.setCheckable(True)
