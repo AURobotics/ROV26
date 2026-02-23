@@ -1,17 +1,17 @@
 #include "PID.h"
 
-PID::PID(double kp, double kd, double ki, double integral_max,
-         double integral_min)
-    : integral_max(integral_max), integral_min(integral_min), kp(kp), kd(kd),
-      ki(ki) {
+PID::PID(double kp, double kd, double ki)
+    :  kp(kp), kd(kd),ki(ki) {
 
   prev_measurement = 0;
   filtered_derivative = 0;
   tau = 0.1; // needs to be tuned//  greater tau->less noisy, slower  // smaller
              // tau-> noisier,faster response
   integral = 0;
-  output_max = 100;
-  output_min = -100;
+  output_max = 1;
+  output_min = -1;
+  integral_max = 100;
+  integral_min = -100;
 }
 
 void PID::set_gains(double kp, double kd, double ki) {
