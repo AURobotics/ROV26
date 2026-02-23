@@ -12,57 +12,71 @@
 
 float output[8];
 float A_inv[8][6] = {
-    {0.25, -0.25, 0.0, 0.0, 0.0, 0.25},  {0.25, 0.25, 0.0, 0.0, 0.0, -0.25},
-    {-0.25, 0.25, 0.0, 0.0, 0.0, 0.25},  {-0.25, -0.25, 0.0, 0.0, 0.0, -0.25},
+    {0.25, -0.25, 0.0, 0.0, 0.0, 0.25}, {0.25, 0.25, 0.0, 0.0, 0.0, -0.25}, {-0.25, 0.25, 0.0, 0.0, 0.0, 0.25}, {-0.25, -0.25, 0.0, 0.0, 0.0, -0.25},
 
-    {0.0, 0.0, 0.25, -0.25, 0.25, 0.0},  {0.0, 0.0, 0.25, 0.25, 0.25, 0.0},
-    {0.0, 0.0, 0.25, -0.25, -0.25, 0.0}, {0.0, 0.0, 0.25, 0.25, -0.25, 0.0}};
+    {0.0, 0.0, 0.25, -0.25, 0.25, 0.0},
+    {0.0, 0.0, 0.25, 0.25, 0.25, 0.0},
+    {0.0, 0.0, 0.25, -0.25, -0.25, 0.0},
+    {0.0, 0.0, 0.25, 0.25, -0.25, 0.0}};
 
 void normalize_thrusters(float output[8]);
 
-void multiply_matrix(float V[6]) {
-  for (int i = 0; i < 8; i++) {
+void multiply_matrix(float V[6])
+{
+  for (int i = 0; i < 8; i++)
+  {
     output[i] = 0.0f;
-    for (int j = 0; j < 6; j++) {
+    for (int j = 0; j < 6; j++)
+    {
       output[i] += A_inv[i][j] * V[j];
     }
   }
   normalize_thrusters(output);
 }
 
-void normalize_thrusters(float output[8]) {
+void normalize_thrusters(float output[8])
+{
   float maxH = 0.0f;
   float maxV = 0.0f;
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 4; i++)
+  {
     float val = fabs(output[i]);
-    if (val > maxH) {
+    if (val > maxH)
+    {
       maxH = val;
     }
   }
-  if (maxH > 1.0f) {
+  if (maxH > 1.0f)
+  {
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++)
+    {
       output[i] /= maxH;
     }
   }
 
-  for (int i = 4; i < 8; i++) {
+  for (int i = 4; i < 8; i++)
+  {
     float val = fabs(output[i]);
-    if (val > maxV) {
+    if (val > maxV)
+    {
       maxV = val;
     }
   }
-  if (maxV > 1.0f) {
+  if (maxV > 1.0f)
+  {
 
-    for (int i = 4; i < 8; i++) {
+    for (int i = 4; i < 8; i++)
+    {
       output[i] /= maxV;
     }
   }
 }
 
-struct Controller {
+struct Controller
+{
   explicit constexpr Controller(const PID &angle_pid,
-                                const std::optional<PID> &rate_pid)
+                                const std::optional<PID> &rate_pid = std::nullopt)
       : angle_pid(angle_pid), rate_pid(rate_pid) {}
 
 private:
@@ -70,8 +84,19 @@ private:
   std::optional<PID> rate_pid = std::nullopt;
 
 public:
-  float output(float setpoint, float angle,
-               std::optional<float> rate = std::nullopt) {}
+  float output(float setpoint, float angle, float dt,
+               std::optional<float> rate = std::nullopt)
+  {
+    float angle_pid_output;
+    if (rate)
+    {
+      angle_pid_output = angle_pid.update(setpoint, angle, dt);
+      return rate_pid->update(angle_pid_output, *rate, dt);
+    }
+
+    else
+      return angle_pid.update(setpoint, angle, dt);
+  }
 };
 
 void SystemClock_Config(void);
@@ -88,7 +113,8 @@ void SystemClock_Config(void);
  * @brief  The application entry point.
  * @retval int
  */
-int main(void) {
+int main(void)
+{
 
   /* USER CODE BEGIN 1 */
 
@@ -122,7 +148,112 @@ int main(void) {
   MX_TIM5_Init();
   MX_USB_DEVICE_Init();
 
-  while (1) {
+  byte control_byte; // depth pitch roll yaw
+  float data[6];     // Fx Fy Fz Froll Fpitch Fyaw// forces in the axis//probably need something else bec its confusing
+  float setpoints[4];
+  float controller_output[6]; // depth pitch roll yaw surge sway
+
+  float hold_depth;
+  float hold_yaw;
+  float hold_pitch;
+  float hold_roll;
+
+  /*Initialize all pids*/
+  Controller depth_pid(PID(kp, ki, kd));
+  Controller pitch_pid(PID(kp, ki, kd), PID(kp, ki, kd));
+  Controller roll_pid(PID(kp, ki, kd), PID(kp, ki, kd));
+  Controller yaw_pid(PID(kp, ki, kd), PID(kp, ki, kd));
+
+  float depth, yaw, pitch, roll; // read from sensors
+  float yaw_rate, pitch_rate, roll_rate;
+  float prev;
+  float now = HAL_GetTick();
+
+  while (1)
+  {
+    prev = now;
+    now = HAL_GetTick();
+    float dt = (now - prev) / 1000.0; // convert ms->seconds
+
+    // read gui data
+    // read sensor data
+
+    // depth
+    if (control_byte & 1 << 7) // setpoint
+    {
+      controller_output[0] = depth_pid.output(setpoint[0], depth, dt);
+    }
+    else
+    {
+      if (data[2] == 0) // hold position
+      {
+        controller_output[0] = depth_pid.output(hold_depth, depth, dt);
+      }
+      else // pilot command
+      {
+        controller_output[0] = data[2];
+        hold_depth = depth;
+      }
+    }
+
+    // pitch
+    if (control_byte & 1 << 6) // setpoint
+    {
+      controller_output[1] = pitch_pid.output(setpoint[1], pitch, dt, pitch_rate);
+    }
+    else
+    {
+      if (data[4] == 0) // hold position
+      {
+        controller_output[1] = pitch_pid.output(hold_pitch, pitch, dt, pitch_rate);
+      }
+      else // pilot command
+      {
+        controller_output[1] = data[4];
+        hold_pitch = pitch;
+      }
+    }
+
+    // roll
+    if (control_byte & 1 << 5) // setpoint
+    {
+      controller_output[2] = roll_pid.output(setpoint[2], roll, dt, roll_rate);
+    }
+    else
+    {
+      if (data[3] == 0) // hold position
+      {
+        controller_output[2] = roll_pid.output(hold_roll, roll, dt, roll_rate);
+      }
+      else // pilot command
+      {
+        controller_output[2] = data[3];
+        hold_roll = roll;
+      }
+    }
+
+    // yaw
+    if (control_byte & 1 << 4) // setpoint
+    {
+      controller_output[3] = yaw_pid.output(setpoint[3], yaw, dt, yaw_rate);
+    }
+    else
+    {
+      if (data[5] == 0) // hold position
+      {
+        controller_output[3] = yaw_pid.output(hold_yaw, yaw, yaw_rate);
+      }
+      else // pilot command
+      {
+        controller_output[3] = data[5];
+        hold_yaw = yaw;
+      }
+    }
+
+    //surge 
+    controller_output[4] = data[0];
+    //sway
+    controller_output[5] = data[1];
   }
 }
 
@@ -130,7 +261,8 @@ int main(void) {
  * @brief System Clock Configuration
  * @retval None
  */
-void SystemClock_Config(void) {
+void SystemClock_Config(void)
+{
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
@@ -150,7 +282,8 @@ void SystemClock_Config(void) {
   RCC_OscInitStruct.PLL.PLLN = 384;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV6;
   RCC_OscInitStruct.PLL.PLLQ = 8;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
     Error_Handler();
   }
 
@@ -163,7 +296,8 @@ void SystemClock_Config(void) {
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) {
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
     Error_Handler();
   }
 
@@ -180,11 +314,13 @@ void SystemClock_Config(void) {
  * @brief  This function is executed in case of error occurrence.
  * @retval None
  */
-void Error_Handler(void) {
+void Error_Handler(void)
+{
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1) {
+  while (1)
+  {
   }
   /* USER CODE END Error_Handler_Debug */
 }
@@ -196,7 +332,8 @@ void Error_Handler(void) {
  * @param  line: assert_param error line source number
  * @retval None
  */
-void assert_failed(uint8_t *file, uint32_t line) {
+void assert_failed(uint8_t *file, uint32_t line)
+{
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line
      number, ex: printf("Wrong parameters value: file %s on line %d\r\n", file,
