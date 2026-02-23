@@ -1,14 +1,13 @@
 import cv2
 from threading import Thread
 from time import sleep
-from console.resources import get_resource
+from console.assets import get_asset
 
 
 class Camera:
     def __init__(self, index) -> None:
         # fallback image if camera fails
-        with get_resource("playstation-controller.webp") as empty_frame_image:
-            self._empty_frame = cv2.imread(empty_frame_image)
+        self._empty_frame = cv2.imread(get_asset("playstation-controller.webp"))
         self._cap = cv2.VideoCapture(index)
         self._cap.open(0)
         self._frame = None
