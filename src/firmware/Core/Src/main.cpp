@@ -5,6 +5,8 @@
 #include "i2c.h"
 #include "tim.h"
 #include "usb_device.h"
+#include "bno055.h"
+#include "ms5611.h"
 
 #include <cmath>
 #include <cstdio>
@@ -19,9 +21,9 @@ float A_inv[8][6] = {
     {0.0, 0.0, 0.25, -0.25, -0.25, 0.0},
     {0.0, 0.0, 0.25, 0.25, -0.25, 0.0}};
 
-void normalize_thrusters(float output[8]);
+float *normalize_thrusters(float output[8]);
 
-void multiply_matrix(float V[6])
+float *multiply_matrix(float V[6])
 {
   for (int i = 0; i < 8; i++)
   {
@@ -31,10 +33,10 @@ void multiply_matrix(float V[6])
       output[i] += A_inv[i][j] * V[j];
     }
   }
-  normalize_thrusters(output);
+  return normalize_thrusters(output);
 }
 
-void normalize_thrusters(float output[8])
+float *normalize_thrusters(float output[8])
 {
   float maxH = 0.0f;
   float maxV = 0.0f;
@@ -71,6 +73,7 @@ void normalize_thrusters(float output[8])
       output[i] /= maxV;
     }
   }
+  return output;
 }
 
 struct Controller
@@ -98,6 +101,14 @@ public:
       return angle_pid.update(setpoint, angle, dt);
   }
 };
+
+void move_motors(Motor motor_arr[8], float clamped_values[8])
+{
+  for (int i = 0; i < 8; i++)
+  {
+    motor_arr[i].drive(clamped_values[i]);
+  }
+}
 
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
@@ -150,7 +161,7 @@ int main(void)
 
   byte control_byte; // depth pitch roll yaw
   float data[6];     // Fx Fy Fz Froll Fpitch Fyaw// forces in the axis//probably need something else bec its confusing
-  float setpoints[4];
+  float setpoint[4];
   float controller_output[6]; // depth pitch roll yaw surge sway
 
   float hold_depth;
@@ -159,7 +170,7 @@ int main(void)
   float hold_roll;
 
   /*Initialize all pids*/
-  Controller depth_pid(PID(kp, ki, kd));
+  Controller depth_pid(PID(kp, ki, kd)); // lessa mtl3nash el values kp,ki,kd
   Controller pitch_pid(PID(kp, ki, kd), PID(kp, ki, kd));
   Controller roll_pid(PID(kp, ki, kd), PID(kp, ki, kd));
   Controller yaw_pid(PID(kp, ki, kd), PID(kp, ki, kd));
@@ -171,6 +182,15 @@ int main(void)
 
   while (1)
   {
+    depth = getDepth();
+    pitch = get_euler_angles().pitch;
+    yaw = get_euler_angles().yaw;
+    roll = get_euler_angles().roll;
+
+    yaw_rate = get_body_rates().z;
+    pitch_rate = get_body_rates().y;
+    roll_rate = get_body_rates().x;
+
     prev = now;
     now = HAL_GetTick();
     float dt = (now - prev) / 1000.0; // convert ms->seconds
@@ -250,11 +270,13 @@ int main(void)
       }
     }
 
-    //surge 
+    // surge
     controller_output[4] = data[0];
-    //sway
+    // sway
     controller_output[5] = data[1];
   }
+  float *clamped_motors = multiply_matrix(controller_output);
+  move_motors(, clamped_motors);
 }
 
 /**
