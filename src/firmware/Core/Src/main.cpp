@@ -1,85 +1,72 @@
 #include "main.h"
 #include "PID.h"
 #include "adc.h"
+#include "bno055.h"
 #include "gpio.h"
 #include "i2c.h"
+#include "ms5611.h"
 #include "tim.h"
 #include "usb_device.h"
-#include "bno055.h"
-#include "ms5611.h"
 
 #include <cmath>
 #include <cstdio>
 #include <optional>
 
-float output[8];
+size_t transmit(char *buffer, size_t len);
+size_t read(char *buffer, size_t len);
+
+// float output[8];
 float A_inv[8][6] = {
-    {0.25, -0.25, 0.0, 0.0, 0.0, 0.25}, {0.25, 0.25, 0.0, 0.0, 0.0, -0.25}, {-0.25, 0.25, 0.0, 0.0, 0.0, 0.25}, {-0.25, -0.25, 0.0, 0.0, 0.0, -0.25},
+    {0.25, -0.25, 0.0, 0.0, 0.0, 0.25},  {0.25, 0.25, 0.0, 0.0, 0.0, -0.25},
+    {-0.25, 0.25, 0.0, 0.0, 0.0, 0.25},  {-0.25, -0.25, 0.0, 0.0, 0.0, -0.25},
 
-    {0.0, 0.0, 0.25, -0.25, 0.25, 0.0},
-    {0.0, 0.0, 0.25, 0.25, 0.25, 0.0},
-    {0.0, 0.0, 0.25, -0.25, -0.25, 0.0},
-    {0.0, 0.0, 0.25, 0.25, -0.25, 0.0}};
+    {0.0, 0.0, 0.25, -0.25, 0.25, 0.0},  {0.0, 0.0, 0.25, 0.25, 0.25, 0.0},
+    {0.0, 0.0, 0.25, -0.25, -0.25, 0.0}, {0.0, 0.0, 0.25, 0.25, -0.25, 0.0}};
 
-float *normalize_thrusters(float output[8]);
+void normalize_thrusters(float output[8], char *buffer);
 
-float *multiply_matrix(float V[6])
-{
-  for (int i = 0; i < 8; i++)
-  {
-    output[i] = 0.0f;
+// buffer must be of size 8
+void apply_pseudo_inverse(const float v[6], float *buffer) {
+  for (int i = 0; i < 8; i++) {
+    buffer[i] = 0.0f;
     for (int j = 0; j < 6; j++)
-    {
-      output[i] += A_inv[i][j] * V[j];
-    }
+      buffer[i] += A_inv[i][j] * v[j];
   }
-  return normalize_thrusters(output);
 }
 
-float *normalize_thrusters(float output[8])
-{
+void normalize_thrusters(float output[8]) {
   float maxH = 0.0f;
   float maxV = 0.0f;
-  for (int i = 0; i < 4; i++)
-  {
-    float val = fabs(output[i]);
-    if (val > maxH)
-    {
+  for (int i = 0; i < 4; i++) {
+    float val = std::fabs(output[i]);
+    if (val > maxH) {
       maxH = val;
     }
   }
-  if (maxH > 1.0f)
-  {
+  if (maxH > 1.0f) {
 
-    for (int i = 0; i < 4; i++)
-    {
+    for (int i = 0; i < 4; i++) {
       output[i] /= maxH;
     }
   }
 
-  for (int i = 4; i < 8; i++)
-  {
-    float val = fabs(output[i]);
-    if (val > maxV)
-    {
+  for (int i = 4; i < 8; i++) {
+    float val = std::fabs(output[i]);
+    if (val > maxV) {
       maxV = val;
     }
   }
-  if (maxV > 1.0f)
-  {
+  if (maxV > 1.0f) {
 
-    for (int i = 4; i < 8; i++)
-    {
+    for (int i = 4; i < 8; i++) {
       output[i] /= maxV;
     }
   }
-  return output;
 }
 
-struct Controller
-{
-  explicit constexpr Controller(const PID &angle_pid,
-                                const std::optional<PID> &rate_pid = std::nullopt)
+struct Controller {
+  explicit constexpr Controller(
+      const PID &angle_pid, const std::optional<PID> &rate_pid = std::nullopt)
       : angle_pid(angle_pid), rate_pid(rate_pid) {}
 
 private:
@@ -88,11 +75,9 @@ private:
 
 public:
   float output(float setpoint, float angle, float dt,
-               std::optional<float> rate = std::nullopt)
-  {
+               std::optional<float> rate = std::nullopt) {
     float angle_pid_output;
-    if (rate)
-    {
+    if (rate) {
       angle_pid_output = angle_pid.update(setpoint, angle, dt);
       return rate_pid->update(angle_pid_output, *rate, dt);
     }
@@ -102,10 +87,8 @@ public:
   }
 };
 
-void move_motors(Motor motor_arr[8], float clamped_values[8])
-{
-  for (int i = 0; i < 8; i++)
-  {
+void move_motors(Motor motor_arr[8], float clamped_values[8]) {
+  for (int i = 0; i < 8; i++) {
     motor_arr[i].drive(clamped_values[i]);
   }
 }
@@ -124,8 +107,7 @@ void SystemClock_Config(void);
  * @brief  The application entry point.
  * @retval int
  */
-int main(void)
-{
+int main(void) {
 
   /* USER CODE BEGIN 1 */
 
@@ -159,8 +141,9 @@ int main(void)
   MX_TIM5_Init();
   MX_USB_DEVICE_Init();
 
-  byte control_byte; // depth pitch roll yaw
-  float data[6];     // Fx Fy Fz Froll Fpitch Fyaw// forces in the axis//probably need something else bec its confusing
+  unsigned char control_byte; // depth pitch roll yaw
+  float data[6]; // Fx Fy Fz Froll Fpitch Fyaw// forces in the axis//probably
+                 // need something else bec its confusing
   float setpoint[4];
   float controller_output[6]; // depth pitch roll yaw surge sway
 
@@ -180,8 +163,7 @@ int main(void)
   float prev;
   float now = HAL_GetTick();
 
-  while (1)
-  {
+  while (1) {
     depth = getDepth();
     pitch = get_euler_angles().pitch;
     yaw = get_euler_angles().yaw;
@@ -202,14 +184,11 @@ int main(void)
     if (control_byte & 1 << 7) // setpoint
     {
       controller_output[0] = depth_pid.output(setpoint[0], depth, dt);
-    }
-    else
-    {
+    } else {
       if (data[2] == 0) // hold position
       {
         controller_output[0] = depth_pid.output(hold_depth, depth, dt);
-      }
-      else // pilot command
+      } else // pilot command
       {
         controller_output[0] = data[2];
         hold_depth = depth;
@@ -219,15 +198,14 @@ int main(void)
     // pitch
     if (control_byte & 1 << 6) // setpoint
     {
-      controller_output[1] = pitch_pid.output(setpoint[1], pitch, dt, pitch_rate);
-    }
-    else
-    {
+      controller_output[1] =
+          pitch_pid.output(setpoint[1], pitch, dt, pitch_rate);
+    } else {
       if (data[4] == 0) // hold position
       {
-        controller_output[1] = pitch_pid.output(hold_pitch, pitch, dt, pitch_rate);
-      }
-      else // pilot command
+        controller_output[1] =
+            pitch_pid.output(hold_pitch, pitch, dt, pitch_rate);
+      } else // pilot command
       {
         controller_output[1] = data[4];
         hold_pitch = pitch;
@@ -238,14 +216,11 @@ int main(void)
     if (control_byte & 1 << 5) // setpoint
     {
       controller_output[2] = roll_pid.output(setpoint[2], roll, dt, roll_rate);
-    }
-    else
-    {
+    } else {
       if (data[3] == 0) // hold position
       {
         controller_output[2] = roll_pid.output(hold_roll, roll, dt, roll_rate);
-      }
-      else // pilot command
+      } else // pilot command
       {
         controller_output[2] = data[3];
         hold_roll = roll;
@@ -256,14 +231,11 @@ int main(void)
     if (control_byte & 1 << 4) // setpoint
     {
       controller_output[3] = yaw_pid.output(setpoint[3], yaw, dt, yaw_rate);
-    }
-    else
-    {
+    } else {
       if (data[5] == 0) // hold position
       {
         controller_output[3] = yaw_pid.output(hold_yaw, yaw, yaw_rate);
-      }
-      else // pilot command
+      } else // pilot command
       {
         controller_output[3] = data[5];
         hold_yaw = yaw;
@@ -275,7 +247,7 @@ int main(void)
     // sway
     controller_output[5] = data[1];
   }
-  float *clamped_motors = multiply_matrix(controller_output);
+  float *clamped_motors = apply_pseudo_inverse(controller_output);
   move_motors(, clamped_motors);
 }
 
@@ -283,8 +255,7 @@ int main(void)
  * @brief System Clock Configuration
  * @retval None
  */
-void SystemClock_Config(void)
-{
+void SystemClock_Config(void) {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
@@ -304,8 +275,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLN = 384;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV6;
   RCC_OscInitStruct.PLL.PLLQ = 8;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
     Error_Handler();
   }
 
@@ -318,8 +288,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
-  {
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) {
     Error_Handler();
   }
 
@@ -336,13 +305,11 @@ void SystemClock_Config(void)
  * @brief  This function is executed in case of error occurrence.
  * @retval None
  */
-void Error_Handler(void)
-{
+void Error_Handler(void) {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1)
-  {
+  while (1) {
   }
   /* USER CODE END Error_Handler_Debug */
 }
@@ -354,8 +321,7 @@ void Error_Handler(void)
  * @param  line: assert_param error line source number
  * @retval None
  */
-void assert_failed(uint8_t *file, uint32_t line)
-{
+void assert_failed(uint8_t *file, uint32_t line) {
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line
      number, ex: printf("Wrong parameters value: file %s on line %d\r\n", file,
