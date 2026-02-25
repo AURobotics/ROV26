@@ -7,13 +7,15 @@ ESPMqttClient::ESPMqttClient(
     const char *mqtt_server,
     int mqtt_port,
     const char *mqtt_username,
-    const char *mqtt_password) : _ssid(ssid),
-                                 _password(password),
-                                 _mqtt_broker(mqtt_server),
-                                 _mqtt_port(mqtt_port),
-                                 _mqtt_username(mqtt_username),
-                                 _mqtt_password(mqtt_password),
-                                 _mqttClient(_wifiClient)
+    const char *mqtt_password,
+    const bool as_AccessPoint) :   _ssid(ssid),
+                                   _password(password),
+                                   _as_AccessPoint(as_AccessPoint),
+                                   _mqtt_broker(mqtt_server),
+                                   _mqtt_port(mqtt_port),
+                                   _mqtt_username(mqtt_username),
+                                   _mqtt_password(mqtt_password),
+                                   _mqttClient(_wifiClient)
 {
 }
 
@@ -32,7 +34,14 @@ void ESPMqttClient::begin()
 {
     Serial.begin(115200);
 
-    connectToWiFi();
+    if (_as_AccessPoint)
+    {
+        initAccessPoint();
+    }
+    else
+    {
+        connectToWiFi();
+    }
 
     _mqttClient.setServer(_mqtt_broker, _mqtt_port);
     // Register a lambda as the internal PubSubClient callback.
@@ -55,7 +64,7 @@ void ESPMqttClient::begin()
 void ESPMqttClient::loop()
 {
     // Ensure WiFi is still connected before checking MQTT state
-    if (WiFi.status() != WL_CONNECTED)
+    if (!_as_AccessPoint && WiFi.status() != WL_CONNECTED)
     {
         Serial.println("WiFi connection lost. Reconnecting...");
         connectToWiFi();
@@ -87,6 +96,21 @@ void ESPMqttClient::connectToWiFi()
     Serial.println("\nWiFi connected");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
+}
+
+void ESPMqttClient::initAccessPoint(){
+    IPAddress local_IP(192, 168, 1, 22);
+    IPAddress gateway(192, 168, 1, 5);
+    IPAddress subnet(255, 255, 255, 0);
+
+    Serial.print("Setting up Access Point ... ");
+    Serial.println(WiFi.softAPConfig(local_IP, gateway, subnet) ? "Ready" : "Failed!");
+
+    Serial.print("Starting Access Point ... ");
+    Serial.println(WiFi.softAP(_ssid, _password) ? "Ready" : "Failed!");
+
+    Serial.print("IP address = ");
+    Serial.println(WiFi.softAPIP());
 }
 
 void ESPMqttClient::connectToMQTT()

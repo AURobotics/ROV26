@@ -12,7 +12,7 @@ const char *MQTT_SERVER = "localhost";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optional
-
+const bool AS_ACCESS_POINT = true; 
 // Create MQTT client instance
 ESPMqttClient mqttClient(
     WIFI_SSID,
@@ -20,7 +20,8 @@ ESPMqttClient mqttClient(
     MQTT_SERVER,
     MQTT_PORT,
     MQTT_USER,
-    MQTT_PASSWORD);
+    MQTT_PASSWORD,
+    AS_ACCESS_POINT);
 
 void setup()
 {

@@ -4,12 +4,12 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include <ArduinoJson.h>
-#include <map>
-#include <string>
-#include <any>
-#include <stdexcept>
-#include <functional>
+// #include <ArduinoJson.h>
+// #include <map>
+// #include <string>
+// #include <any>
+// #include <stdexcept>
+// #include <functional>
 
 class ESPMqttClient
 {
@@ -17,11 +17,12 @@ public:
     // Constructor
     ESPMqttClient(
         const char *ssid,
-        const char *password = "12345678",
+        const char *password = "1234",
         const char *mqtt_broker = "localhost",
         int mqtt_port = 1883,
         const char *mqtt_username = "emqx",
-        const char *mqtt_password = "public");
+        const char *mqtt_password = "public",
+        const bool as_AccessPoint = true);
 
     // Destructor
     ~ESPMqttClient();
@@ -40,6 +41,7 @@ private:
     // WiFi
     const char *_ssid;
     const char *_password;
+    const bool _as_AccessPoint; // determines if esp will work as access point or connect to wifi
 
     // MQTT Broker
     const char *_mqtt_broker;
@@ -57,6 +59,7 @@ private:
 
     // Private methods
     void connectToWiFi();
+    void initAccessPoint();
     void connectToMQTT();
     void generateClientID();
     static void mqttCallback(char *topic, byte *payload, unsigned int length);
