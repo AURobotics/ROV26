@@ -36,11 +36,6 @@ public:
     void disconnect();
     void setCallback(std::function<void(char *, uint8_t *, unsigned int)> callback);
 
-    // Configuration methods
-    void setWill(const char *topic, const char *message, bool retained = false);
-    void setKeepAlive(uint16_t keepAlive);
-    void setCleanSession(bool clean);
-
 private:
     // WiFi
     const char *_ssid;
