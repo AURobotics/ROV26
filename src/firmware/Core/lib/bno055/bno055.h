@@ -17,14 +17,28 @@ struct euler_angles {
   float yaw;
   float roll;
 };
+
 struct body_rates {
   float z;
   float y;
   float x;
 };
 
+struct vec_3 {
+    float vec[3];
+    float& x() { return vec[0]; }
+    float& y() { return vec[1]; }
+    float& z() { return vec[2]; }
+    const float& x() const { return vec[0]; }
+    const float& y() const { return vec[1]; }
+    const float& z() const { return vec[2]; }
+};
+
 class BNO055 {
-  I2C *i2c;
+public:
+    BNO055() = default;
+private:
+    I2C *i2c;
 
 public:
   BNO055(I2C *i2c_hal);
