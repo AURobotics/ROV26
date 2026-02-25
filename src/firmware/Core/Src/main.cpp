@@ -16,14 +16,14 @@
 
 
 static constexpr float A_inv[8][6] = {{0.25, -0.25, 0.0, 0.0, 0.0, 0.25},
-                     {0.25, 0.25, 0.0, 0.0, 0.0, -0.25},
-                     {-0.25, 0.25, 0.0, 0.0, 0.0, 0.25},
-                     {-0.25, -0.25, 0.0, 0.0, 0.0, -0.25},
+                                      {0.25, 0.25, 0.0, 0.0, 0.0, -0.25},
+                                      {-0.25, 0.25, 0.0, 0.0, 0.0, 0.25},
+                                      {-0.25, -0.25, 0.0, 0.0, 0.0, -0.25},
 
-                     {0.0, 0.0, 0.25, -0.25, 0.25, 0.0},
-                     {0.0, 0.0, 0.25, 0.25, 0.25, 0.0},
-                     {0.0, 0.0, 0.25, -0.25, -0.25, 0.0},
-                     {0.0, 0.0, 0.25, 0.25, -0.25, 0.0}};
+                                      {0.0, 0.0, 0.25, -0.25, 0.25, 0.0},
+                                      {0.0, 0.0, 0.25, 0.25, 0.25, 0.0},
+                                      {0.0, 0.0, 0.25, -0.25, -0.25, 0.0},
+                                      {0.0, 0.0, 0.25, 0.25, -0.25, 0.0}};
 
 BNO055 bno;
 MS5611 ms5611;
@@ -86,9 +86,23 @@ void move_motors(Motor motor_arr[8], float clamped_values[8]) {
 }
 
 
-//yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
+// yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
 std::array<std::optional<float>, 8> fetch_sensor_data(bool use_angle_rates) {
-    bno.get_body_rates();
+    std::array<std::optional<float>, 8> data;
+
+    for (int i = 0; i < 6; i += 2)
+        data[i] = bno.get_euler_angles
+                      .angles[i]; // need to change the euler angles struct to contain array
+
+    if (use_angle_rates) // eh lazmet this boolean?? law keda keda when i call this function i want
+                         // the angle rates
+        for (int i = 1; i < 7; i += 2)
+            data[i] = bno.get_body_rates().body_rates[i]; // need to change the struct to contain an
+                                                          // array so that we can iterate
+
+    data[6] = ms5611.getDepth();
+
+    return data; // 8aleban this is okay cuz std::array is a struct
 }
 
 void SystemClock_Config(void);
@@ -141,16 +155,13 @@ int main(void) {
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
 
-    unsigned char control_byte; // depth pitch roll yaw
-    float data[6]; // Fx Fy Fz Froll Fpitch Fyaw// forces in the axis//probably
-                   // need something else bec its confusing
+    unsigned char
+        control_byte; // depth pitch roll yaw //need to change the order 3ashan law hane3mel loop
+    float data[6]; // Fx Fy Fz Froll Fpitch Fyaw
     float setpoint[4];
     float controller_output[6]; // depth pitch roll yaw surge sway
 
-    float hold_depth;
-    float hold_yaw;
-    float hold_pitch;
-    float hold_roll;
+    float hold[4]; // yaw pirch roll depth
 
     /*Initialize all controllers*/
     Controller depth_pid(PID(0, 0, 0)); // lessa mtl3nash el values kp,ki,kd
@@ -158,20 +169,13 @@ int main(void) {
     Controller roll_pid(PID(0, 0, 0), std::optional(PID(0, 0, 0)));
     Controller yaw_pid(PID(0, 0, 0), std::optional(PID(0, 0, 0)));
 
-    float depth, yaw, pitch, roll; // read from sensors
-    float yaw_rate, pitch_rate, roll_rate;
     float prev;
     float now = HAL_GetTick();
 
-    while (true) {
-        depth = getDepth();
-        pitch = get_euler_angles().pitch;
-        yaw = get_euler_angles().yaw;
-        roll = get_euler_angles().roll;
+    std::array<std::optional<float>, 8> sensor_data;
 
-        yaw_rate = get_body_rates().z;
-        pitch_rate = get_body_rates().y;
-        roll_rate = get_body_rates().x;
+    while (true) {
+        sensor_data = fetch_sensor_data();
 
         prev = now;
         now = HAL_GetTick();

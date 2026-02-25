@@ -13,15 +13,15 @@ struct CalibrationData {
 };
 
 struct euler_angles {
-  float pitch;
-  float yaw;
-  float roll;
+    float yaw;
+    float pitch;
+    float roll;
 };
 
 struct body_rates {
-  float z;
-  float y;
-  float x;
+  float z; //angular yaw
+  float y; //angular pitch
+  float x; //angular roll
 };
 
 struct vec_3 {
