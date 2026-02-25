@@ -5,10 +5,9 @@
 #include "i2c.h"
 #include "tim.h"
 #include "usb_device.h"
-#include <cmath>
-#include <cstdio>
 
 #include <cmath>
+#include <cstdio>
 #include <optional>
 
 float output[8];
