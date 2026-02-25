@@ -4,6 +4,7 @@ from console.gui.camera_display import Camera
 from PySide6.QtCore import Qt
 from console.gui.pilot_tab import PilotTab
 from console.gui.copilot_tab import CoPilotTab
+from console.gui.pitch_roll import PitchRollWidget
 
 
 class MainWindow(QMainWindow):
@@ -61,6 +62,9 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(tab_widget)
 
+        #Temporary addition of the pitch-roll widget
+        self.pitch_roll_widget = PitchRollWidget()
+        self.pilot_tab.grid_layout.addWidget(self.pitch_roll_widget, 1, 2)
 
 
     def connect_esp(self):
