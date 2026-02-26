@@ -1,11 +1,11 @@
 from dataclasses import asdict
 import json
-from SOFTWARE.communication.Float.base_types import MqttMessage
-from SOFTWARE.communication.Float.schema.abstract_schema_configuration.abstract_schema import FieldSchema
-from SOFTWARE.communication.Float.schema.abstract_schema_configuration.abstract_schema_data_types import DataType
-from SOFTWARE.communication.Float.schema.mqtt_schema_adapter import MessageSchema_to_MqttMessage_Adapter
-from SOFTWARE.communication.Float.schema.mqtt_schema_types import MQTTBrokerConfig, AllTopicsSchema, MessageSchema, TopicSchema
-from SOFTWARE.communication.Float.mqtt import Mqtt, Topic
+from ..base_types import MqttMessage
+from .abstract_schema_configuration.abstract_schema import FieldSchema
+from .abstract_schema_configuration.abstract_schema_data_types import DataType
+from .mqtt_schema_adapter import MessageSchema_to_MqttMessage_Adapter
+from .mqtt_schema_types import MQTTBrokerConfig, AllTopicsSchema, MessageSchema, TopicSchema
+from ..mqtt import Mqtt, Topic
 
 from typing import Any, Dict, List, Optional, Union, Callable, cast, get_type_hints
 import yaml
