@@ -1,8 +1,8 @@
 #pragma once
 
-#include "bno055.h"
 #include "I2C.h"
-#include "bno055_reg_map.h"
+#include <cstdint>
+
 struct CalibrationData {
   uint16_t mag_radius;
   uint16_t acc_radius;
