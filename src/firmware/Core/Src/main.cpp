@@ -1,4 +1,6 @@
 #include "main.h"
+#include "Controller.h"
+#include "Motor.h"
 #include "PID.h"
 #include "adc.h"
 #include "bno055.h"
@@ -7,84 +9,20 @@
 #include "ms5611.h"
 #include "tim.h"
 #include "usb_device.h"
+#include "usbd_cdc.h"
 
-#include <cmath>
 #include <cstdio>
 #include <optional>
-#include "Motor.h"
 #include "array"
 
 
-static constexpr float A_inv[8][6] = {{0.25, -0.25, 0.0, 0.0, 0.0, 0.25},
-                                      {0.25, 0.25, 0.0, 0.0, 0.0, -0.25},
-                                      {-0.25, 0.25, 0.0, 0.0, 0.0, 0.25},
-                                      {-0.25, -0.25, 0.0, 0.0, 0.0, -0.25},
-
-                                      {0.0, 0.0, 0.25, -0.25, 0.25, 0.0},
-                                      {0.0, 0.0, 0.25, 0.25, 0.25, 0.0},
-                                      {0.0, 0.0, 0.25, -0.25, -0.25, 0.0},
-                                      {0.0, 0.0, 0.25, 0.25, -0.25, 0.0}};
-
 BNO055 bno;
 MS5611 ms5611;
-
-void normalize_thrusters(float output[8], char* buffer);
-
-// buffer must be of size 8
-void apply_pseudo_inverse(const float v[6], float* buffer) {
-    for (int i = 0; i < 8; i++) {
-        buffer[i] = 0.0f;
-        for (int j = 0; j < 6; j++)
-            buffer[i] += A_inv[i][j] * v[j];
-    }
-}
-
-void normalize_thrusters(float output[8]) { // TODO: to be reduced
-    float maxH = 0;
-    float maxV = 0;
-    for (int i = 0; i < 4; i++) {
-        float val = std::fabs(output[i]);
-        if (val > maxH)
-            maxH = val;
-    }
-
-    if (maxH > 1.0f)
-        for (int i = 0; i < 4; i++)
-            output[i] /= maxH;
-
-    for (int i = 4; i < 8; i++) {
-        float val = std::fabs(output[i]);
-        if (val > maxV)
-            maxV = val;
-    }
-    if (maxV > 1.0f)
-        for (int i = 4; i < 8; i++)
-            output[i] /= maxV;
-}
-
-struct Controller {
-    explicit constexpr Controller(PID angle_pid, std::optional<PID> rate_pid = std::nullopt) :
-        angle_pid(std::move(angle_pid)), rate_pid(std::move(rate_pid)) {}
-
-private:
-    PID angle_pid;
-    std::optional<PID> rate_pid;
-
-public:
-    float output(float setpoint, float angle, float dt, std::optional<float> rate = std::nullopt) {
-        if (rate) {
-            const auto angle_pid_output = static_cast<float>(angle_pid.update(setpoint, angle, dt));
-            return static_cast<float>(rate_pid->update(angle_pid_output, *rate, dt));
-        }
-        return static_cast<float>(angle_pid.update(setpoint, angle, dt));
-    }
-};
 
 void move_motors(Motor motor_arr[8], float clamped_values[8]) {
     for (int i = 0; i < 8; i++)
         motor_arr[i].move(clamped_values[i]);
 }
-
 
 // depth,nullopt, roll, angular roll, pitch, angular pitch, yaw, angular yaw
 std::array<std::optional<float>, 8> fetch_sensor_data(bool use_angle_rates) {
@@ -103,14 +41,6 @@ std::array<std::optional<float>, 8> fetch_sensor_data(bool use_angle_rates) {
 }
 
 void SystemClock_Config(void);
-/* USER CODE BEGIN PFP */
-
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
 
 /**
  * @brief  The application entry point.
@@ -118,30 +48,9 @@ void SystemClock_Config(void);
  */
 int main(void) {
 
-    /* USER CODE BEGIN 1 */
-
-    /* USER CODE END 1 */
-
-    /* MCU
-     * Configuration--------------------------------------------------------*/
-
-    /* Reset of all peripherals, Initializes the Flash interface and the
-     * Systick.
-     */
     HAL_Init();
-
-    /* USER CODE BEGIN Init */
-
-    /* USER CODE END Init */
-
-    /* Configure the system clock */
     SystemClock_Config();
 
-    /* USER CODE BEGIN SysInit */
-
-    /* USER CODE END SysInit */
-
-    /* Initialize all configured peripherals */
     MX_GPIO_Init();
     MX_ADC1_Init();
     MX_I2C3_Init();
@@ -152,7 +61,8 @@ int main(void) {
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
 
-    unsigned char control_byte; // depth roll pitch yaw
+    unsigned char
+        control_byte; // depth pitch roll yaw //need to change the order 3ashan law hane3mel loop
     float data[6]; // Fx Fy Fz Froll Fpitch Fyaw
     float setpoint[4]; // depth roll pitch yaw
     float controller_output[6]; // surge sway depth roll pitch yaw
@@ -172,7 +82,35 @@ int main(void) {
     std::array<std::optional<float>, 8> sensor_data;
 
     while (true) {
-        sensor_data = fetch_sensor_data();
+
+        RxPacket rx_pkt;
+        TxPacket tx_pkt;
+        switch (flow_state) {
+        case FLOW_RECEIVING:
+            if (data_received) {
+                data_received = 0;
+                memcpy(&rx_pkt, rx_buffer, sizeof(RxPacket));
+                flow_state = FLOW_SENDING;
+            } else {
+                flow_state = FLOW_WAITING;  // no data received, signal Pi
+            }
+            break;
+
+        case FLOW_WAITING:
+            CDC_Transmit_FS(&ready_byte, 1);
+            flow_state = FLOW_RECEIVING;
+            break;
+
+        case FLOW_SENDING:
+            if (HAL_GetTick() - last_send_time >= 40) {
+                last_send_time = HAL_GetTick();
+                load_tx(&tx_pkt);
+                CDC_Transmit_FS((uint8_t*)&tx_pkt, sizeof(TxPacket));
+                flow_state = FLOW_RECEIVING;
+            }
+            break;
+        }
+        sensor_data = fetch_sensor_data(true);
 
         prev = now;
         now = HAL_GetTick();
