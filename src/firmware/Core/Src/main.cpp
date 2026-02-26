@@ -9,6 +9,7 @@
 #include "ms5611.h"
 #include "tim.h"
 #include "usb_device.h"
+#include "usbd_cdc.h"
 
 #include <cstdio>
 #include <optional>
