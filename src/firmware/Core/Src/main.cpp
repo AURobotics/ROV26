@@ -86,23 +86,20 @@ void move_motors(Motor motor_arr[8], float clamped_values[8]) {
 }
 
 
-// yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
+// depth,nullopt, roll, angular roll, pitch, angular pitch, yaw, angular yaw
 std::array<std::optional<float>, 8> fetch_sensor_data(bool use_angle_rates) {
     std::array<std::optional<float>, 8> data;
 
-    for (int i = 0; i < 6; i += 2)
-        data[i] = bno.get_euler_angles
-                      .angles[i]; // need to change the euler angles struct to contain array
+    data[0] = ms5611.getDepth();
+    data[1] = std::nullopt;
+    data[2] = bno.euler_angles().x;
+    data[3] = bno.get_body_rates().roll;
+    data[4] = bno.euler_angles().y;
+    data[5] = bno.get_body_rates().pitch;
+    data[6] = bno.euler_angles().z;
+    data[7] = bno.get_body_rates().yaw;
 
-    if (use_angle_rates) // eh lazmet this boolean?? law keda keda when i call this function i want
-                         // the angle rates
-        for (int i = 1; i < 7; i += 2)
-            data[i] = bno.get_body_rates().body_rates[i]; // need to change the struct to contain an
-                                                          // array so that we can iterate
-
-    data[6] = ms5611.getDepth();
-
-    return data; // 8aleban this is okay cuz std::array is a struct
+    return data;
 }
 
 void SystemClock_Config(void);
@@ -155,19 +152,19 @@ int main(void) {
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
 
-    unsigned char
-        control_byte; // depth pitch roll yaw //need to change the order 3ashan law hane3mel loop
+    unsigned char control_byte; // depth roll pitch yaw
     float data[6]; // Fx Fy Fz Froll Fpitch Fyaw
-    float setpoint[4];
-    float controller_output[6]; // depth pitch roll yaw surge sway
+    float setpoint[4]; // depth roll pitch yaw
+    float controller_output[6]; // surge sway depth roll pitch yaw
 
-    float hold[4]; // yaw pirch roll depth
+    float hold[4]; // depth roll pitch yaw
 
     /*Initialize all controllers*/
-    Controller depth_pid(PID(0, 0, 0)); // lessa mtl3nash el values kp,ki,kd
-    Controller pitch_pid(PID(0, 0, 0), std::optional(PID(0, 0, 0)));
-    Controller roll_pid(PID(0, 0, 0), std::optional(PID(0, 0, 0)));
-    Controller yaw_pid(PID(0, 0, 0), std::optional(PID(0, 0, 0)));
+    Controller controller[4] = {// lessa mtl3nash el values kp,ki,kd
+                                Controller depth_pid(PID(0, 0, 0)),
+                                Controller roll_pid(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
+                                Controller pitch_pid(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
+                                Controller yaw_pid(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
 
     float prev;
     float now = HAL_GetTick();
@@ -184,80 +181,29 @@ int main(void) {
         // read gui data
         // read sensor data
 
-        // depth
-        if (control_byte & 1 << 7) // setpoint
-        {
-            controller_output[0] = depth_pid.output(setpoint[0], depth, dt);
-        }
-        else {
-            if (data[2] == 0) // hold position
-            {
-                controller_output[0] = depth_pid.output(hold_depth, depth, dt);
-            }
-            else // pilot command
-            {
-                controller_output[0] = data[2];
-                hold_depth = depth;
-            }
-        }
+        for (int i = 0, j = 0; i < 8; i += 2, j++) {
 
-        // pitch
-        if (control_byte & 1 << 6) // setpoint
-        {
-            controller_output[1] = pitch_pid.output(setpoint[1], pitch, dt, pitch_rate);
-        }
-        else {
-            if (data[4] == 0) // hold position
-            {
-                controller_output[1] = pitch_pid.output(hold_pitch, pitch, dt, pitch_rate);
-            }
-            else // pilot command
-            {
-                controller_output[1] = data[4];
-                hold_pitch = pitch;
-            }
-        }
-
-        // roll
-        if (control_byte & 1 << 5) // setpoint
-        {
-            controller_output[2] = roll_pid.output(setpoint[2], roll, dt, roll_rate);
-        }
-        else {
-            if (data[3] == 0) // hold position
-            {
-                controller_output[2] = roll_pid.output(hold_roll, roll, dt, roll_rate);
-            }
-            else // pilot command
-            {
-                controller_output[2] = data[3];
-                hold_roll = roll;
-            }
-        }
-
-        // yaw
-        if (control_byte & 1 << 4) // setpoint
-        {
-            controller_output[3] = yaw_pid.output(setpoint[3], yaw, dt, yaw_rate);
-        }
-        else {
-            if (data[5] == 0) // hold position
-            {
-                controller_output[3] = yaw_pid.output(hold_yaw, yaw, yaw_rate);
-            }
-            else // pilot command
-            {
-                controller_output[3] = data[5];
-                hold_yaw = yaw;
+            if (control_byte & 1 << (7 - j)) // setpoint
+                controller_output[j + 2] =
+                    controller[j].output(setpoint[j], sensor_data[i], dt, sensor_data[i + 1]);
+            else {
+                if (data[j + 2] == 0) // hold position
+                    controller_output[j + 2] =
+                        controller[j].output(hold[j], sensor_data[i], dt, sensor_data[i + 1]);
+                else { // pilot command
+                    controller_output[j + 2] = data[j + 2];
+                    hold[j] = sensor_data[i];
+                }
             }
         }
 
         // surge
-        controller_output[4] = data[0];
+        controller_output[0] = data[0];
         // sway
-        controller_output[5] = data[1];
+        controller_output[1] = data[1];
     }
-    float* clamped_motors = apply_pseudo_inverse(controller_output);
+    float* clamped_motors = apply_pseudo_inverse(
+        controller_output); // fo2 8ayarna el function khalenaha void fa me7tageen ne8ayar dah
     move_motors(, clamped_motors);
 }
 
