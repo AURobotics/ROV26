@@ -13,9 +13,9 @@ struct CalibrationData {
 };
 
 struct euler_angles {
-    float yaw;
-    float pitch;
-    float roll;
+  float yaw;
+  float pitch;
+  float roll;
 };
 
 struct body_rates {
