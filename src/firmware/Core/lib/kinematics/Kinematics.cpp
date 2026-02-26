@@ -11,7 +11,6 @@ static constexpr float A_inv[8][6] = {{0.25, -0.25, 0.0, 0.0, 0.0, 0.25},
                                       {0.0, 0.0, 0.25, -0.25, -0.25, 0.0},
                                       {0.0, 0.0, 0.25, 0.25, -0.25, 0.0}};
 
-void normalize_thrusters(float output[8], char* buffer);
 
 // buffer must be of size 8
 void apply_pseudo_inverse(const float v[6], float* buffer) {
