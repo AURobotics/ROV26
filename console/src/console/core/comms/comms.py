@@ -4,19 +4,8 @@ from functools import reduce
 from threading import Event, Thread
 from time import sleep
 from typing import Dict, Optional
-
-from schema import Schema, Optional, SchemaError
-from GamePad import Controller
-from ROV_CONSOLE.esp32 import ESP32
-
-readings_schema = Schema(
-    {
-        'thrusters':    {'h1': float, 'h2': float, 'h3': float, 'h4': float, 'v1': float, 'v2': float},
-        'orientation':  {'roll': float, 'pitch': float, 'yaw': float},
-        'acceleration': {'x': float, 'y': float, 'z': float},
-        'status':       {'led': bool, 'dcv1': bool, 'dcv2': bool},
-        }
-    )
+from console.core.comms.stm32 import STM32
+from console.core.gamepad.gamepad import Controller
 
 
 class CommunicationManager:
@@ -24,7 +13,7 @@ class CommunicationManager:
     _PAYLOAD_MS = 0.033
     _IDLE_TIMOUT = 0.5 #Send heartbeat every 5000ms even if no changes
 
-    def __init__(self, esp: ESP32, controller: Controller):
+    def __init__(self, esp: STM32, controller: Controller):
         self._esp = esp
         self._controller = controller
         self._cache = {
