@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt
 from console.gui.pilot_tab import PilotTab
 from console.gui.copilot_tab import CoPilotTab
 from console.gui.pitch_roll import PitchRollWidget
+from console.gui.thruster_layout import ThrusterLayoutWidget
 
 
 class MainWindow(QMainWindow):
@@ -62,9 +63,12 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(tab_widget)
 
-        #Temporary addition of the pitch-roll widget
+        #Temporary addition of 2 widgets
         self.pitch_roll_widget = PitchRollWidget()
         self.pilot_tab.grid_layout.addWidget(self.pitch_roll_widget, 1, 2)
+        self.thruster_layout_widget = ThrusterLayoutWidget()
+        self.pilot_tab.grid_layout.addWidget(self.thruster_layout_widget, 1, 1)
+
 
 
     def connect_esp(self):
