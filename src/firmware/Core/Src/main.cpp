@@ -63,6 +63,7 @@ int main(void) {
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
 
+    uint32_t last_send_time = 0;
     unsigned char control_byte; // depth pitch roll yaw //need to change the order 3ashan law hane3mel loop
     float data[6]; // Fx Fy Fz Froll Fpitch Fyaw
     float setpoint[4];
@@ -82,6 +83,34 @@ int main(void) {
     std::array<std::optional<float>, 8> sensor_data;
 
     while (true) {
+
+        RxPacket rx_pkt;
+        TxPacket tx_pkt;
+        switch (flow_state) {
+        case FLOW_RECEIVING:
+            if (data_received) {
+                data_received = 0;
+                memcpy(&rx_pkt, rx_buffer, sizeof(RxPacket));
+                flow_state = FLOW_SENDING;
+            } else {
+                flow_state = FLOW_WAITING;  // no data received, signal Pi
+            }
+            break;
+
+        case FLOW_WAITING:
+            CDC_Transmit_FS(&ready_byte, 1);
+            flow_state = FLOW_RECEIVING;
+            break;
+
+        case FLOW_SENDING:
+            if (HAL_GetTick() - last_send_time >= 40) {
+                last_send_time = HAL_GetTick();
+                load_tx(&tx_pkt);
+                CDC_Transmit_FS((uint8_t*)&tx_pkt, sizeof(TxPacket));
+                flow_state = FLOW_RECEIVING;
+            }
+            break;
+        }
         sensor_data = fetch_sensor_data(true);
 
         prev = now;
