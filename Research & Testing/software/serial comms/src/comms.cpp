@@ -2,7 +2,7 @@
 
 volatile FlowState flow_state = FLOW_RECEIVING;
 volatile uint8_t data_received = 0;
-volatile uint8_t rx_buffer[PAYLOAD_SIZE];
+volatile uint8_t rx_buffer[sizeof(RxPacket)];
 uint8_t ready_byte = READY_BYTE;
 
 
