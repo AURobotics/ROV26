@@ -39,5 +39,28 @@ Item {
         baseRotation: 45
         thrustLevel: rov.thrustLevel4
     }
-    
+    VerticalThruster {
+        id: verticalThruster1
+        x: parent.width * 0.4 - width / 2
+        y: parent.height * 1/3 - height / 2
+        thrustLevel: rov.thrustLevel5
+    }
+    VerticalThruster {
+        id: verticalThruster2
+        x: parent.width * 0.6 - width / 2
+        y: parent.height * 1/3 - height / 2
+        thrustLevel: rov.thrustLevel5
+    }
+    VerticalThruster {
+        id: verticalThruster3
+        x: parent.width * 0.4 - width / 2
+        y: parent.height * 2/3 - height / 2
+        thrustLevel: rov.thrustLevel5
+    }
+    VerticalThruster {
+        id: verticalThruster4
+        x: parent.width * 0.6 - width / 2
+        y: parent.height * 2/3 - height / 2
+        thrustLevel: rov.thrustLevel5
+    }
 }
