@@ -10,6 +10,7 @@ class ThrusterStatus(QObject):
         self._thrustLevel2 = 0
         self._thrustLevel3 = 0
         self._thrustLevel4 = 0
+        self._thrustLevel5 = 0
 
         self._timer = QTimer()
         self._timer.timeout.connect(self.update_thrust)
@@ -30,6 +31,10 @@ class ThrusterStatus(QObject):
     @Property(float, notify=thrustLevelChanged)
     def thrustLevel4(self):
         return self._thrustLevel4
+    
+    @Property(float, notify=thrustLevelChanged)
+    def thrustLevel5(self):
+        return self._thrustLevel5
 
     @Slot()
     def update_thrust(self):
@@ -37,6 +42,7 @@ class ThrusterStatus(QObject):
         new_thrust2 = max(-1, min(1, self._thrustLevel2 + uniform(-0.1, 0.1)))
         new_thrust3 = max(-1, min(1, self._thrustLevel3 + uniform(-0.1, 0.1)))
         new_thrust4 = max(-1, min(1, self._thrustLevel4 + uniform(-0.1, 0.1)))
+        new_thrust5 = max(-1, min(1, self._thrustLevel5 + uniform(-0.1, 0.1)))
 
         changed = False
         if self._thrustLevel1 != new_thrust1:
@@ -50,6 +56,9 @@ class ThrusterStatus(QObject):
             changed = True
         if self._thrustLevel4 != new_thrust4:
             self._thrustLevel4 = new_thrust4
+            changed = True
+        if self._thrustLevel5 != new_thrust5:
+            self._thrustLevel5 = new_thrust5
             changed = True
         if changed:
             self.thrustLevelChanged.emit()
