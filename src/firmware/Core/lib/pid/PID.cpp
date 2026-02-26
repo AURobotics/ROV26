@@ -1,6 +1,6 @@
 #include "PID.h"
 
-PID::PID(double kp, double kd, double ki) : kp(kp), kd(kd), ki(ki) {
+constexpr PID::PID(double kp, double kd, double ki) : kp(kp), kd(kd), ki(ki) {
 
     prev_measurement = 0;
     filtered_derivative = 0;
@@ -40,7 +40,7 @@ void PID::reset() {
 double PID::update(double setpoint, double measurement, double dt) {
     double error = setpoint - measurement;
     // to prevent overshoot on zero-crossings
-    // // don't know if i should zero out
+    // // don't know if I should zero out
     // the integral if they are different signs or if this is ok
     if (error * integral >= 0)
         integral += error * dt;
