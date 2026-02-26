@@ -1,4 +1,11 @@
 // usb_comms.h
+
+// ready message: 0xFF 0x01 0xAA <- they send this to us
+// status message: 0xFF SIZE TxPacket <- they send every 40ms
+
+// 0xFF RxPacket <- we respond with this
+
+
 #ifndef USB_COMMS_H
 #define USB_COMMS_H
 
@@ -10,19 +17,15 @@ extern "C" {
 
 #define SYNC_BYTE       0xFF
 #define READY_BYTE      0xAA
-#define PAYLOAD_SIZE    30
 
 extern volatile FlowState flow_state;
-extern volatile uint8_t data_received;
-extern volatile uint8_t rx_buffer[PAYLOAD_SIZE];
-extern uint8_t ready_byte;
+extern volatile uint8_t rx_buffer[sizeof(RxPacket)];
+extern uint8_t ready_message[] = {SYNC_BYTE, 0x01, READY_BYTE};
 
 typedef struct __attribute__((packed)) {
     uint8_t sync_byte;
-    uint8_t control_byte;
+    uint16_t control_byte;
     float forces[6];
-    float gripper_speed;
-    uint32_t checksum;
 } RxPacket;
 
 typedef struct __attribute__((packed)) {
