@@ -53,6 +53,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/kinematics/Kinematics.cpp
         Core/lib/usb_comms/usb_comms.cpp
         Core/lib/i2c_wrapper/i2c_wrapper.cpp
+        Core/lib/PWM_wrapper/pwm.cpp
     # Add user sources here
 )
 
@@ -66,6 +67,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/kinematics
         Core/lib/usb_comms
         Core/lib/i2c_wrapper
+        Core/lib/PWM_wrapper
     # Add user defined include paths
 )
 
