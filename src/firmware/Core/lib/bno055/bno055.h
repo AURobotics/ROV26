@@ -1,8 +1,5 @@
 #pragma once
 
-#include "I2C.h"
-#include <cstdint>
-
 #include "i2c_wrapper.h"
 
 struct CalibrationData {
