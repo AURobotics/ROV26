@@ -22,7 +22,6 @@ Rectangle {
     Text {
         visible: Math.abs(root.thrustLevel) > 0.05
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: (root.thrustLevel > 0) ? -parent.width/2 + 10 : 0
         color: "black"
         text: root.thrustLevel > 0 ? "Up" : "Down"
     }
