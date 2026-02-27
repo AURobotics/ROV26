@@ -29,3 +29,8 @@ void Motor::stop() const {
     pwm1.set_duty(255);
     pwm2.set_duty(255);
 }
+
+void Motor::move_motor(Motor motors[8], float speeds[8]) {
+    for (int i = 0; i < 8; i++)
+        motors[i].move(speeds[i]);
+}

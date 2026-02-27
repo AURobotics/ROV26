@@ -9,5 +9,5 @@ public:
     void setup() const;
     void move(float speed) const;
     void stop() const;
-    static void move_motor(Motor[8], float arr[8]);
+    static void move_motor(Motor motors[8], float speeds[8]);
 };

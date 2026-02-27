@@ -43,10 +43,10 @@ public:
   explicit BNO055(I2C *i2c_hal);
   void calibration();
   void init();
-  void saveCalibration(CalibrationData &data);
-  bool loadCalibration(CalibrationData &data);
+  static void saveCalibration(const CalibrationData &data);
+  static bool loadCalibration(CalibrationData &data);
   vec_3 get_body_rates();
-  vec_3 get_euler_angles();
+  vec_3 get_euler_angles() const;
 };
 
 
