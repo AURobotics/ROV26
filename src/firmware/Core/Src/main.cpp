@@ -1,5 +1,4 @@
 #include "main.h"
-#include "usb_comms.h"
 #include "Controller.h"
 #include "Motor.h"
 #include "PID.h"
@@ -9,6 +8,7 @@
 #include "i2c.h"
 #include "ms5611.h"
 #include "tim.h"
+#include "usb_comms.h"
 #include "usb_device.h"
 #include "usbd_cdc.h"
 
@@ -62,7 +62,7 @@ int main(void) {
 
 
     uint32_t last_send_time = 0;
-    // depth pitch roll yaw //need to change the order 3ashan law hane3mel loop
+    // depth roll pitch yaw
     unsigned char control_byte{};
     float data[6] = {}; // Fx Fy Fz Froll Fpitch Fyaw
     float setpoint[4]{};
@@ -118,17 +118,15 @@ int main(void) {
         now = HAL_GetTick();
         float dt = (now - prev) / 1000.0; // convert ms->seconds
 
-        // read gui data
-        // read sensor data
 
         for (int i = 0, j = 0; i < 8; i += 2, j++)
             if (control_byte & 1 << (7 - j)) // setpoint
                 controller_output[j + 2] = controller[j].output(
-                    setpoint[j], sensor_data[i].value(), dt, sensor_data[i + 1]);
+                    setpoint[j], sensor_data[i].value(), dt, sensor_data[i + 1].value());
             else {
                 if (data[j + 2] == 0) // hold position
                     controller_output[j + 2] = controller[j].output(
-                        hold[j], sensor_data[i].value(), dt, sensor_data[i + 1]);
+                        hold[j], sensor_data[i].value(), dt, sensor_data[i + 1].value());
                 else { // pilot command
                     controller_output[j + 2] = data[j + 2];
                     hold[j] = sensor_data[i].value();
@@ -141,9 +139,7 @@ int main(void) {
         controller_output[1] = data[1];
     }
     float clamped_motors[8] = {};
-    apply_pseudo_inverse(
-        controller_output,
-        clamped_motors); // fo2 8ayarna el function khalenaha void fa me7tageen ne8ayar dah
+    apply_pseudo_inverse(controller_output, clamped_motors);
     Motor::move_motor(motors, clamped_motors);
 }
 
