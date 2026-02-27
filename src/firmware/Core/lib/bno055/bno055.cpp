@@ -107,18 +107,17 @@ vec_3 BNO055::get_euler_angles() {
 }
 
 void BNO055::saveCalibration(CalibrationData &data) {
-    uint32_t flash_address = 0x080E0000;
+    uint32_t flash_address = 0x08020000;
 
     uint32_t register1[4] = {0};
     uint32_t register2[4] = {0};
 
-    register1[3] = ((uint32_t)data.mag_radius << 16) | ((uint32_t)data.acc_radius);
-    register1[2] = ((uint32_t)data.gyr_offset_x << 16) | ((uint32_t)data.gyr_offset_y);
-    register1[1] = ((uint32_t)data.gyr_offset_z << 16) | ((uint32_t)data.mag_offset_x);
-    register1[0] = ((uint32_t)data.mag_offset_y << 16) | ((uint32_t)data.mag_offset_z);
-
-    register2[3] = ((uint32_t)data.acc_offset_x << 16) | ((uint32_t)data.acc_offset_y);
-    register2[2] = ((uint32_t)data.acc_offset_z << 16) | ((uint32_t)data.calibration_status << 8);
+    register1[3] = ((uint32_t)data.mag_radius    << 16) | ((uint32_t)data.acc_radius);
+    register1[2] = ((uint32_t)data.gyr_offset_x  << 16) | ((uint32_t)data.gyr_offset_y);
+    register1[1] = ((uint32_t)data.gyr_offset_z  << 16) | ((uint32_t)data.mag_offset_x);
+    register1[0] = ((uint32_t)data.mag_offset_y  << 16) | ((uint32_t)data.mag_offset_z);
+    register2[3] = ((uint32_t)data.acc_offset_x  << 16) | ((uint32_t)data.acc_offset_y);
+    register2[2] = ((uint32_t)data.acc_offset_z  << 16) | ((uint32_t)data.calibration_status << 8);
     register2[1] = 0;
     register2[0] = 0;
 
@@ -127,10 +126,10 @@ void BNO055::saveCalibration(CalibrationData &data) {
     FLASH_EraseInitTypeDef EraseInitStruct;
     uint32_t SectorError;
 
-    EraseInitStruct.TypeErase = FLASH_TYPEERASE_SECTORS;
+    EraseInitStruct.TypeErase    = FLASH_TYPEERASE_SECTORS;
     EraseInitStruct.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-    EraseInitStruct.Sector = FLASH_SECTOR_11;
-    EraseInitStruct.NbSectors = 1;
+    EraseInitStruct.Sector       = FLASH_SECTOR_5;
+    EraseInitStruct.NbSectors    = 1;
 
     if (HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError) != HAL_OK) {
         HAL_FLASH_Lock();
@@ -155,7 +154,7 @@ void BNO055::saveCalibration(CalibrationData &data) {
 }
 
 bool BNO055::loadCalibration(CalibrationData &data) {
-    uint32_t flash_address = 0x080E0000;
+    uint32_t flash_address = 0x08020000;
 
     uint32_t register1[4];
     uint32_t register2[4];
