@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QWidget, QGridLayout, QPushButton, QLabel
 from PySide6.QtGui import QPixmap
-from console.gui.camera_display import CameraDisplay
-from console.assets import get_asset
+from gui.camera_display import CameraDisplay
+from assets import get_asset
 
 class CoPilotTab(QWidget):
     def __init__(self, toggle_sidebar, cam1):
