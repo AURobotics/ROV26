@@ -5,6 +5,6 @@ PWM::PWM(TIM_HandleTypeDef* timer, uint32_t ch) {
     channel = ch;
 }
 
-void PWM::start() { HAL_TIM_PWM_Start(htim, channel); }
+void PWM::start() const { HAL_TIM_PWM_Start(htim, channel); }
 
-void PWM::setDuty(uint16_t duty) { __HAL_TIM_SET_COMPARE(htim, channel, duty); }
+void PWM::set_duty(uint16_t duty) const { __HAL_TIM_SET_COMPARE(htim, channel, duty); }
