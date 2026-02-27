@@ -24,7 +24,7 @@
 
 /* USER CODE END 0 */
 
-I2C_HandleTypeDef hi2c3;
+extern I2C_HandleTypeDef hi2c3;
 
 /* I2C3 init function */
 void MX_I2C3_Init(void)

@@ -3,7 +3,6 @@
 
 I2C::I2C(I2C_HandleTypeDef* i2c_Handle) {
     i2cHandle = i2c_Handle;
-    HAL_I2C_Init(i2c_Handle);
 }
 
 HAL_StatusTypeDef I2C::read_reg(const uint8_t sensor_addr, const uint8_t reg_addr,

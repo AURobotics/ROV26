@@ -17,8 +17,8 @@ void load_tx(TxPacket *tx){
 	// read sensor data
 	// assuming bno and ms5611 are global variables defined in main or something like that
 	tx->depth = ms5611::getDepth()
-	euler_angles euler = bno055::get_euler_angles();
-	tx->yaw = euler.yaw;
-	tx->pitch = euler.pitch;
-	tx->roll = euler.roll;
+	vec_3 euler = bno055::get_euler_angles();
+	tx->yaw = euler.z();
+	tx->pitch = euler.y();
+	tx->roll = euler.x();
 }
