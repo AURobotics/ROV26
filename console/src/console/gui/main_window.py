@@ -1,9 +1,9 @@
 from PySide6.QtWidgets import QMainWindow, QWidget, QToolBar, QStatusBar, QLabel, QPushButton, QDockWidget, QVBoxLayout, QTabWidget
 from PySide6.QtGui import QAction, QIcon
-from console.gui.camera_display import Camera
+from gui.camera_display import Camera
 from PySide6.QtCore import Qt
-from console.gui.pilot_tab import PilotTab
-from console.gui.copilot_tab import CoPilotTab
+from gui.pilot_tab import PilotTab
+from gui.copilot_tab import CoPilotTab
 
 
 class MainWindow(QMainWindow):

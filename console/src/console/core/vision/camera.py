@@ -1,7 +1,7 @@
 import cv2
 from threading import Thread
 from time import sleep
-from console.assets import get_asset
+from assets import get_asset
 
 
 class Camera:
