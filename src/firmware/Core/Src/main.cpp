@@ -40,6 +40,17 @@ std::array<std::optional<float>, 8> fetch_sensor_data(bool use_angle_rates) {
     return data;
 }
 
+TxPacket dummy = {
+    .sync_byte    = 0xFF,
+    .motor_speeds = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
+    .gripper_speed = 0.5f,
+    .depth        = 10.5f,
+    .yaw          = 45.0f,
+    .pitch        = -15.0f,
+    .roll         = 5.0f,
+    .status_byte  = 0x01
+};
+
 void SystemClock_Config(void);
 
 /**
