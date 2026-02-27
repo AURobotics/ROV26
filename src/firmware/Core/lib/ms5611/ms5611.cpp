@@ -6,7 +6,7 @@
 #define ADC_READ 0x00
 #define PROM_READ 0xA0
 
-MS5611::MS5611(I2C_HandleTypeDef* hi2c) { _hi2c = hi2c; }
+MS5611::MS5611(I2C_HandleTypeDef* hi2c) : _hi2c(hi2c) {}
 
 void MS5611::sendCmd(uint8_t cmd) {
     HAL_I2C_Master_Transmit(_hi2c, i2cAddr, &cmd, 1, HAL_MAX_DELAY);

@@ -91,7 +91,7 @@ int main(void) {
                                 Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
                                 Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
 
-    Motor motors[8] = {Motor(), Motor(), Motor(), Motor(), Motor(), Motor(), Motor(), Motor()};
+    Motor motors[8] = {Motor( ), Motor(), Motor(), Motor(), Motor(), Motor(), Motor(), Motor()};
 
     float prev{};
     float now = HAL_GetTick();
