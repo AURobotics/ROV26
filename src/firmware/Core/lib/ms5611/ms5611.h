@@ -1,6 +1,4 @@
-#ifndef MS5611_H
-#define MS5611_H
-#include <stdint.h>
+#pragma once
 #include "stm32f4xx_hal.h"
 
 #define i2cAddr (0x77 << 1)
@@ -25,6 +23,5 @@ private:
     uint32_t readADC();
     uint16_t readPROM(I2C_HandleTypeDef* hi2c, uint8_t addr);
 };
-#endif
 
 // https://makerselectronics.com/wp-content/uploads/2025/09/ENG_DS_MS5611-01BA03_B3.pdf
