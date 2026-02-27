@@ -28,9 +28,13 @@ class CameraDisplay(QWidget):
         self.overlay_layout = QHBoxLayout()
 
         self.rotate_r = QPushButton("R")
+        self.rotate_r.setToolTip("Rotate ClockWise")
         self.rotate_l = QPushButton("L")
+        self.rotate_l.setToolTip("Rotate Anit-ClockWise")
         self.flipH = QPushButton("FH")
+        self.flipH.setToolTip("Flip Horizontally")
         self.flipV = QPushButton("FV")
+        self.flipV.setToolTip("Flip Vertically")
         
 
         self.overlay_layout.addWidget(self.rotate_r)
