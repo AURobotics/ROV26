@@ -15,29 +15,44 @@
 
 #include <cstdio>
 #include <optional>
+#include <cmath>
 
 #include "Kinematics.h"
 #include "array"
 #include "usbd_cdc_if.h"
 
 I2C i2c_wrapper(&hi2c3); 
-BNO055 bno(&i2c_wrapper)
+BNO055 bno(&i2c_wrapper);
 MS5611 ms5611(&hi2c3);
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
 std::array<std::optional<float>, 8> fetch_sensor_data(bool use_angle_rates) {
     std::array<std::optional<float>, 8> data;
-
     data[0].value() = ms5611.getDepth();
     data[1] = std::nullopt;
-    data[2] = bno.euler_angles().x;
+    data[2] = bno.get_body_rates().x;
     data[3] = bno.get_body_rates().roll;
     data[4] = bno.euler_angles().y;
     data[5] = bno.get_body_rates().pitch;
     data[6] = bno.euler_angles().z;
     data[7] = bno.get_body_rates().yaw;
-
     return data;
+}
+
+double normalize_angle(double angle)
+{
+    angle = std::fmod(angle, 360.0);
+    if (angle > 180.0)
+        angle -= 360.0;
+    else if (angle < 180.0)
+        angle += 360.0;
+
+    return angle;
+}
+
+double angle_diff(double setpoint, double current)
+{
+    return normalize_angle(setpoint - current);
 }
 
 void SystemClock_Config(void);
