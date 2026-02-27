@@ -54,9 +54,9 @@ class CameraDisplay(QWidget):
 
 
     def toggle_rotate_l(self):
-        self._rotation_angle = (self._rotation_angle - 90) % 360
+        self._rotation_angle = (self._rotation_angle + 1) % 360
     def toggle_rotate_r(self):
-        self._rotation_angle = (self._rotation_angle - 90) % 360
+        self._rotation_angle = (self._rotation_angle - 1) % 360
     def toggle_flipH(self):
         self._is_flipped_h = not self._is_flipped_h
     def toggle_flipV(self):
@@ -87,12 +87,13 @@ class CameraDisplay(QWidget):
             frame = cv2.flip(frame, 1)
         if self._is_flipped_v:
             frame = cv2.flip(frame, 0)
-        if self._rotation_angle == 90:
-            frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-        if self._rotation_angle == 180:
-            frame = cv2.rotate(frame, cv2.ROTATE_180)
-        if self._rotation_angle == 270:
-            frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        if self._rotation_angle != 0:
+            (h, w) = frame.shape[:2]
+            center = (w // 2, h // 2)
+            
+            matrix = cv2.getRotationMatrix2D(center, -self._rotation_angle, 1.0)
+            
+            frame = cv2.warpAffine(frame, matrix, (w, h))
 
 
         image = QImage(frame.data, frame.shape[1], frame.shape[0], frame.strides[0], QImage.Format.Format_BGR888)
