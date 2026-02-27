@@ -78,28 +78,30 @@ void BNO055::init() {
     HAL_Delay(10);
 }
 
-body_rates BNO055::get_body_rates() {
-    body_rates data;
-    i2c->read_2reg(BNO055_I2C_ADDR, GYR_DATA_Z_MSB, GYR_DATA_Z_LSB, (uint16_t*)&data.z);
-    i2c->read_2reg(BNO055_I2C_ADDR, GYR_DATA_Y_MSB, GYR_DATA_Y_LSB, (uint16_t*)&data.y);
-    i2c->read_2reg(BNO055_I2C_ADDR, GYR_DATA_X_MSB, GYR_DATA_X_LSB, (uint16_t*)&data.x);
+vec_3 BNO055::get_body_rates() {
+    vec_3 data;
+    int16_t raw_x, raw_y, raw_z;
+    i2c->read_2reg(BNO055_I2C_ADDR, GYR_DATA_Z_MSB, GYR_DATA_Z_LSB, (uint16_t*)&raw_z);
+    i2c->read_2reg(BNO055_I2C_ADDR, GYR_DATA_Y_MSB, GYR_DATA_Y_LSB, (uint16_t*)&raw_y);
+    i2c->read_2reg(BNO055_I2C_ADDR, GYR_DATA_X_MSB, GYR_DATA_X_LSB, (uint16_t*)&raw_x);
 
-    data.z = data.z / 16.0;
-    data.y = data.y / 16.0;
-    data.x = data.x / 16.0;
+    data.z() = (float)raw_z / 16.0f;
+    data.y() = (float)raw_y / 16.0f;
+    data.x() = (float)raw_x / 16.0f;
 
     return data;
 }
 
-euler_angles BNO055::get_euler_angles() {
-    euler_angles data;
-    i2c->read_2reg(BNO055_I2C_ADDR, EUL_Heading_MSB, EUL_Heading_LSB, (uint16_t*)&data.yaw);
-    i2c->read_2reg(BNO055_I2C_ADDR, EUL_Pitch_MSB, EUL_Pitch_LSB, (uint16_t*)&data.pitch);
-    i2c->read_2reg(BNO055_I2C_ADDR, EUL_Roll_MSB, EUL_Roll_LSB, (uint16_t*)&data.roll);
+vec_3 BNO055::get_euler_angles() {
+    vec_3 data;
+    int16_t raw_x, raw_y, raw_z;
+    i2c->read_2reg(BNO055_I2C_ADDR, EUL_Heading_MSB, EUL_Heading_LSB, (uint16_t*)&raw_z);
+    i2c->read_2reg(BNO055_I2C_ADDR, EUL_Pitch_MSB, EUL_Pitch_LSB, (uint16_t*)&raw_y);
+    i2c->read_2reg(BNO055_I2C_ADDR, EUL_Roll_MSB, EUL_Roll_LSB, (uint16_t*)&raw_x);
 
-    data.yaw = data.yaw / 16.0;
-    data.pitch = data.pitch / 16.0;
-    data.roll = data.roll / 16.0;
+    data.z() = (float)raw_z / 16.0f;
+    data.y() = (float)raw_y / 16.0f;
+    data.x() = (float)raw_x / 16.0f;
 
     return data;
 }

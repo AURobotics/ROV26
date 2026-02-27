@@ -6,6 +6,7 @@
 #include "bno055.h"
 #include "gpio.h"
 #include "i2c.h"
+#include "i2c_wrapper.h"
 #include "ms5611.h"
 #include "tim.h"
 #include "usb_comms.h"
@@ -19,9 +20,9 @@
 #include "array"
 #include "usbd_cdc_if.h"
 
-
-BNO055 bno;
-MS5611 ms5611;
+I2C i2c_wrapper(&hi2c3); 
+BNO055 bno(&i2c_wrapper)
+MS5611 ms5611(&hi2c3);
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
 std::array<std::optional<float>, 8> fetch_sensor_data(bool use_angle_rates) {
@@ -59,6 +60,7 @@ int main(void) {
     MX_TIM4_Init();
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
+
 
 
     uint32_t last_send_time = 0;

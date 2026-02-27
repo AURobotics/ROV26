@@ -41,13 +41,13 @@ private:
     I2C *i2c;
 
 public:
-  BNO055(I2C *i2c_hal);
+  explicit BNO055(I2C *i2c_hal);
   void calibration();
   void init();
   void saveCalibration(CalibrationData &data);
   bool loadCalibration(CalibrationData &data);
-  body_rates get_body_rates();
-  euler_angles get_euler_angles();
+  vec_3 get_body_rates();
+  vec_3 get_euler_angles();
 };
 
 
