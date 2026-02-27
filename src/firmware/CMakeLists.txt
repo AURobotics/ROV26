@@ -51,6 +51,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/motor/Motor.cpp
         Core/lib/controller/Controller.cpp
         Core/lib/kinematics/Kinematics.cpp
+        Core/lib/usb_comms/usb_comms.cpp
+        Core/lib/i2c_wrapper/i2c_wrapper.cpp
     # Add user sources here
 )
 
@@ -62,6 +64,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/motor
         Core/lib/controller
         Core/lib/kinematics
+        Core/lib/usb_comms
+        Core/lib/i2c_wrapper
     # Add user defined include paths
 )
 

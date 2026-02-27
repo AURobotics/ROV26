@@ -1,4 +1,5 @@
 #include "main.h"
+#include "usb_comms.h"
 #include "Controller.h"
 #include "Motor.h"
 #include "PID.h"
@@ -13,22 +14,20 @@
 
 #include <cstdio>
 #include <optional>
+
+#include "Kinematics.h"
 #include "array"
+#include "usbd_cdc_if.h"
 
 
 BNO055 bno;
 MS5611 ms5611;
 
-void move_motors(Motor motor_arr[8], float clamped_values[8]) {
-    for (int i = 0; i < 8; i++)
-        motor_arr[i].move(clamped_values[i]);
-}
-
-// depth,nullopt, roll, angular roll, pitch, angular pitch, yaw, angular yaw
+// yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
 std::array<std::optional<float>, 8> fetch_sensor_data(bool use_angle_rates) {
     std::array<std::optional<float>, 8> data;
 
-    data[0] = ms5611.getDepth();
+    data[0].value() = ms5611.getDepth();
     data[1] = std::nullopt;
     data[2] = bno.euler_angles().x;
     data[3] = bno.get_body_rates().roll;
@@ -61,47 +60,50 @@ int main(void) {
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
 
-    unsigned char
-        control_byte; // depth pitch roll yaw //need to change the order 3ashan law hane3mel loop
-    float data[6]; // Fx Fy Fz Froll Fpitch Fyaw
-    float setpoint[4]; // depth roll pitch yaw
-    float controller_output[6]; // surge sway depth roll pitch yaw
 
-    float hold[4]; // depth roll pitch yaw
+    uint32_t last_send_time = 0;
+    // depth pitch roll yaw //need to change the order 3ashan law hane3mel loop
+    unsigned char control_byte{};
+    float data[6] = {}; // Fx Fy Fz Froll Fpitch Fyaw
+    float setpoint[4]{};
+    float controller_output[6] = {}; // depth pitch roll yaw surge sway
 
-    /*Initialize all controllers*/
-    Controller controller[4] = {// lessa mtl3nash el values kp,ki,kd
-                                Controller depth_pid(PID(0, 0, 0)),
-                                Controller roll_pid(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
-                                Controller pitch_pid(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
-                                Controller yaw_pid(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
+    float hold[4] = {}; // yaw pirch roll depth
 
-    float prev;
+    /*Initialize all controllers: depth roll pitch yaw*/
+    Controller controller[4] = {Controller(PID(0, 0, 0)),
+                                Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
+                                Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
+                                Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
+
+    Motor motors[8] = {Motor(), Motor(), Motor(), Motor(), Motor(), Motor(), Motor(), Motor()};
+
+    float prev{};
     float now = HAL_GetTick();
 
     std::array<std::optional<float>, 8> sensor_data;
 
     while (true) {
-
         RxPacket rx_pkt;
         TxPacket tx_pkt;
         switch (flow_state) {
-        case FLOW_RECEIVING:
+        case FLOW_RECEIVING :
             if (data_received) {
                 data_received = 0;
                 memcpy(&rx_pkt, rx_buffer, sizeof(RxPacket));
                 flow_state = FLOW_SENDING;
-            } else {
-                flow_state = FLOW_WAITING;  // no data received, signal Pi
+            }
+            else {
+                flow_state = FLOW_WAITING; // no data received, signal Pi
             }
             break;
 
-        case FLOW_WAITING:
+        case FLOW_WAITING :
             CDC_Transmit_FS(&ready_byte, 1);
             flow_state = FLOW_RECEIVING;
             break;
 
-        case FLOW_SENDING:
+        case FLOW_SENDING :
             if (HAL_GetTick() - last_send_time >= 40) {
                 last_send_time = HAL_GetTick();
                 load_tx(&tx_pkt);
@@ -119,30 +121,30 @@ int main(void) {
         // read gui data
         // read sensor data
 
-        for (int i = 0, j = 0; i < 8; i += 2, j++) {
-
+        for (int i = 0, j = 0; i < 8; i += 2, j++)
             if (control_byte & 1 << (7 - j)) // setpoint
-                controller_output[j + 2] =
-                    controller[j].output(setpoint[j], sensor_data[i], dt, sensor_data[i + 1]);
+                controller_output[j + 2] = controller[j].output(
+                    setpoint[j], sensor_data[i].value(), dt, sensor_data[i + 1]);
             else {
                 if (data[j + 2] == 0) // hold position
-                    controller_output[j + 2] =
-                        controller[j].output(hold[j], sensor_data[i], dt, sensor_data[i + 1]);
+                    controller_output[j + 2] = controller[j].output(
+                        hold[j], sensor_data[i].value(), dt, sensor_data[i + 1]);
                 else { // pilot command
                     controller_output[j + 2] = data[j + 2];
-                    hold[j] = sensor_data[i];
+                    hold[j] = sensor_data[i].value();
                 }
             }
-        }
 
         // surge
         controller_output[0] = data[0];
         // sway
         controller_output[1] = data[1];
     }
-    float* clamped_motors = apply_pseudo_inverse(
-        controller_output); // fo2 8ayarna el function khalenaha void fa me7tageen ne8ayar dah
-    move_motors(, clamped_motors);
+    float clamped_motors[8] = {};
+    apply_pseudo_inverse(
+        controller_output,
+        clamped_motors); // fo2 8ayarna el function khalenaha void fa me7tageen ne8ayar dah
+    Motor::move_motor(motors, clamped_motors);
 }
 
 /**
