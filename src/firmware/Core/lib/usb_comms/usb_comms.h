@@ -22,7 +22,6 @@ typedef struct __attribute__((packed)) {
     uint8_t control_byte;
     float forces[6];
     float gripper_speed;
-    uint32_t checksum;
 } RxPacket;
 
 typedef struct __attribute__((packed)) {
