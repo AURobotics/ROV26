@@ -105,7 +105,44 @@ int main(void) {
                                 Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
                                 Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
 
-    auto motors[] = {Motor(), Motor(), Motor(), Motor(), Motor(), Motor(), Motor(), Motor()};
+    /*Intialize pwms  and motors*/
+    // Create PWM wrappers
+    PWM pwm1A(&htim1, TIM_CHANNEL_2);
+    PWM pwm1B(&htim1, TIM_CHANNEL_3);
+
+    PWM pwm2A(&htim3, TIM_CHANNEL_4);
+    PWM pwm2B(&htim2, TIM_CHANNEL_3);
+
+    PWM pwm3A(&htim3, TIM_CHANNEL_3);
+    PWM pwm3B(&htim3, TIM_CHANNEL_2);
+
+    PWM pwm4A(&htim3, TIM_CHANNEL_1);
+    PWM pwm4B(&htim2, TIM_CHANNEL_1);
+
+    PWM pwm5A(&htim5, TIM_CHANNEL_3);
+    PWM pwm5B(&htim5, TIM_CHANNEL_2);
+
+    PWM pwm6A(&htim4, TIM_CHANNEL_4);
+    PWM pwm6B(&htim4, TIM_CHANNEL_3);
+
+    PWM pwm7A(&htim4, TIM_CHANNEL_1);
+    PWM pwm7B(&htim4, TIM_CHANNEL_2);
+
+    PWM pwm8A(&htim5, TIM_CHANNEL_4);
+    PWM pwm8B(&htim2, TIM_CHANNEL_2);
+
+    Motor motors[] = {Motor(pwm1A, pwm1B),
+                      Motor(pwm2A, pwm2B),
+                      Motor(pwm3A, pwm3B),
+                      Motor(pwm4A, pwm4B),
+                      Motor(pwm5A, pwm5B),
+                      Motor(pwm6A, pwm6B),
+                      Motor(pwm7A, pwm7B),
+                      Motor(pwm8A, pwm8B)};
+
+    for (int i = 0; i < 8; i++)
+        motors[i].setup();
+
     auto motor_gripper = Motor();
 
     float prev{};
