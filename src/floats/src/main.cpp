@@ -1,18 +1,16 @@
 #include <Arduino.h>
 #include <ESPMQTTClient.h>
 
-#define LED_BUILTIN 0
-
 // WiFi credentials
-const char *WIFI_SSID = "your_wifi_ssid";
-const char *WIFI_PASSWORD = "your_wifi_password";
+const char *WIFI_SSID = "";
+const char *WIFI_PASSWORD = "";
 
 // MQTT broker settings
-const char *MQTT_SERVER = "localhost";
+const char *MQTT_SERVER = "broker.emqx.io";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optional
-const bool AS_ACCESS_POINT = true; 
+const bool AS_ACCESS_POINT = false;
 // Create MQTT client instance
 ESPMqttClient mqttClient(
     WIFI_SSID,
@@ -43,12 +41,14 @@ void setup()
         
         // Example: Turn on/off LED based on message
         if (strcmp(topic, "esp/led") == 0) {
+            Serial.print("Received LED command: ");
+            Serial.println(message);
             if (strcmp(message, "ON") == 0) {
                 digitalWrite(LED_BUILTIN, LOW);  // Turn on LED
-                mqttClient.publish("esp/led/status", "ON");
+                Serial.println("LED turned ON");
             } else if (strcmp(message, "OFF") == 0) {
                 digitalWrite(LED_BUILTIN, HIGH); // Turn off LED
-                mqttClient.publish("esp/led/status", "OFF");
+                Serial.println("LED turned OFF");
             }
         } });
 
@@ -57,7 +57,6 @@ void setup()
 
     // Subscribe to topics
     mqttClient.subscribe("esp/led");
-    mqttClient.subscribe("esp/#");
 
     // Publish connection status
     mqttClient.publish("esp/status", "connected", true);
@@ -73,7 +72,7 @@ void loop()
 
     // Publish sensor data every 10 seconds
     static unsigned long lastPublish = 0;
-    if (millis() - lastPublish > 10000)
+    if (millis() - lastPublish > 5000)
     {
         lastPublish = millis();
 
