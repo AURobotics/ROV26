@@ -17,11 +17,11 @@ public:
     // Constructor
     ESPMqttClient(
         const char *ssid,
-        const char *password = "1234",
-        const char *mqtt_broker = "localhost",
+        const char *password,
+        const char *mqtt_broker,
         int mqtt_port = 1883,
-        const char *mqtt_username = "emqx",
-        const char *mqtt_password = "public",
+        const char *mqtt_username = nullptr,
+        const char *mqtt_password = nullptr,
         const bool as_AccessPoint = true);
 
     // Destructor
@@ -45,7 +45,6 @@ private:
 
     // MQTT Broker
     const char *_mqtt_broker;
-    const char *_topic;
     const char *_mqtt_username;
     const char *_mqtt_password;
     const int _mqtt_port;
@@ -61,8 +60,6 @@ private:
     void connectToWiFi();
     void initAccessPoint();
     void connectToMQTT();
-    void generateClientID();
-    static void mqttCallback(char *topic, byte *payload, unsigned int length);
 };
 
 // for future extension if needed instead of using the setCallback
