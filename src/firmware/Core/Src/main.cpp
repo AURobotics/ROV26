@@ -26,9 +26,10 @@ BNO055 bno(&i2c_wrapper);
 MS5611 ms5611(&hi2c3);
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
-std::array<std::optional<float>, 8> fetch_sensor_data(bool use_angle_rates) {
+std::array<std::optional<float>, 8> fetch_sensor_data() {
     std::array<std::optional<float>, 8> data;
-    data[0].value() = ms5611.getDepth();
+
+    data[0] = ms5611.getDepth();
     data[1] = std::nullopt;
 
     vec_3 angles = bno.get_euler_angles();
@@ -92,12 +93,14 @@ int main(void) {
 
     uint32_t last_send_time = 0;
     // depth roll pitch yaw
-    unsigned char control_byte{};
+    unsigned char control_byte = {};
     float data[6] = {}; // Fx Fy Fz Froll Fpitch Fyaw
-    float setpoint[4]{};
+                        //if control bit = 1 setpoint hatetba3at makan
+                        // el force fa will use this array as setpoint too
+
     float controller_output[6] = {}; // depth pitch roll yaw surge sway
 
-    float hold[4] = {}; // yaw pirch roll depth
+    float hold[4] = {}; // yaw pitch roll depth
 
     /*Initialize all controllers: depth roll pitch yaw*/
     Controller controller[4] = {Controller(PID(0, 0, 0)),
@@ -179,8 +182,12 @@ int main(void) {
             }
             break;
         }
-        sensor_data = fetch_sensor_data(true);
+        sensor_data = fetch_sensor_data();
 
+        control_byte = rx_pkt.control_byte;
+        for(int i=0;i<6;i++)
+            data[i] = rx_pkt.forces[i];
+            
         prev = now;
         now = HAL_GetTick();
         float dt = (now - prev) / 1000.0; // convert ms->seconds
@@ -190,11 +197,11 @@ int main(void) {
             if (control_byte & 1 << (7 - j)) { // setpoint
                 if (j > 0) // not depth
                     controller_output[j + 2] = controller[j].output(
-                        angle_diff(setpoint[j], sensor_data[i].value()), 0, dt, sensor_data[i + 1]);
+                        angle_diff(data[j+2], sensor_data[i].value()), 0, dt, sensor_data[i + 1]);
 
                 else // depth
                     controller_output[j + 2] = controller[j].output(
-                        setpoint[j], sensor_data[i].value(), dt, sensor_data[i + 1].value());
+                        data[j+2], sensor_data[i].value(), dt, sensor_data[i + 1].value());
             }
             else {
                 if (data[j + 2] == 0) // hold position
