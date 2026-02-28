@@ -8,14 +8,14 @@ ESPMqttClient::ESPMqttClient(
     int mqtt_port,
     const char *mqtt_username,
     const char *mqtt_password,
-    const bool as_AccessPoint) :   _ssid(ssid),
-                                   _password(password),
-                                   _as_AccessPoint(as_AccessPoint),
-                                   _mqtt_broker(mqtt_server),
-                                   _mqtt_port(mqtt_port),
-                                   _mqtt_username(mqtt_username),
-                                   _mqtt_password(mqtt_password),
-                                   _mqttClient(_wifiClient)
+    const bool as_AccessPoint) : _ssid(ssid),
+                                 _password(password),
+                                 _as_AccessPoint(as_AccessPoint),
+                                 _mqtt_broker(mqtt_server),
+                                 _mqtt_port(mqtt_port),
+                                 _mqtt_username(mqtt_username),
+                                 _mqtt_password(mqtt_password),
+                                 _mqttClient(_wifiClient)
 {
 }
 
@@ -32,8 +32,6 @@ ESPMqttClient::~ESPMqttClient()
 // =============================================================================
 void ESPMqttClient::begin()
 {
-    Serial.begin(115200);
-
     if (_as_AccessPoint)
     {
         initAccessPoint();
@@ -98,7 +96,8 @@ void ESPMqttClient::connectToWiFi()
     Serial.println(WiFi.localIP());
 }
 
-void ESPMqttClient::initAccessPoint(){
+void ESPMqttClient::initAccessPoint()
+{
     IPAddress local_IP(192, 168, 1, 22);
     IPAddress gateway(192, 168, 1, 5);
     IPAddress subnet(255, 255, 255, 0);
@@ -119,15 +118,25 @@ void ESPMqttClient::connectToMQTT()
     {
         String client_id = "esp32-client-";
         client_id += String(WiFi.macAddress()); // to ensure unique id
-        Serial.printf("The client %s connects to the public MQTT broker\n", client_id.c_str());
-        if (_mqttClient.connect(client_id.c_str(), _mqtt_username, _mqtt_password))
+        Serial.printf("The client %s connects to the MQTT broker\n", client_id.c_str());
+        bool isConnected = false;
+        if (_mqtt_username && _mqtt_password)
         {
-            Serial.println("Public EMQX MQTT broker connected");
+            isConnected = _mqttClient.connect(client_id.c_str(), _mqtt_username, _mqtt_password);
+        }
+        else
+        {
+            isConnected = _mqttClient.connect(client_id.c_str());
+        }
+
+        if (isConnected)
+        {
+            Serial.println("broker connected");
         }
         else
         {
             Serial.print("failed with state ");
-            Serial.print(_mqttClient.state());
+            Serial.println(_mqttClient.state());
             delay(2000);
         }
     }
@@ -196,7 +205,7 @@ void ESPMqttClient::disconnect()
 // =============================================================================
 // setCallback()
 // Registers a user-defined function to handle incoming MQTT messages.
-// Must be called before begin() or at least before any subscriptions are made.
+// Must be called before any subscriptions are made.
 //
 // The callback signature must be:
 //   void myCallback(char* topic, uint8_t* payload, unsigned int length)
