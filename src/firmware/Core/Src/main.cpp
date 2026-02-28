@@ -31,8 +31,8 @@ std::array<std::optional<float>, 8> fetch_sensor_data(bool use_angle_rates) {
     data[0].value() = ms5611.getDepth();
     data[1] = std::nullopt;
 
-    struct vec_3 angles = bno.get_euler_angles();
-    struct vec_3 rates = bno.get_body_rates();
+    vec_3 angles = bno.get_euler_angles();
+    vec_3 rates = bno.get_body_rates();
 
     data[2] = angles.x(); // roll
     data[3] = rates.x();
@@ -43,16 +43,30 @@ std::array<std::optional<float>, 8> fetch_sensor_data(bool use_angle_rates) {
     return data;
 }
 
-TxPacket dummy = {
-    .sync_byte     = 0xFF,
-    .motor_speeds  = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
-    .gripper_speed = 0.5f,
-    .depth         = 10.5f,
-    .yaw           = 45.0f,
-    .pitch         = -15.0f,
-    .roll          = 5.0f,
-    .status_byte   = 0x01
-};
+double normalize_angle(double angle) {
+    angle = fmod(angle, 360.0);
+    if (angle > 180.0)
+        angle -= 360.0;
+    else if (angle < 180.0)
+        angle += 360.0;
+
+    return angle;
+}
+
+double angle_diff(double setpoint, double current) {
+    double diff = setpoint - current;
+    return normalize_angle(diff);
+}
+
+
+TxPacket dummy = {.sync_byte = 0xFF,
+                  .motor_speeds = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
+                  .gripper_speed = 0.5f,
+                  .depth = 10.5f,
+                  .yaw = 45.0f,
+                  .pitch = -15.0f,
+                  .roll = 5.0f,
+                  .status_byte = 0x01};
 
 void SystemClock_Config(void);
 
@@ -91,7 +105,8 @@ int main(void) {
                                 Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
                                 Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
 
-    Motor motors[8] = {Motor( ), Motor(), Motor(), Motor(), Motor(), Motor(), Motor(), Motor()};
+    auto motors[] = {Motor(), Motor(), Motor(), Motor(), Motor(), Motor(), Motor(), Motor()};
+    auto motor_gripper = Motor();
 
     float prev{};
     float now = HAL_GetTick();
@@ -137,11 +152,8 @@ int main(void) {
         for (int i = 0, j = 0; i < 8; i += 2, j++)
             if (control_byte & 1 << (7 - j)) { // setpoint
                 if (j > 0) // not depth
-                    controller_output[j + 2] =
-                        controller[j].output(angle_diff(setpoint[j], sensor_data[i].value()),
-                                             0,
-                                             dt,
-                                             sensor_data[i + 1].value());
+                    controller_output[j + 2] = controller[j].output(
+                        angle_diff(setpoint[j], sensor_data[i].value()), 0, dt, sensor_data[i + 1]);
 
                 else // depth
                     controller_output[j + 2] = controller[j].output(
