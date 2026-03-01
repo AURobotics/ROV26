@@ -261,16 +261,30 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
-  if (Buf[0] != 0xFF) {
-	    // not a valid packet, signal Pi to resend
-      CDC_Transmit_FS(&ready_byte, 1);
-  } else if (*Len != PAYLOAD_SIZE) {
-	    // valid sync but wrong size, signal Pi to resend
-      CDC_Transmit_FS(&ready_byte, 1);
-  } else {
-	    // valid sync byte and correct size, good packet
-	    memcpy(rx_buffer, Buf, *Len);
-	    data_received = 1;
+  if (Buf[0] == 0xFF) {
+
+    uint8_t msg_type = Buf[1];
+    switch (msg_type) {
+      case 1:
+        if (*Len == PAYLOAD_SIZE) {
+          memcpy(&rx_pkt, Buf, sizeof(struct RxPacket));
+          last_receive_time = HAL_GetTick();
+          data_received = 1;
+        }
+        break;
+         case 2:
+         if (*Len == PAYLOAD_SIZE) {
+           memcpy(&rx_pkt, Buf, sizeof(struct RxPacket));
+           last_receive_time = HAL_GetTick();
+           data_received = 1;
+         }
+         case 3:
+         if (*Len == PAYLOAD_SIZE) {
+           memcpy(&rx_pkt, Buf, sizeof(struct RxPacket));
+           last_receive_time = HAL_GetTick();
+           data_received = 1;
+         }
+    }
   }
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);

@@ -24,6 +24,7 @@
 I2C i2c_wrapper(&hi2c3);
 BNO055 bno(&i2c_wrapper);
 MS5611 ms5611(&hi2c3);
+Ready_msg ready_msg;
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
 [[nodiscard]]
@@ -63,12 +64,11 @@ double angle_diff(double setpoint, double current) {
 
 TxPacket dummy = {.sync_byte = 0xFF,
                   .motor_speeds = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
-                  .gripper_speed = 0.5f,
                   .depth = 10.5f,
                   .yaw = 45.0f,
                   .pitch = -15.0f,
                   .roll = 5.0f,
-                  .status_byte = 0x01};
+                  .status = 0x01};
 
 void SystemClock_Config(void);
 
@@ -147,7 +147,7 @@ int main(void) {
     for (auto motor : motors)
         motor.setup();
 
-    auto motor_gripper = Motor();
+    //auto motor_gripper = Motor();
 
     float prev{};
     float now = HAL_GetTick();
@@ -157,31 +157,19 @@ int main(void) {
     while (true) {
         RxPacket rx_pkt;
         TxPacket tx_pkt;
-        switch (flow_state) {
-        case FLOW_RECEIVING :
-            if (data_received) {
+
+            if (data_received && HAL_GetTick() - last_receive_time < 30) {
                 data_received = 0;
-                memcpy(&rx_pkt, rx_buffer, sizeof(RxPacket));
-                flow_state = FLOW_SENDING;
+                CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
+                // process_data(data_type) // idk do something
+            } else {
+                CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
             }
-            else {
-                flow_state = FLOW_WAITING; // no data received, signal Pi
-            }
-            break;
 
-        case FLOW_WAITING :
-            CDC_Transmit_FS(&ready_byte, 1);
-            flow_state = FLOW_RECEIVING;
-            break;
-
-        case FLOW_SENDING :
-            if (HAL_GetTick() - last_send_time >= 40) {
+            if (HAL_GetTick() - last_send_time >= 50) {
                 last_send_time = HAL_GetTick();
-                load_tx(&tx_pkt);
+                // load_tx(&tx_pkt);
                 CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&tx_pkt), sizeof(TxPacket));
-                flow_state = FLOW_RECEIVING;
-            }
-            break;
         }
         sensor_data = fetch_sensor_data();
 
