@@ -27,10 +27,7 @@ MS5611 ms5611(&hi2c3);
 Ready_msg ready_msg;
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
-[[nodiscard]]
-std::array<std::optional<float>, 8> fetch_sensor_data() {
-    std::array<std::optional<float>, 8> data;
-
+void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
     data[0] = ms5611.getDepth();
     data[1] = std::nullopt;
 
@@ -43,7 +40,6 @@ std::array<std::optional<float>, 8> fetch_sensor_data() {
     data[5] = rates.y();
     data[6] = angles.z(); // yaw
     data[7] = rates.z();
-    return data;
 }
 
 double normalize_angle(double angle) {
@@ -96,7 +92,7 @@ int main(void) {
     // depth roll pitch yaw
     unsigned char control_byte = {};
     float data[6] = {}; // Fx Fy Fz Froll Fpitch Fyaw
-                        //if control bit = 1 setpoint hatetba3at makan
+                        // if control bit = 1 setpoint hatetba3at makan
                         // el force fa will use this array as setpoint too
 
     float controller_output[6] = {}; // depth pitch roll yaw surge sway
@@ -135,6 +131,7 @@ int main(void) {
     PWM pwm8A(&htim5, TIM_CHANNEL_4);
     PWM pwm8B(&htim2, TIM_CHANNEL_2);
 
+
     Motor motors[] = {Motor(pwm1A, pwm1B),
                       Motor(pwm2A, pwm2B),
                       Motor(pwm3A, pwm3B),
@@ -147,7 +144,22 @@ int main(void) {
     for (auto motor : motors)
         motor.setup();
 
-    //auto motor_gripper = Motor();
+    Motor gripper(
+        [](float speed)
+        {
+            if (speed > 0.1f) {
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+            }
+            else if (speed < -0.1f) {
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+            }
+            else {
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+            }
+        });
 
     float prev{};
     float now = HAL_GetTick();
@@ -171,12 +183,12 @@ int main(void) {
                 // load_tx(&tx_pkt);
                 CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&tx_pkt), sizeof(TxPacket));
         }
-        sensor_data = fetch_sensor_data();
+        fetch_sensor_data(sensor_data);
 
         control_byte = rx_pkt.control_byte;
-        for(int i=0;i<6;i++)
+        for (int i = 0; i < 6; i++)
             data[i] = rx_pkt.forces[i];
-            
+
         prev = now;
         now = HAL_GetTick();
         float dt = (now - prev) / 1000.0; // convert ms->seconds
@@ -186,11 +198,11 @@ int main(void) {
             if (control_byte & 1 << (7 - j)) { // setpoint
                 if (j > 0) // not depth
                     controller_output[j + 2] = controller[j].output(
-                        angle_diff(data[j+2], sensor_data[i].value()), 0, dt, sensor_data[i + 1]);
+                        angle_diff(data[j + 2], sensor_data[i].value()), 0, dt, sensor_data[i + 1]);
 
                 else // depth
                     controller_output[j + 2] = controller[j].output(
-                        data[j+2], sensor_data[i].value(), dt, sensor_data[i + 1].value());
+                        data[j + 2], sensor_data[i].value(), dt, sensor_data[i + 1].value());
             }
             else {
                 if (data[j + 2] == 0) // hold position
