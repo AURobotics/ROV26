@@ -26,10 +26,7 @@ BNO055 bno(&i2c_wrapper);
 MS5611 ms5611(&hi2c3);
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
-[[nodiscard]]
-std::array<std::optional<float>, 8> fetch_sensor_data() {
-    std::array<std::optional<float>, 8> data;
-
+void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
     data[0] = ms5611.getDepth();
     data[1] = std::nullopt;
 
@@ -42,7 +39,6 @@ std::array<std::optional<float>, 8> fetch_sensor_data() {
     data[5] = rates.y();
     data[6] = angles.z(); // yaw
     data[7] = rates.z();
-    return data;
 }
 
 double normalize_angle(double angle) {
@@ -61,14 +57,14 @@ double angle_diff(double setpoint, double current) {
 }
 
 
-TxPacket dummy = {.sync_byte = 0xFF,
-                  .motor_speeds = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
-                  .gripper_speed = 0.5f,
-                  .depth = 10.5f,
-                  .yaw = 45.0f,
-                  .pitch = -15.0f,
-                  .roll = 5.0f,
-                  .status_byte = 0x01};
+// TxPacket dummy = {.sync_byte = 0xFF,
+//                   .motor_speeds = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
+//                   .gripper_speed = 0.5f,
+//                   .depth = 10.5f,
+//                   .yaw = 45.0f,
+//                   .pitch = -15.0f,
+//                   .roll = 5.0f,
+//                   .status_byte = 0x01};
 
 void SystemClock_Config(void);
 
@@ -183,7 +179,7 @@ int main(void) {
             }
             break;
         }
-        sensor_data = fetch_sensor_data();
+        fetch_sensor_data(sensor_data);
 
         control_byte = rx_pkt.control_byte;
         for(int i=0;i<6;i++)
