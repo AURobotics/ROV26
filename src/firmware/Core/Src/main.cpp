@@ -26,6 +26,7 @@ BNO055 bno(&i2c_wrapper);
 MS5611 ms5611(&hi2c3);
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
+[[nodiscard]]
 std::array<std::optional<float>, 8> fetch_sensor_data() {
     std::array<std::optional<float>, 8> data;
 
@@ -110,10 +111,10 @@ int main(void) {
 
     /*Intialize pwms  and motors*/
     // Create PWM wrappers
-    PWM pwm1A(&htim1, TIM_CHANNEL_2);
-    PWM pwm1B(&htim1, TIM_CHANNEL_3);
+    const PWM pwm1A(&htim1, TIM_CHANNEL_2);
+    const PWM pwm1B(&htim1, TIM_CHANNEL_3);
 
-    PWM pwm2A(&htim3, TIM_CHANNEL_4);
+    const PWM pwm2A(&htim3, TIM_CHANNEL_4);
     PWM pwm2B(&htim2, TIM_CHANNEL_3);
 
     PWM pwm3A(&htim3, TIM_CHANNEL_3);
@@ -143,8 +144,8 @@ int main(void) {
                       Motor(pwm7A, pwm7B),
                       Motor(pwm8A, pwm8B)};
 
-    for (int i = 0; i < 8; i++)
-        motors[i].setup();
+    for (auto motor : motors)
+        motor.setup();
 
     auto motor_gripper = Motor();
 
@@ -177,7 +178,7 @@ int main(void) {
             if (HAL_GetTick() - last_send_time >= 40) {
                 last_send_time = HAL_GetTick();
                 load_tx(&tx_pkt);
-                CDC_Transmit_FS((uint8_t*)&tx_pkt, sizeof(TxPacket));
+                CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&tx_pkt), sizeof(TxPacket));
                 flow_state = FLOW_RECEIVING;
             }
             break;
