@@ -1,15 +1,14 @@
 #include "usb_comms.h"
-#include "main.h"
 #include <cstring>
-
+#include "main.h"
 
 
 // volatile FlowState flow_state = FLOW_RECEIVING;
-volatile uint8_t data_received = 0;
-volatile uint8_t rx_buffer[PAYLOAD_SIZE];
-uint8_t ready_byte = READY_BYTE;
-volatile uint32_t last_receive_time;
-volatile struct RxPacket rx_pkt;
+// uint8_t data_received = 0;
+// uint8_t rx_buffer[PAYLOAD_SIZE];
+// uint8_t ready_byte = READY_BYTE;
+// uint32_t last_receive_time;
+// RxPacket rx_pkt;
 
 
 // void load_tx(TxPacket *tx){
@@ -22,4 +21,3 @@ volatile struct RxPacket rx_pkt;
 // 	tx->pitch = euler.y();
 // 	tx->roll = euler.x();
 // }
-

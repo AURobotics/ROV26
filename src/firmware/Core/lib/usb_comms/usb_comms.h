@@ -1,26 +1,19 @@
 #pragma once
 
 #include <cstdint>
-#include <locale.h>
-
-#include "bno055.h"
-#include "ms5611.h"
 
 #define SYNC_BYTE 0xFF
 #define READY_BYTE 0xAA
 #define PAYLOAD_SIZE 30
 
-// extern volatile FlowState flow_state;
-extern volatile uint8_t data_received;
-extern volatile uint8_t rx_buffer[PAYLOAD_SIZE];
-extern volatile uint32_t last_receive_time;
-extern volatile struct RxPacket rx_pkt;
 
 // start byte, type, message
 
 // Ready message : start byte, type 0
 // tuning message: starte byte, size 10, int float float
 // sensor message: start, size , yaw pitch roll, 8 thrusters, led, grippers,
+
+
 
 enum class Message_Type : uint8_t {
     READY_MESSAGE = 0,
@@ -35,27 +28,27 @@ enum class Message_Type : uint8_t {
 struct __attribute__((packed)) RxPacket {
     uint8_t sync_byte;
     uint16_t control_byte; // 4 control bits/ 1 led/ 2 grippers/ 1 toggle : 1 = move & 1 movement: 0
-                           // down / 1 up
+                           // down , 1 up / 1 bit enable or disable water sensors / 1 bit enable disable limit switches
     float forces[6];
 };
 
 struct __attribute__((packed)) Parameter_Msg {
     uint8_t sync_byte = 0xFF;
     Message_Type type = Message_Type::PARAMETERS_MESSAGE;
-    float Kp, kd, ki;
+    float Kp{}, kd{}, ki{};
 };
 
-struct __attribute__((packed)) Operation_Msg {
+struct __attribute__((packed)) Operation_Mode_Msg {
     uint8_t sync_byte = 0xFF;
     Message_Type type = Message_Type::OPERATION_MESSAGE;
-    uint8_t time;
-    float angle, rate; // le7ad ma mina yrod 3alaya
+    uint8_t operation_mode{}; // 0 normal operation, 1 testing and tuning operation
+     // le7ad ma mina yrod 3alaya
 };
 
 struct __attribute__((packed)) Tuning_Msg {
     uint8_t sync_byte = 0xFF;
     Message_Type type = Message_Type::TUNING_MESSAGE;
-    uint8_t axis;
+    uint8_t axis{};
 };
 
 struct __attribute__((packed)) Ready_Msg {
@@ -74,6 +67,9 @@ struct __attribute__((packed)) TxPacket {
     float motor_speeds[8]{};
 };
 
+inline uint32_t last_receive_time{};
+inline RxPacket rx_pkt{};
+inline uint8_t data_received{};
 
 
 void load_tx(TxPacket* tx);
