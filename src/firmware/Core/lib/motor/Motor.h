@@ -8,7 +8,7 @@ class Motor {
 
 public:
     Motor(const PWM& p1, const PWM& p2);
-    Motor(std::function<void(float)> Handler);
+    explicit Motor(std::function<void(float)> Handler);
     void setup() const;
     void move(float speed) const;
     void stop() const;

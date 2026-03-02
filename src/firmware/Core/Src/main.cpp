@@ -58,13 +58,15 @@ double angle_diff(double setpoint, double current) {
 }
 
 
-TxPacket dummy = {.sync_byte = 0xFF,
-                  .motor_speeds = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
-                  .depth = 10.5f,
-                  .yaw = 45.0f,
-                  .pitch = -15.0f,
-                  .roll = 5.0f,
-                  .status = 0x01};
+TxPacket dummy = {
+    .sync_byte = 0xFF,
+    .status = 0x01,
+    .depth = 10.5f,
+    .yaw = 45.0f,
+    .pitch = -15.0f,
+    .roll = 5.0f,
+    .motor_speeds = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
+};
 
 void SystemClock_Config(void);
 
@@ -90,14 +92,13 @@ int main(void) {
 
     uint32_t last_send_time = 0;
     // depth roll pitch yaw
-    unsigned char control_byte = {};
-    float data[6] = {}; // Fx Fy Fz Froll Fpitch Fyaw
-                        // if control bit = 1 setpoint hatetba3at makan
-                        // el force fa will use this array as setpoint too
+    float data[6]; // Fx Fy Fz Froll Fpitch Fyaw
+                   // if control bit = 1 setpoint hatetba3at makan
+                   // el force fa will use this array as setpoint too
 
-    float controller_output[6] = {}; // depth pitch roll yaw surge sway
+    float controller_output[6]; // depth pitch roll yaw surge sway
 
-    float hold[4] = {}; // yaw pitch roll depth
+    float hold[4]; // yaw pitch roll depth
 
     /*Initialize all controllers: depth roll pitch yaw*/
     Controller controller[4] = {Controller(PID(0, 0, 0)),
@@ -141,7 +142,7 @@ int main(void) {
                       Motor(pwm7A, pwm7B),
                       Motor(pwm8A, pwm8B)};
 
-    for (auto motor : motors)
+    for (const auto& motor : motors)
         motor.setup();
 
     Motor gripper(
@@ -170,22 +171,23 @@ int main(void) {
         RxPacket rx_pkt;
         TxPacket tx_pkt;
 
-            if (data_received && HAL_GetTick() - last_receive_time < 30) {
-                data_received = 0;
-                CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
-                // process_data(data_type) // idk do something
-            } else {
-                CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
-            }
+        if (data_received && HAL_GetTick() - last_receive_time < 30) {
+            data_received = 0;
+            CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
+            // process_data(data_type) // idk do something
+        }
+        else {
+            CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
+        }
 
-            if (HAL_GetTick() - last_send_time >= 50) {
-                last_send_time = HAL_GetTick();
-                // load_tx(&tx_pkt);
-                CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&tx_pkt), sizeof(TxPacket));
+        if (HAL_GetTick() - last_send_time >= 50) {
+            last_send_time = HAL_GetTick();
+            // load_tx(&tx_pkt);
+            CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&tx_pkt), sizeof(TxPacket));
         }
         fetch_sensor_data(sensor_data);
 
-        control_byte = rx_pkt.control_byte;
+        const unsigned char control_byte = rx_pkt.control_byte;
         for (int i = 0; i < 6; i++)
             data[i] = rx_pkt.forces[i];
 
