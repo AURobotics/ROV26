@@ -24,7 +24,7 @@ void MS5611::reset() {
     sendCmd(RESET);
     HAL_Delay(3);
 }
-static uint16_t readPROM(I2C_HandleTypeDef* hi2c, uint8_t addr) {
+uint16_t MS5611::readPROM(I2C_HandleTypeDef* hi2c, uint8_t addr) {
     uint8_t data[2];
     HAL_I2C_Master_Transmit(hi2c, i2cAddr, &addr, 1, HAL_MAX_DELAY);
     HAL_I2C_Master_Receive(hi2c, i2cAddr, data, 2, HAL_MAX_DELAY);

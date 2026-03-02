@@ -3,8 +3,8 @@
 #include "pwm.h"
 
 class Motor {
-    const PWM &pwm1, &pwm2;
-    std::function<void(float)> handler;
+    PWM &pwm1, &pwm2;
+    std::function<void(float)> handler{};
 
 public:
     Motor(const PWM& p1, const PWM& p2);

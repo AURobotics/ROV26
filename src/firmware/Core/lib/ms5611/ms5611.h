@@ -21,7 +21,7 @@ private:
     void reset();
     void sendCmd(uint8_t cmd);
     uint32_t readADC();
-    uint16_t readPROM(I2C_HandleTypeDef* hi2c, uint8_t addr);
+    static uint16_t readPROM(I2C_HandleTypeDef* hi2c, uint8_t addr);
 };
 
 // https://makerselectronics.com/wp-content/uploads/2025/09/ENG_DS_MS5611-01BA03_B3.pdf

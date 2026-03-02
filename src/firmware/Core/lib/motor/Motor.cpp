@@ -1,13 +1,16 @@
 #include "Motor.h"
 #include <cmath>
+#include <utility>
 
 float constrain(const float x, const float a, const float b) { return x > b ? b : x < a ? a : x; }
 
 Motor::Motor(const PWM& p1, const PWM& p2) : pwm1(p1), pwm2(p2) {}
-Motor::Motor(std::function<void(float)> customHandler) : pwm1(), pwm2(), handler(customHandler) {}
+Motor::Motor(std::function<void(float)> customHandler) :
+    pwm1(), pwm2(), handler(std::move(customHandler)) {}
 
 void Motor::setup() const {
     if (handler)
+
         return;
     pwm1.start();
     pwm2.start();

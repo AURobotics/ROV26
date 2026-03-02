@@ -1,35 +1,24 @@
 #include "PID.h"
 
-constexpr PID::PID(double kp, double kd, double ki) : kp(kp), kd(kd), ki(ki) {
+constexpr PID::PID(double kp, double kd, double ki) : kp(kp), kd(kd), ki(ki) {}
 
-    prev_measurement = 0;
-    filtered_derivative = 0;
-    tau = 0.1; // needs to be tuned//  greater tau->less noisy, slower  //
-               // smaller tau-> noisier,faster response
-    integral = 0;
-    output_max = 1;
-    output_min = -1;
-    integral_max = 100;
-    integral_min = -100;
+void PID::set_gains(const double _kp, const double _kd, const double _ki) {
+    this->kp = _kp;
+    this->kd = _kd;
+    this->ki = _ki;
 }
 
-void PID::set_gains(double kp, double kd, double ki) {
-    this->kp = kp;
-    this->kd = kd;
-    this->ki = ki;
+void PID::set_integral_limits(const double _integral_max, const double _integral_min) {
+    this->integral_max = _integral_max;
+    this->integral_min = _integral_min;
 }
 
-void PID::set_integral_limits(double integral_max, double integral_min) {
-    this->integral_max = integral_max;
-    this->integral_min = integral_min;
+void PID::set_output_limits(const double _output_max, const double _output_min) {
+    this->output_max = _output_max;
+    this->output_min = _output_min;
 }
 
-void PID::set_output_limits(double output_max, double output_min) {
-    this->output_max = output_max;
-    this->output_min = output_min;
-}
-
-void PID::set_derivative_filter(double tau) { this->tau = tau; }
+void PID::set_derivative_filter(const double _tau) { this->tau = _tau; }
 
 void PID::reset() {
     prev_measurement = 0;
@@ -37,7 +26,7 @@ void PID::reset() {
     filtered_derivative = 0;
 }
 
-double PID::update(double setpoint, double measurement, double dt) {
+double PID::update(const double setpoint, const double measurement, const double dt) {
     double error = setpoint - measurement;
     // to prevent overshoot on zero-crossings
     // // don't know if I should zero out
