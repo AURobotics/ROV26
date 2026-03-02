@@ -24,7 +24,7 @@
 I2C i2c_wrapper(&hi2c3);
 BNO055 bno(&i2c_wrapper);
 MS5611 ms5611(&hi2c3);
-Ready_msg ready_msg;
+Ready_Msg ready_msg;
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
 void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
@@ -178,10 +178,10 @@ int main(void) {
             // if default message -> change global variable which hold setpoints.
             // if parameters message -> got set parameters.
             // if operation mode (normal operation or tuning / testing) -> change global state.
-            // if no new message received for 100ms -> stop all motors (different than timeout(40ms)) and blink leds in a pattern
-            // if new data -> then set the new data
-            // if no new data -> just output pid without setpoints
-            // suggestions: in main loop, read sensor data and process pid, if setpoint changes then
+            // if no new message received for 100ms -> stop all motors (different than
+            // timeout(40ms)) and blink leds in a pattern if new data -> then set the new data if no
+            // new data -> just output pid without setpoints suggestions: in main loop, read sensor
+            // data and process pid, if setpoint changes then
         }
         else {
             CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
