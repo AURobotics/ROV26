@@ -7,19 +7,19 @@
 #include "ms5611.h"
 
 #define SYNC_BYTE 0xFF
-#define READY_BYTE 0xAA
-#define PAYLOAD_SIZE 30
 
 // extern volatile FlowState flow_state;
 extern volatile uint8_t data_received;
-extern volatile uint8_t rx_buffer[PAYLOAD_SIZE];
 extern volatile uint32_t last_receive_time;
 extern volatile struct RxPacket rx_pkt;
+extern volatile struct Parameter_Msg para_pkt;
+extern volatile struct Operation_Msg op_pkt;
+
 
 // start byte, type, message
 
 // Ready message : start byte, type 0
-// tuning message: starte byte, size 10, int float float
+// tuning message: starte byte, size 10, int, float, float
 // sensor message: start, size , yaw pitch roll, 8 thrusters, led, grippers,
 
 enum class Message_Type : uint8_t {
@@ -34,22 +34,23 @@ enum class Message_Type : uint8_t {
 
 struct __attribute__((packed)) RxPacket {
     uint8_t sync_byte;
+    Message_Type type;
     uint16_t control_byte; // 4 control bits/ 1 led/ 2 grippers/ 1 toggle : 1 = move & 1 movement: 0
                            // down / 1 up
     float forces[6];
 };
 
 struct __attribute__((packed)) Parameter_Msg {
-    uint8_t sync_byte = 0xFF;
+    uint8_t sync_byte;
     Message_Type type = Message_Type::PARAMETERS_MESSAGE;
-    float Kp, kd, ki;
+    float Kp, Kd, Ki;
 };
 
 struct __attribute__((packed)) Operation_Msg {
-    uint8_t sync_byte = 0xFF;
+    uint8_t sync_byte;
     Message_Type type = Message_Type::OPERATION_MESSAGE;
     uint8_t time;
-    float angle, rate; // le7ad ma mina yrod 3alaya
+    float angle, rate;
 };
 
 struct __attribute__((packed)) Tuning_Msg {
@@ -64,8 +65,8 @@ struct __attribute__((packed)) Ready_Msg {
 };
 
 struct __attribute__((packed)) TxPacket {
-    uint8_t sync_byte = 10;
-    uint8_t type{};
+    uint8_t sync_byte = 0xFF;
+    Message_Type type = Message_Type::COMMAND_MESSAGE;
     uint8_t status{}; // led, 2 grippers, 2 bits for switches
     float depth{};
     float yaw{};
