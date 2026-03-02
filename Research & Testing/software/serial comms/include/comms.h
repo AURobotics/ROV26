@@ -5,7 +5,6 @@
 #include <math.h>
 
 #define SYNC_BYTE 0xFF
-#define READY_BYTE 0xAA
 
 // extern volatile FlowState flow_state;
 extern volatile uint8_t data_received;
@@ -39,14 +38,14 @@ struct __attribute__((packed)) RxPacket
 
 struct __attribute__((packed)) Parameter_Msg
 {
-    uint8_t sync_byte = 0xFF;
+    uint8_t sync_byte = SYNC_BYTE;
     Message_Type type = Message_Type::PARAMETERS_MESSAGE;
     float Kp, kd, ki;
 };
 
 struct __attribute__((packed)) Operation_Msg
 {
-    uint8_t sync_byte = 0xFF;
+    uint8_t sync_byte = SYNC_BYTE;
     Message_Type type = Message_Type::OPERATION_MESSAGE;
     uint8_t time;
     float angle, rate; // le7ad ma mina yrod 3alaya
@@ -54,20 +53,20 @@ struct __attribute__((packed)) Operation_Msg
 
 struct __attribute__((packed)) Tuning_Msg
 {
-    uint8_t sync_byte = 0xFF;
+    uint8_t sync_byte = SYNC_BYTE;
     Message_Type type = Message_Type::TUNING_MESSAGE;
     uint8_t axis;
 };
 
 struct __attribute__((packed)) Ready_Msg
 {
-    uint8_t sync_byte = 0xFF;
+    uint8_t sync_byte = SYNC_BYTE;
     Message_Type type = Message_Type::READY_MESSAGE;
 };
 
 struct __attribute__((packed)) TxPacket
 {
-    uint8_t sync_byte = 10;
+    uint8_t sync_byte = SYNC_BYTE;
     Message_Type type = Message_Type::SENSOR_MESSAGE;
     uint8_t status{}; // led, 2 grippers, 2 bits for switches
     float depth{};

@@ -6,7 +6,6 @@
 // volatile FlowState flow_state = FLOW_RECEIVING;
 volatile uint8_t data_received = 0;
 volatile uint8_t rx_buffer[PAYLOAD_SIZE];
-uint8_t ready_byte = READY_BYTE;
 volatile uint32_t last_receive_time;
 volatile struct RxPacket rx_pkt;
 
