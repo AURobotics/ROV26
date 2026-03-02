@@ -1,87 +1,118 @@
 #include <Arduino.h>
 #include <comms.h>
+#include <cmath>
+#include <cstdio>
+#include <optional>
 
-uint8_t ready_message[] = {SYNC_BYTE, 0x01, READY_BYTE};
+Ready_Msg ready_msg;
+
+double normalize_angle(double angle)
+{
+  angle = fmod(angle, 360.0);
+  if (angle > 180.0)
+    angle -= 360.0;
+  else if (angle < 180.0)
+    angle += 360.0;
+
+  return angle;
+}
+
+double angle_diff(double setpoint, double current)
+{
+  double diff = setpoint - current;
+  return normalize_angle(diff);
+}
+
+TxPacket dummy = {
+    .sync_byte = 0xFF,
+    .type = Message_Type::SENSOR_MESSAGE,
+    .status = 0x01,
+    .depth = 10.5f,
+    .yaw = 45.0f,
+    .pitch = -15.0f,
+    .roll = 5.0f,
+    .motor_speeds = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f}};
 
 volatile uint32_t last_send_time = 0;
+volatile Message_Type detected_rx;
+volatile bool synced = false;
 
 void setup()
 {
-    Serial.begin(9600);
+  Serial.begin(9600);
 }
 
 void loop()
 {
-    RxPacket rx_pkt;
-    TxPacket tx_pkt;
 
-    switch (flow_state)
+  RxPacket rx_pkt;
+  TxPacket tx_pkt;
+
+  last_receive_time = millis();
+
+  while (Serial.available())
+  {
+    if (millis() - last_receive_time < 30)
     {
-    case FLOW_WAITING:
-        // Clear buffer of any leftover garbage before signaling ready
-        while (Serial.available() > 0)
-            Serial.read();
-
-        Serial.write(ready_message, sizeof(ready_message));
-        flow_state = FLOW_RECEIVING;
-        break;
-
-    case FLOW_RECEIVING:
+      while (Serial.available())
+        Serial.read();
+      detected_rx = Message_Type::READY_MESSAGE;
+      break;
+    }
+    last_receive_time = millis();
+    uint8_t next = (uint8_t)Serial.read();
+    if (next == SYNC_BYTE)
     {
-        // 1. Wait for the SYNC_BYTE to appear
-        if (Serial.available() > 0)
-        {
-            if (Serial.peek() == SYNC_BYTE)
-            {
-
-                uint32_t start_wait = millis();
-                size_t bytes_read = 0;
-                uint8_t *raw_ptr = (uint8_t *)&rx_pkt;
-
-                // 2. Try to read the full sizeof(RxPacket) within 10ms
-                while (bytes_read < sizeof(RxPacket))
-                {
-                    // Check for 10ms timeout
-                    if (millis() - start_wait >= 40)
-                    {
-                        Serial.println("reset");
-                        // TIMEOUT: Don't block, just go back to waiting/ready
-                        flow_state = FLOW_WAITING;
-                        return;
-                    }
-
-                    if (Serial.available() > 0)
-                    {
-                        raw_ptr[bytes_read++] = Serial.read();
-                    }
-                }
-
-                // 3. Success: We have a full packet
-                // Since rx_pkt is now populated, move to sending
-                flow_state = FLOW_SENDING;
-            }
-            else
-            {
-                // Garbage byte at the start? Clear it and stay in RECEIVING
-                Serial.read();
-            }
-        }
+      synced = true;
+      continue;
+    }
+    else if (synced == false)
+    {
+      continue;
+    }
+    if (detected_rx == Message_Type::READY_MESSAGE)
+    {
+      Message_Type possible_type = static_cast<Message_Type>(next);
+      if (possible_type == Message_Type::COMMAND_MESSAGE || possible_type == Message_Type::OPERATION_MESSAGE || possible_type == Message_Type::PARAMETERS_MESSAGE)
+      {
+        detected_rx = possible_type;
+        continue;
+      }
+      else
+      {
+        last_receive_time = 0; // flag to empty buffer
         break;
+      }
     }
 
-    case FLOW_SENDING:
-        Serial.println("sending");
-        if (millis() - last_send_time >= 40)
-        {
-            last_send_time = millis();
-            load_tx(&tx_pkt);
-            // Ensure the TxPacket also has its sync byte set
-            tx_pkt.sync_byte = SYNC_BYTE;
-            Serial.write((const uint8_t *)&tx_pkt, sizeof(TxPacket));
-
-            // Go back to waiting for the next command
-            flow_state = FLOW_WAITING;
-        }
-        break;
+    if (detected_rx == Message_Type::COMMAND_MESSAGE)
+    {
+      if (Serial.available() + 2 < sizeof(RxPacket))
+        continue;
+      else
+        Serial.readBytes((char*)rx_buffer, sizeof(RxPacket));
     }
+    else if (detected_rx == Message_Type::OPERATION_MESSAGE)
+    {
+      if (Serial.available() + 2 < sizeof(Operation_Msg))
+        continue;
+      else
+        Serial.readBytes((char*)rx_buffer, sizeof(Operation_Msg));
+    }
+    else if (detected_rx == Message_Type::PARAMETERS_MESSAGE)
+    {
+      if (Serial.available() + 2 < sizeof(Parameter_Msg))
+        continue;
+      else
+        Serial.readBytes((char*)rx_buffer, sizeof(Parameter_Msg));
+    }
+  }
+
+  if (millis() - last_send_time >= 50)
+  {
+    last_send_time = millis();
+    Serial.write(reinterpret_cast<uint8_t *>(&dummy), sizeof(TxPacket));
+  }
+
+  Serial.write((uint8_t *)&ready_msg, sizeof(Ready_Msg));
 }

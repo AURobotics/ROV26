@@ -1,55 +1,82 @@
-// usb_comms.h
+#pragma once
 
-// ready message: 0xFF 0x01 0xAA <- they send this to us
-// status message: 0xFF SIZE TxPacket <- they send every 40ms
-
-// 0xFF RxPacket <- we respond with this
-
-#ifndef USB_COMMS_H
-#define USB_COMMS_H
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
-#include <stdint.h>
+#include <cstdint>
+#include <locale.h>
+#include <math.h>
 
 #define SYNC_BYTE 0xFF
 #define READY_BYTE 0xAA
 
-    typedef struct __attribute__((packed))
-    {
-        uint8_t sync_byte;
-        uint16_t control_byte;
-        float forces[6];
-    } RxPacket;
+// extern volatile FlowState flow_state;
+extern volatile uint8_t data_received;
+extern volatile uint32_t last_receive_time;
+extern volatile struct RxPacket rx_pkt;
 
-    typedef struct __attribute__((packed))
-    {
-        uint8_t sync_byte;
-        float motor_speeds[8];
-        float gripper_speed;
-        float depth;
-        float yaw;
-        float pitch;
-        float roll;
-        uint8_t status_byte;
-    } TxPacket;
+// start byte, type, message
 
-    typedef enum
-    {
-        FLOW_WAITING,
-        FLOW_RECEIVING,
-        FLOW_SENDING
-    } FlowState;
+// Ready message : start byte, type 0
+// tuning message: starte byte, size 10, int float float
+// sensor message: start, size , yaw pitch roll, 8 thrusters, led, grippers,
 
-    void load_tx(TxPacket *tx);
+enum class Message_Type : uint8_t
+{
+    READY_MESSAGE = 0,
+    COMMAND_MESSAGE = 1,    // Received from gui to control it
+    PARAMETERS_MESSAGE = 2, // received from gui, used to set pid param
+    OPERATION_MESSAGE = 3,  // received from gui to change operation mode
+    SENSOR_MESSAGE = 4,     // sent from stm, contains the actuator's state and sensors' data
+    TUNING_MESSAGE = 5
+};
 
-    extern volatile FlowState flow_state;
-    extern volatile uint8_t rx_buffer[sizeof(RxPacket)];
+struct __attribute__((packed)) RxPacket
+{
+    uint8_t sync_byte;
+    Message_Type type = Message_Type::COMMAND_MESSAGE;
+    uint16_t control_byte; // 4 control bits/ 1 led/ 2 grippers/ 1 toggle : 1 = move & 1 movement: 0
+                           // down / 1 up/ 1 disable safety circuit
+    float forces[6];
+};
 
-#ifdef __cplusplus
-}
-#endif
-#endif
+struct __attribute__((packed)) Parameter_Msg
+{
+    uint8_t sync_byte = 0xFF;
+    Message_Type type = Message_Type::PARAMETERS_MESSAGE;
+    float Kp, kd, ki;
+};
+
+struct __attribute__((packed)) Operation_Msg
+{
+    uint8_t sync_byte = 0xFF;
+    Message_Type type = Message_Type::OPERATION_MESSAGE;
+    uint8_t time;
+    float angle, rate; // le7ad ma mina yrod 3alaya
+};
+
+struct __attribute__((packed)) Tuning_Msg
+{
+    uint8_t sync_byte = 0xFF;
+    Message_Type type = Message_Type::TUNING_MESSAGE;
+    uint8_t axis;
+};
+
+struct __attribute__((packed)) Ready_Msg
+{
+    uint8_t sync_byte = 0xFF;
+    Message_Type type = Message_Type::READY_MESSAGE;
+};
+
+struct __attribute__((packed)) TxPacket
+{
+    uint8_t sync_byte = 10;
+    Message_Type type = Message_Type::SENSOR_MESSAGE;
+    uint8_t status{}; // led, 2 grippers, 2 bits for switches
+    float depth{};
+    float yaw{};
+    float pitch{};
+    float roll{};
+    float motor_speeds[8]{};
+};
+#define MAX2(a, b) ((a) > (b) ? (a) : (b))
+#define MAX3(a, b, c) MAX2(MAX2(a, b), c)
+constexpr int PAYLOAD_SIZE = MAX3(sizeof(RxPacket), sizeof(Parameter_Msg), sizeof(Operation_Msg));
+extern volatile uint8_t rx_buffer[PAYLOAD_SIZE];
