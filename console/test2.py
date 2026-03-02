@@ -5,6 +5,31 @@ from random import random, randint
 from enum import IntEnum, StrEnum
 
 
+# left analog stick vertical: movement fwd/ bwd
+# left analog stick horizontal: movement right/ left (shifting)
+
+# right analog stick vertical: pitch 
+# right analog stick horizontal: roll
+
+# R2 -> rotate left
+# L2 -> rotate right
+
+# R1 -> elevation up
+# L1 -> sink
+
+# DPAD Up -> Movable gripper up
+# DPAD Down -> Movable gripper down
+
+# Toggleable LED: cross
+# Fwd gripper open/close: triangle
+# movable gripper open/close: circle
+
+# GUI Stuff:
+# toggle safety circuit
+# 4 control bits
+# 4 floats from gui instead of gamepad if toggled in corresponding control bit
+
+
 class MessageType(IntEnum):
     READY_MESSAGE = 0x00
     COMMAND_MESSAGE = 0x01
@@ -37,6 +62,9 @@ while True:
         if detected_rx is None:
             if next in MessageType._value2member_map_:
                 detected_rx = MessageType(next)
+            else:
+                synced = False
+                continue
         if detected_rx == MessageType.READY_MESSAGE:
             # print("Ready")
             payload = [
@@ -50,7 +78,7 @@ while True:
             # print(f"Sent {binary_payload}")
         elif detected_rx == MessageType.SENSOR_MESSAGE:
             expected_size = struct.calcsize(MessageFormat.SENSOR_MESSAGE)
-            raw_data = esp.read(expected_size)
+            raw_data: bytes = esp.read(expected_size)
             data = list(
                 struct.unpack(MessageFormat.SENSOR_MESSAGE, raw_data[:expected_size])
             )

@@ -34,6 +34,12 @@ struct __attribute__((packed)) RxPacket
     uint16_t control_byte; // 4 control bits/ 1 led/ 2 grippers/ 1 toggle : 1 = move & 1 movement: 0
                            // down / 1 up/ 1 disable safety circuit
     float forces[6];
+    //  Force on X
+    //  Force on Y
+    //  Force on Z
+    //  Torque on pitch
+    //  Torque on roll
+    //  Torque on yaw
 };
 
 struct __attribute__((packed)) Parameter_Msg
