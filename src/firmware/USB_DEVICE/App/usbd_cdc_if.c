@@ -27,6 +27,9 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
+#define PAYLOAD_SIZE 28
+#define PARAMETER_PAYLOAD 14
+#define OPERATION_PAYLOAD 11
 /* Private macro -------------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
@@ -267,23 +270,25 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
     switch (msg_type) {
       case 1:
         if (*Len == PAYLOAD_SIZE) {
-          memcpy(&rx_pkt, Buf, sizeof(struct RxPacket));
+          memcpy(&rx_pkt, Buf, PAYLOAD_SIZE);
           last_receive_time = HAL_GetTick();
-          data_received = 1;
+          memset(Buf, '\0', PAYLOAD_SIZE);
         }
         break;
-         case 2:
-         if (*Len == PAYLOAD_SIZE) {
-           memcpy(&rx_pkt, Buf, sizeof(struct RxPacket));
+      case 2:
+         if (*Len == PARAMETER_PAYLOAD) {
+           memcpy(&para_pkt, Buf, PARAMETER_PAYLOAD);
            last_receive_time = HAL_GetTick();
-           data_received = 1;
+           memset(Buf, '\0', PARAMETER_PAYLOAD);
          }
-         case 3:
-         if (*Len == PAYLOAD_SIZE) {
-           memcpy(&rx_pkt, Buf, sizeof(struct RxPacket));
-           last_receive_time = HAL_GetTick();
-           data_received = 1;
-         }
+        break;
+      case 3:
+        if (*Len == OPERATION_PAYLOAD) {
+          memcpy(&op_pkt, Buf, OPERATION_PAYLOAD);
+          last_receive_time = HAL_GetTick();
+          memset(Buf, '\0', OPERATION_PAYLOAD);
+        }
+        break;
     }
   }
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
