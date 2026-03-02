@@ -35,13 +35,14 @@ struct __attribute__((packed)) RxPacket {
 struct __attribute__((packed)) Parameter_Msg {
     uint8_t sync_byte = 0xFF;
     Message_Type type = Message_Type::PARAMETERS_MESSAGE;
+    uint8_t axis{}; // 0 depth, 1 pitch, 2 roll, 3 yaw
     float Kp{}, kd{}, ki{};
 };
 
 struct __attribute__((packed)) Operation_Mode_Msg {
     uint8_t sync_byte = 0xFF;
     Message_Type type = Message_Type::OPERATION_MESSAGE;
-    uint8_t operation_mode{}; // 0 normal operation, 1 testing and tuning operation
+    uint8_t operation_mode{};// 0 normal operation, 1 testing and tuning operation
      // le7ad ma mina yrod 3alaya
 };
 
@@ -70,6 +71,8 @@ struct __attribute__((packed)) TxPacket {
 inline uint32_t last_receive_time{};
 inline RxPacket rx_pkt{};
 inline uint8_t data_received{};
+inline Operation_Mode_Msg op_pkt{};
+inline Parameter_Msg param_msg{};
 
 
 void load_tx(TxPacket* tx);

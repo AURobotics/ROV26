@@ -163,21 +163,28 @@ int main(void) {
         });
 
     float prev{};
-    float now = HAL_GetTick();
+    uint32_t now = HAL_GetTick();
 
     std::array<std::optional<float>, 8> sensor_data;
-
+    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
-        RxPacket rx_pkt;
         TxPacket tx_pkt;
 
         if (data_received && HAL_GetTick() - last_receive_time < 30) {
             data_received = 0;
-            CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
-            // process_data(data_type) // idk do something
+            CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
+            // process_data(data_type) // idk do something.
+            // depends on type of message do something.
+            // if default message -> change global variable which hold setpoints.
+            // if parameters message -> got set parameters.
+            // if operation mode (normal operation or tuning / testing) -> change global state.
+            // if no new message received for 100ms -> stop all motors (different than timeout(40ms)) and blink leds in a pattern
+            // if new data -> then set the new data
+            // if no new data -> just output pid without setpoints
+            // suggestions: in main loop, read sensor data and process pid, if setpoint changes then
         }
         else {
-            CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
+            CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
         }
 
         if (HAL_GetTick() - last_send_time >= 50) {
