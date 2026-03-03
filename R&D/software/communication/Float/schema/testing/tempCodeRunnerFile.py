@@ -1,1 +1,0 @@
-# Temporary scratch file (intentionally left blank and not used in production).
