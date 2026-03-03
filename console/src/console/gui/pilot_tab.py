@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QWidget, QGridLayout, QPushButton, QLabel
 from PySide6.QtGui import QPixmap
-from gui.camera_display import CameraDisplay
+from console.gui.camera_display import CameraDisplay
 
 class PilotTab(QWidget):
     def __init__(self, toggle_sidebar, cam1,cam2,cam3):

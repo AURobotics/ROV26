@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QMainWindow, QWidget, QToolBar, QStatusBar, QLabel, QPushButton, QDockWidget, QVBoxLayout, QTabWidget
 from PySide6.QtGui import QAction, QIcon
-from console.gui.camera_display import CameraDisplay
+from console.gui.camera_display import Camera
 from PySide6.QtCore import Qt
 from console.gui.pilot_tab import PilotTab
 from console.gui.copilot_tab import CoPilotTab
@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
         self.resizeDocks([self.sidebar], [250], Qt.Orientation.Horizontal)
         self.sidebar.hide()
 
-        self.camera = CameraDisplay(0)
+        self.camera = Camera(0)
         
         self.pilot_tab = PilotTab(self.toggle_sidebar, self.camera, self.camera, self.camera)
         self.copilot_tab = CoPilotTab(self.toggle_sidebar, self.camera)
