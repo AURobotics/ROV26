@@ -3,7 +3,7 @@
 
 
 class Motor {
-    enum class HandlerType : uint8_t { Function, Pwm } handler_type;
+    enum class HandlerType : uint8_t { FUNCTION, PWM } handler_type;
 
     union {
         struct Pwm_handler {
@@ -13,11 +13,11 @@ class Motor {
         void (*handler_function)(float);
     } Handler{};
 
-    explicit Motor(void (*fn)(float)) : handler_type(HandlerType::Function) {
+    explicit Motor(void (*fn)(float)) : handler_type(HandlerType::FUNCTION) {
         Handler.handler_function = fn;
     }
 
-    explicit Motor(PWM* p1, PWM* p2) : handler_type(HandlerType::Pwm) {
+    explicit Motor(PWM* p1, PWM* p2) : handler_type(HandlerType::PWM) {
         Handler.pwm_handler.p1 = p1;
         Handler.pwm_handler.p2 = p2;
     }
