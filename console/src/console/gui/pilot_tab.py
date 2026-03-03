@@ -6,7 +6,7 @@ class PilotTab(QWidget):
     def __init__(self, toggle_sidebar, cam1,cam2,cam3):
         super().__init__()
 
-        grid_layout = QGridLayout()
+        self.grid_layout = QGridLayout()
 
         self.camera1 = CameraDisplay(cam1)
         self.camera2 = CameraDisplay(cam2)
@@ -25,12 +25,12 @@ class PilotTab(QWidget):
         self.sidebar_button.setCheckable(True)
         self.sidebar_button.clicked.connect(toggle_sidebar)
 
-        grid_layout.addWidget(self.camera1,0,0)
-        grid_layout.addWidget(self.camera2,0,1)
-        grid_layout.addWidget(self.camera3,0,2)
-        grid_layout.addWidget(self.image1,1,0)
-        grid_layout.addWidget(self.image2,1,1)
-        grid_layout.addWidget(self.image3,1,2)
-        grid_layout.addWidget(self.sidebar_button,2,2)
+        self.grid_layout.addWidget(self.camera1,0,0)
+        self.grid_layout.addWidget(self.camera2,0,1)
+        self.grid_layout.addWidget(self.camera3,0,2)
+        self.grid_layout.addWidget(self.image1,1,0)
+        self.grid_layout.addWidget(self.image2,1,1)
+        self.grid_layout.addWidget(self.image3,1,2)
+        self.grid_layout.addWidget(self.sidebar_button,2,2)
 
-        self.setLayout(grid_layout)
+        self.setLayout(self.grid_layout)
