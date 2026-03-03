@@ -1,16 +1,43 @@
 #pragma once
-#include <functional>
 #include "pwm.h"
 
-class Motor {
-    PWM &pwm1, &pwm2;
-    std::function<void(float)> handler{};
 
-public:
-    Motor(const PWM& p1, const PWM& p2);
-    explicit Motor(std::function<void(float)> Handler);
+class Motor {
+    enum class HandlerType : uint8_t { Function, Pwm } handler_type;
+
+    union {
+        struct Pwm_handler {
+            PWM* p1;
+            PWM* p2;
+        } pwm_handler;
+        void (*handler_function)(float);
+    } Handler{};
+
+    explicit Motor(void (*fn)(float)) : handler_type(HandlerType::Function) {
+        Handler.handler_function = fn;
+    }
+
+    explicit Motor(PWM* p1, PWM* p2) : handler_type(HandlerType::Pwm) {
+        Handler.pwm_handler.p1 = p1;
+        Handler.pwm_handler.p2 = p2;
+    }
+
     void setup() const;
     void move(float speed) const;
     void stop() const;
     static void move_motor(Motor motors[8], float speeds[8]);
 };
+
+// class Motor {
+//     PWM& pwm1;
+//     PWM& pwm2;
+//     std::function<void(float)> handler{};
+//
+// public:
+//     Motor( PWM& p1,  PWM& p2);
+//     explicit Motor(std::function<void(float)> Handler);
+//     void setup() const;
+//     void move(float speed) const;
+//     void stop() const;
+//     static void move_motor(Motor motors[8], float speeds[8]);
+// };
