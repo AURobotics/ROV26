@@ -6,6 +6,7 @@ from console.gui.pilot_tab import PilotTab
 from console.gui.copilot_tab import CoPilotTab
 from console.gui.pitch_roll import PitchRollWidget
 from console.gui.thruster_layout import ThrusterLayoutWidget
+from console.gui.compass import CompassWidget
 
 
 class MainWindow(QMainWindow):
@@ -68,6 +69,8 @@ class MainWindow(QMainWindow):
         self.pilot_tab.grid_layout.addWidget(self.pitch_roll_widget, 1, 2)
         self.thruster_layout_widget = ThrusterLayoutWidget()
         self.pilot_tab.grid_layout.addWidget(self.thruster_layout_widget, 1, 1)
+        self.compass_widget = CompassWidget()
+        self.pilot_tab.grid_layout.addWidget(self.compass_widget, 1, 0)
 
 
 
