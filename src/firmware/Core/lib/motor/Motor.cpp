@@ -6,8 +6,8 @@ float constrain(const float x, const float a, const float b) { return x > b ? b 
 
 
 
-Motor::Motor(PWM& p1, PWM& p2) : pwm1(p1), pwm2(p2) {}
-Motor::Motor(std::function<void(float)> customHandler) : handler(std::move(customHandler)) {}
+// Motor::Motor(PWM& p1, PWM& p2) : pwm1(p1), pwm2(p2) {}
+// Motor::Motor(std::function<void(float)> customHandler) : handler(std::move(customHandler)) {}
 
 void Motor::setup() const {
     if (handler)
