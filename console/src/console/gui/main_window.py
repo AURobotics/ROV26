@@ -1,9 +1,12 @@
 from PySide6.QtWidgets import QMainWindow, QWidget, QToolBar, QStatusBar, QLabel, QPushButton, QDockWidget, QVBoxLayout, QTabWidget
 from PySide6.QtGui import QAction, QIcon
-from gui.camera_display import Camera
+from console.gui.camera_display import CameraDisplay
 from PySide6.QtCore import Qt
-from gui.pilot_tab import PilotTab
-from gui.copilot_tab import CoPilotTab
+from console.gui.pilot_tab import PilotTab
+from console.gui.copilot_tab import CoPilotTab
+from console.gui.pitch_roll import PitchRollWidget
+from console.gui.thruster_layout import ThrusterLayoutWidget
+from console.gui.compass import CompassWidget
 
 
 class MainWindow(QMainWindow):
@@ -50,7 +53,7 @@ class MainWindow(QMainWindow):
         self.resizeDocks([self.sidebar], [250], Qt.Orientation.Horizontal)
         self.sidebar.hide()
 
-        self.camera = Camera(0)
+        self.camera = CameraDisplay(0)
         
         self.pilot_tab = PilotTab(self.toggle_sidebar, self.camera, self.camera, self.camera)
         self.copilot_tab = CoPilotTab(self.toggle_sidebar, self.camera)
@@ -60,6 +63,14 @@ class MainWindow(QMainWindow):
         tab_widget.addTab(self.copilot_tab, "Co-Pilot")
 
         self.setCentralWidget(tab_widget)
+
+        #Temporary addition of 2 widgets
+        self.pitch_roll_widget = PitchRollWidget()
+        self.pilot_tab.grid_layout.addWidget(self.pitch_roll_widget, 1, 2)
+        self.thruster_layout_widget = ThrusterLayoutWidget()
+        self.pilot_tab.grid_layout.addWidget(self.thruster_layout_widget, 1, 1)
+        self.compass_widget = CompassWidget()
+        self.pilot_tab.grid_layout.addWidget(self.compass_widget, 1, 0)
 
 
 
