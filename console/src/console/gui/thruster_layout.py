@@ -1,8 +1,8 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from PySide6.QtQuickWidgets import QQuickWidget
-from PySide6.QtCore import QUrl
-from console.assets import get_asset
+from PySide6.QtCore import QUrl, Qt
 from console.gui.model.thruster_status import ThrusterStatus
+from console.assets import get_asset
 
 class ThrusterLayoutWidget(QWidget):
     def __init__(self):

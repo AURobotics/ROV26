@@ -63,4 +63,11 @@ Item {
         y: parent.height * 2/3 - height / 2
         thrustLevel: rov.thrustLevel5
     }
+
+    DirectionArrow {
+        id: directionArrow
+        anchors.centerIn: parent
+        rotation: 90 - rov.horizontalAngle
+        totalMagnitude: rov.totalHorizontalThrust / (2 * Math.sqrt(2)) // Normalize to max possible thrust
+    }
 }
