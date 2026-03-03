@@ -11,7 +11,11 @@ class STM32:
         self._connection_in_progress = False
         self.baudrate = baudrate
         self._port = None
-        self._stm_port = None
+        self.esp_ready = False  # FIX: added — used by CommunicationManager
+
+    @property
+    def serial_ready(self):
+        return self._connected  # FIX: added — used by CommunicationManager
 
     @property
     def connected(self):
@@ -27,14 +31,14 @@ class STM32:
 
     @port.setter
     def port(self, value):
-        self._port = value  # Set the private attribute, not self.port!
+        self._port = value
 
     @property
     def incoming(self):
         if self.connected:
             return self._serial.in_waiting
         else:
-            return self.connected
+            return False
 
     def clean(self):
         self._serial.reset_input_buffer()
@@ -50,17 +54,18 @@ class STM32:
                 self._serial.port = port
                 self._serial.open()
                 self._connected = True
-                time.sleep(0.1)  # Small delay for Arduino to boot
+                self._port = port
+                time.sleep(0.1) # Small delay for Arduino to boot
                 self.clean()
+                print(f"✅ Connected to {port}")
             except Exception as e:
-                print(e)
+                print(f"❌ Connection error: {e}")
                 self._serial.port = None
+                self._connected = False
             finally:
                 self._connection_in_progress = False
-                if not self.connected:
-                    self.connect(port)
 
-        connection_thread = threading.Thread(target=_connection_thread)
+        connection_thread = threading.Thread(target=_connection_thread, daemon=True)
         connection_thread.start()
 
     def disconnect(self):
@@ -69,28 +74,27 @@ class STM32:
         self._serial.close()
         self._serial.port = None
         self._connected = False
+        self.esp_ready = False
 
     def send(self, data):
         if self.connected:
             self._serial.write(data)
 
-    @property
-    def recieve(self, size=1):
+    def recieve(self, size=1):  # FIX: removed @property — can't pass args to a property
         if self.connected and self.incoming:
             buf = self._serial.read(size)
             if buf is None:
                 self.clean()
+                return None
             if len(buf) > 0:
                 return buf
+        return None
 
     def reset_connection(self):
         if self.connected and not self.incoming:
             self._serial.reset_input_buffer()
             self._serial.reset_output_buffer()
             self.disconnect()
-
             self._serial = serial.Serial(port=None, baudrate=self.baudrate)
-
-            if self.port is not None:
-                self.connect(self.port)
-
+            if self._port is not None:
+                self.connect(self._port)

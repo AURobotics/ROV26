@@ -44,16 +44,11 @@ class Mappings(dict[str, list[str]], Enum):
 
 class GamepadTypes(Enum):
     DS4 = 'PS4 Controller'
-    # DS5 = 'Sony Interactive Entertainment Wireless Controller'
-    # XBox = 'Xbox 360 Controller'
 
 
 class Controller:
     """
         Manages gamepad connection & selection, and updates key states by polling the chosen gamepad at an interval.
-
-        Warning: instantiating a Controller will initialize pygame. This may need to be done in a specific sequence
-        relative to the rest of your code.
     """
     _gamepads: list[pygame.joystick.JoystickType]
     _gamepad: pygame.joystick.JoystickType | None
@@ -72,12 +67,10 @@ class Controller:
         pygame.event.pump()
         self._refresh_gamepads(connect_if_only_device=True)
         self._killswitch = False
-        
-        #---------------------------------(ADDED)-----------------------------
-        """Event state tracking"""
+
         self._bindings_state: Dict[str, float | int] = {}
         self._last_sent_state: Dict[str, float | int] = {}
-        self._state_changed = Event() #Signals when data needs sending
+        self._state_changed = Event()
         self._listeners: list[Dict] = []
 
         self._handler_thread = Thread(target=self._handler_loop, daemon=True)
@@ -90,8 +83,7 @@ class Controller:
         self._gamepads = []
         self._bindings_state = {}
         self._last_sent_state = {}
-        self._state_changed.set() #Waking up waiting threads
-        return
+        self._state_changed.set()
 
     def _connect(self, i: int) -> None:
         self._gamepad = self._gamepads[i]
@@ -149,27 +141,22 @@ class Controller:
     def register_listener(self, callback: Callable, button: Optional[str | list[str]] = None, send_buttons=False):
         self._listeners.append({'callback': callback, 'buttons': button, 'send_buttons': send_buttons})
 
-    #----------------------------(ADDED)--------------------------------------
-    """Returns True if any value has changed since the last check"""
-    def has_state_changed(self) ->bool:
+    def has_state_changed(self) -> bool:
         return self._state_changed.is_set()
-    
-    """Call this after sending data to reset the change flag"""
+
     def mark_data_sent(self) -> None:
         self._last_sent_state = self.bindings_state.copy()
         self._state_changed.clear()
-    """Returns the values that have changed"""
+
     def get_changed_data(self) -> Dict[str, float | int]:
         return {k: v for k, v in self._bindings_state.items()
-                if self._last_sent_state.get(k) !=v }
-    
+                if self._last_sent_state.get(k) != v}
+
     def _handler_loop(self):
         try:
             while not self._killswitch:
                 time.sleep(0.015)
                 try:
-                    # DO NOT PASS A LIST OF THE EVENTS OF INTEREST
-                    # CAN BREAK THE FUNCTION INTERNALLY AFTER PROLONGED USE
                     for event in pygame.event.get():
                         if event.type == pygame.JOYDEVICEADDED:
                             self._refresh_gamepads(connect_if_only_device=True)
@@ -196,6 +183,7 @@ class Controller:
                 except Exception:
                     if self._killswitch:
                         break
+
                 if self._gamepad is None:
                     continue
 
@@ -223,16 +211,14 @@ class Controller:
                     }
                 new_state = {**buttons, **axes, **triggers}
 
-                #--------------------------(ADDED)---------------------------
-                """Detect changes more efficient"""
-                if new_state != self.bindings_state:
-                    self.bindings_state = new_state
+                if new_state != self._bindings_state:
+                    self._bindings_state = new_state
                     self._state_changed.set()
-                """Wake up more frequantly only of data is changing"""
+
                 if self._state_changed.is_set():
-                    time.sleep(0.005) #5ms when active (200HZ check)
+                    time.sleep(0.005)
                 else:
-                    time.sleep(0.02) #20ms when idle (50HZ check)
+                    time.sleep(0.02)
 
         except SystemExit:
             return self.kill()
