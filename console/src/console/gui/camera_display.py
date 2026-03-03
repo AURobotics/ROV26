@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QWidget, QLabel, QSizePolicy, QHBoxLayout, QPushButton
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QImage, QPixmap, QResizeEvent
-from core.vision.camera import Camera
+from console.core.vision.camera import Camera
 import cv2
 
 class CameraDisplay(QWidget):
