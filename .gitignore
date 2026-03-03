@@ -5,3 +5,14 @@ frames/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
