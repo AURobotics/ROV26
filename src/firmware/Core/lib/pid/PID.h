@@ -16,11 +16,11 @@ class PID {
 
 public:
     explicit constexpr PID(double kp, double kd, double ki);
-    PID(const PID&) = delete; // copy constructor
-    PID& operator=(const PID&) = delete;
-
-    PID(PID&&) = default; // move constructor
-    PID& operator=(PID&&) = default;
+    // PID(const PID&) = delete; // copy constructor
+    // PID& operator=(const PID&) = delete;
+    //
+    // PID(PID&&) = default; // move constructor
+    // PID& operator=(PID&&) = default;
 
     void set_gains(double _kp, double _kd, double _ki);
     void set_integral_limits(double _integral_max, double _integral_min);

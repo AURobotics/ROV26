@@ -14,21 +14,22 @@
 // sensor message: start, size , yaw pitch roll, 8 thrusters, led, grippers,
 
 
-
 enum class Message_Type : uint8_t {
     READY_MESSAGE = 0,
     COMMAND_MESSAGE = 1, // Received from gui to control it
     PARAMETERS_MESSAGE = 2, // received from gui, used to set pid param
     OPERATION_MESSAGE = 3, // received from gui to change operation mode
     SENSOR_MESSAGE = 4, // sent from stm, contains the actuator's state and sensors' data
-    TUNING_MESSAGE = 5
+    TUNING_MESSAGE = 5,
+    CONTROLLER_RESPONSE = 6
 };
 
 
 struct __attribute__((packed)) RxPacket {
     uint8_t sync_byte;
     uint16_t control_byte; // 4 control bits/ 1 led/ 2 grippers/ 1 toggle : 1 = move & 1 movement: 0
-                           // down , 1 up / 1 bit enable or disable water sensors / 1 bit enable disable limit switches
+                           // down , 1 up / 1 bit enable or disable water sensors / 1 bit enable
+                           // disable limit switches
     float forces[6];
 };
 
@@ -42,8 +43,7 @@ struct __attribute__((packed)) Parameter_Msg {
 struct __attribute__((packed)) Operation_Mode_Msg {
     uint8_t sync_byte = 0xFF;
     Message_Type type = Message_Type::OPERATION_MESSAGE;
-    uint8_t operation_mode{};// 0 normal operation, 1 testing and tuning operation
-     // le7ad ma mina yrod 3alaya
+    uint8_t operation_mode{}; // 0 normal operation, 1 testing and tuning operation
 };
 
 struct __attribute__((packed)) Tuning_Msg {
@@ -55,6 +55,14 @@ struct __attribute__((packed)) Tuning_Msg {
 struct __attribute__((packed)) Ready_Msg {
     uint8_t sync_byte = 0xFF;
     Message_Type type = Message_Type::READY_MESSAGE;
+};
+
+struct __attribute__((packed)) Controller_response_msg {
+    uint8_t sync_byte = 0xFF;
+    Message_Type type = Message_Type::CONTROLLER_RESPONSE;
+    int16_t timestamp{};
+    float angle{};
+    float angle_rate{};
 };
 
 struct __attribute__((packed)) TxPacket {
