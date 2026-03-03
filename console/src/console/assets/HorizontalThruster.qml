@@ -28,7 +28,7 @@ Rectangle {
         height: 0
         anchors.horizontalCenter: parent.horizontalCenter
         y: parent.height // Start at the "exhaust"
-        running: Math.abs(root.thrustLevel) > 0 // Only run when there's power
+        running: true
 
         Emitter {
             width: parent.width
