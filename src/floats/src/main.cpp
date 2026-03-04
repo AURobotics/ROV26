@@ -3,7 +3,6 @@
 #include "ota_manager.h"
 #include <WiFi.h>
 
-
 // WiFi credentials
 const char *WIFI_SSID = "realme 12";
 const char *WIFI_PASSWORD = "12345678";
@@ -16,70 +15,43 @@ const char *MQTT_PASSWORD = nullptr; // Optional
 const bool AS_ACCESS_POINT = false;
 // Create MQTT client instance
 ESPMqttClient mqttClient(
-    WIFI_SSID,
-    WIFI_PASSWORD,
     MQTT_SERVER,
     MQTT_PORT,
     MQTT_USER,
     MQTT_PASSWORD,
     AS_ACCESS_POINT);
 
-//ArduinoOTAClass ArduinoOTA;
+// ArduinoOTAClass ArduinoOTA;
 
 void setup()
 {
     Serial.begin(115200);
-    setupOTA(WIFI_SSID, WIFI_PASSWORD);
-    Serial.println("\nConnected! IP address: " + WiFi.localIP().toString());
-    Serial.println("OTA Ready");
+    connectToWiFi(WIFI_SSID, WIFI_PASSWORD, AS_ACCESS_POINT);
+
+    // OTA
+    setupOTA();
 
     // Set callback for incoming messages
-    mqttClient.setCallback([](char *topic, uint8_t *payload, unsigned int length)
-                           {
-        Serial.print("Message arrived [");
-        Serial.print(topic);
-        Serial.print("] ");
-        
-        char message[length + 1];
-        for (unsigned int i = 0; i < length; i++) {
-            message[i] = (char)payload[i];
-        }
-        message[length] = '\0';
-        Serial.println(message);
-        
-        // Example: Turn on/off LED based on message
-        if (strcmp(topic, "esp/led") == 0) {
-            Serial.print("Received LED command: ");
-            Serial.println(message);
-            if (strcmp(message, "ON") == 0) {
-                digitalWrite(LED_BUILTIN, LOW);  // Turn on LED
-                Serial.println("LED turned ON");
-            } else if (strcmp(message, "OFF") == 0) {
-                digitalWrite(LED_BUILTIN, HIGH); // Turn off LED
-                Serial.println("LED turned OFF");
-            }
-        } });
+    setMqttCallback();
 
     // Initialize the client
     mqttClient.begin();
 
     // Subscribe to topics
-    mqttClient.subscribe("esp/led");
+    mqttClient.subscribe("to/esp");
 
     // Publish connection status
-    mqttClient.publish("esp/status", "connected", true);
-    mqttClient.publish("esp/ip", WiFi.localIP().toString().c_str(), true);
-
-    pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, HIGH); // Start with LED off
+    mqttClient.publish("from/esp", "connected", true);
 }
 
 void loop()
 {
+    // Handle OTA updates
     otaupdate();
+    // Handle MQTT communication
     mqttClient.loop();
 
-    // Publish sensor data every 10 seconds
+    // TEST: Publish sensor data every 5 seconds
     static unsigned long lastPublish = 0;
     if (millis() - lastPublish > 5000)
     {
@@ -95,9 +67,65 @@ void loop()
                  "{\"temperature\":%.1f,\"humidity\":%.1f}",
                  temperature, humidity);
 
-        if (mqttClient.publish("esp/sensors", payload))
+        if (mqttClient.publish("from/esp", payload))
         {
             Serial.println("Sensor data published");
         }
     }
+}
+
+void connectToWiFi(const char *ssid, const char *password, bool asAccessPoint)
+{
+    if (asAccessPoint)
+    {
+        initAccessPoint(ssid, password);
+    }
+    else
+    {
+        Serial.print("Connecting to WiFi");
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(ssid, password);
+
+        // Poll every 500ms until connected
+        while (WiFi.status() != WL_CONNECTED)
+        {
+            delay(500);
+            Serial.print("Connecting to WiFi..");
+        }
+
+        Serial.println("\nWiFi connected");
+        Serial.print("IP address: ");
+        Serial.println(WiFi.localIP());
+    }
+}
+void initAccessPoint(const char *ssid, const char *password)
+{
+    IPAddress local_IP(192, 168, 1, 22);
+    IPAddress gateway(192, 168, 1, 5);
+    IPAddress subnet(255, 255, 255, 0);
+
+    Serial.print("Setting up Access Point ... ");
+    Serial.println(WiFi.softAPConfig(local_IP, gateway, subnet) ? "Ready" : "Failed!");
+
+    Serial.print("Starting Access Point ... ");
+    Serial.println(WiFi.softAP(ssid, password) ? "Ready" : "Failed!");
+
+    Serial.print("IP address = ");
+    Serial.println(WiFi.softAPIP());
+}
+
+void setMqttCallback()
+{
+    mqttClient.setCallback([](char *topic, uint8_t *payload, unsigned int length)
+                           {
+        Serial.print("Message arrived [");
+        Serial.print(topic);
+        Serial.print("] ");
+        
+        char message[length + 1];
+        for (unsigned int i = 0; i < length; i++) {
+            message[i] = (char)payload[i];
+        }
+        message[length] = '\0';
+        Serial.println(message); });
 }
