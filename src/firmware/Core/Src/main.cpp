@@ -108,10 +108,10 @@ int main(void) {
 
     /*Intialize pwms  and motors*/
     // Create PWM wrappers
-    const PWM pwm1A(&htim1, TIM_CHANNEL_2);
-    const PWM pwm1B(&htim1, TIM_CHANNEL_3);
+    PWM pwm1A(&htim1, TIM_CHANNEL_2);
+    PWM pwm1B(&htim1, TIM_CHANNEL_3);
 
-    const PWM pwm2A(&htim3, TIM_CHANNEL_4);
+    PWM pwm2A(&htim3, TIM_CHANNEL_4);
     PWM pwm2B(&htim2, TIM_CHANNEL_3);
 
     PWM pwm3A(&htim3, TIM_CHANNEL_3);
@@ -133,14 +133,14 @@ int main(void) {
     PWM pwm8B(&htim2, TIM_CHANNEL_2);
 
 
-    Motor motors[] = {Motor(pwm1A, pwm1B),
-                      Motor(pwm2A, pwm2B),
-                      Motor(pwm3A, pwm3B),
-                      Motor(pwm4A, pwm4B),
-                      Motor(pwm5A, pwm5B),
-                      Motor(pwm6A, pwm6B),
-                      Motor(pwm7A, pwm7B),
-                      Motor(pwm8A, pwm8B)};
+    Motor motors[] = {Motor(&pwm1A, &pwm1B),
+                      Motor(&pwm2A, &pwm2B),
+                      Motor(&pwm3A, &pwm3B),
+                      Motor(&pwm4A, &pwm4B),
+                      Motor(&pwm5A, &pwm5B),
+                      Motor(&pwm6A, &pwm6B),
+                      Motor(&pwm7A, &pwm7B),
+                      Motor(&pwm8A, &pwm8B)};
 
     for (const auto& motor : motors)
         motor.setup();
