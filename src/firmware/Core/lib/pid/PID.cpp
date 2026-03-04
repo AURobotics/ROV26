@@ -1,7 +1,5 @@
 #include "PID.h"
 
-constexpr PID::PID(double kp, double kd, double ki) : kp(kp), kd(kd), ki(ki) {}
-
 void PID::set_gains(const double _kp, const double _kd, const double _ki) {
     this->kp = _kp;
     this->kd = _kd;
