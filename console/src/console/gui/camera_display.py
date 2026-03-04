@@ -1,11 +1,11 @@
 from PySide6.QtWidgets import QWidget, QLabel, QSizePolicy, QHBoxLayout, QPushButton
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QImage, QPixmap, QResizeEvent
-from console.core.vision.camera import Camera
+from console.core.vision.camera import VideoStream
 import cv2
 
 class CameraDisplay(QWidget):
-    def __init__(self, camera_device, parent: QWidget | None = None):
+    def __init__(self, camera_device: VideoStream, parent: QWidget | None = None):
         super().__init__(parent)
         
         self._camera_device = camera_device

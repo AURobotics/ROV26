@@ -1,13 +1,15 @@
 import math
 from PySide6.QtCore import QTimer, Slot, QObject, Property, Signal
-from random import uniform
+
+from console.gui.model.sensors import Sensors
 
 
 class ThrusterStatus(QObject):
     thrustLevelChanged = Signal()
 
-    def __init__(self):
+    def __init__(self, model: Sensors):
         super().__init__()
+        self._model = model
         self._thrustLevel1 = 0
         self._thrustLevel2 = 0
         self._thrustLevel3 = 0
@@ -19,7 +21,7 @@ class ThrusterStatus(QObject):
 
         self._timer = QTimer()
         self._timer.timeout.connect(self.update_thrust)
-        self._timer.start(500)
+        self._timer.start(40)
 
     @Property(float, notify=thrustLevelChanged)
     def thrustLevel1(self):
@@ -64,11 +66,11 @@ class ThrusterStatus(QObject):
 
     @Slot()
     def update_thrust(self):
-        new_thrust1 = max(-1, min(1, self._thrustLevel1 + uniform(-0.1, 0.1)))
-        new_thrust2 = max(-1, min(1, self._thrustLevel2 + uniform(-0.1, 0.1)))
-        new_thrust3 = max(-1, min(1, self._thrustLevel3 + uniform(-0.1, 0.1)))
-        new_thrust4 = max(-1, min(1, self._thrustLevel4 + uniform(-0.1, 0.1)))
-        new_thrust5 = max(-1, min(1, self._thrustLevel5 + uniform(-0.1, 0.1)))
+        new_thrust1 = self._model.thruster(1)
+        new_thrust2 = self._model.thruster(2)
+        new_thrust3 = self._model.thruster(3)
+        new_thrust4 = self._model.thruster(4)
+        new_thrust5 = self._model.thruster(5)
 
         changed = False
         if self._thrustLevel1 != new_thrust1:

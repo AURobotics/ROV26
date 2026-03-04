@@ -1,14 +1,15 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtCore import QUrl, Qt
+from console.gui.model.sensors import Sensors
 from console.gui.model.thruster_status import ThrusterStatus
 from console.assets import get_asset
 
 class ThrusterLayoutWidget(QWidget):
-    def __init__(self):
+    def __init__(self, model: Sensors):
         super().__init__()
 
-        self.data_bridge = ThrusterStatus()
+        self.data_bridge = ThrusterStatus(model)
 
         self._layout = QVBoxLayout(self)
         self._view = QQuickWidget()

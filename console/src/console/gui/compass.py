@@ -3,12 +3,13 @@ from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtCore import QUrl, Qt
 from console.gui.model.rov_data import ROVData
 from console.assets import get_asset
+from console.gui.model.sensors import Sensors
 
 class CompassWidget(QWidget):
-    def __init__(self):
+    def __init__(self, model: Sensors):
         super().__init__()
 
-        self.data_bridge = ROVData()
+        self.data_bridge = ROVData(model)
 
         self._layout = QVBoxLayout(self)
         self._view = QQuickWidget()

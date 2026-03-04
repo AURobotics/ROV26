@@ -3,7 +3,7 @@ from PySide6.QtGui import QPixmap
 from console.gui.camera_display import CameraDisplay
 
 class PilotTab(QWidget):
-    def __init__(self, toggle_sidebar, cam1,cam2,cam3):
+    def __init__(self, cam1,cam2,cam3):
         super().__init__()
 
         self.grid_layout = QGridLayout()
@@ -21,9 +21,6 @@ class PilotTab(QWidget):
         self.image3 = QLabel()
         self.image3.setPixmap(QPixmap("pic.png"))
 
-        self.sidebar_button = QPushButton("Control")
-        self.sidebar_button.setCheckable(True)
-        self.sidebar_button.clicked.connect(toggle_sidebar)
 
         self.grid_layout.addWidget(self.camera1,0,0)
         self.grid_layout.addWidget(self.camera2,0,1)
@@ -31,6 +28,5 @@ class PilotTab(QWidget):
         self.grid_layout.addWidget(self.image1,1,0)
         self.grid_layout.addWidget(self.image2,1,1)
         self.grid_layout.addWidget(self.image3,1,2)
-        self.grid_layout.addWidget(self.sidebar_button,2,2)
 
         self.setLayout(self.grid_layout)
