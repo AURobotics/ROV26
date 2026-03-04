@@ -3,12 +3,16 @@
 #include "ota_manager.h"
 #include <WiFi.h>
 
+void connectToWiFi(const char *ssid, const char *password, bool asAccessPoint);
+void initAccessPoint(const char *ssid, const char *password);
+void setMqttCallback();
+
 // WiFi credentials
-const char *WIFI_SSID = "realme 12";
-const char *WIFI_PASSWORD = "12345678";
+const char *WIFI_SSID = "";
+const char *WIFI_PASSWORD = "";
 
 // MQTT broker settings
-const char *MQTT_SERVER = "broker.emqx.io";
+const char *MQTT_SERVER = "192.168.1.9";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optional
@@ -18,8 +22,7 @@ ESPMqttClient mqttClient(
     MQTT_SERVER,
     MQTT_PORT,
     MQTT_USER,
-    MQTT_PASSWORD,
-    AS_ACCESS_POINT);
+    MQTT_PASSWORD);
 
 // ArduinoOTAClass ArduinoOTA;
 
@@ -29,7 +32,7 @@ void setup()
     connectToWiFi(WIFI_SSID, WIFI_PASSWORD, AS_ACCESS_POINT);
 
     // OTA
-    setupOTA();
+    // setupOTA();
 
     // Set callback for incoming messages
     setMqttCallback();
@@ -39,17 +42,23 @@ void setup()
 
     // Subscribe to topics
     mqttClient.subscribe("to/esp");
-
-    // Publish connection status
-    mqttClient.publish("from/esp", "connected", true);
 }
 
 void loop()
 {
     // Handle OTA updates
-    otaupdate();
+    // otaupdate();
+
     // Handle MQTT communication
     mqttClient.loop();
+
+    // Ensure WiFi is still connected before checking MQTT state
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        Serial.println("WiFi connection lost. Reconnecting...");
+        WiFi.reconnect();
+        delay(500);
+    }
 
     // TEST: Publish sensor data every 5 seconds
     static unsigned long lastPublish = 0;
@@ -69,7 +78,7 @@ void loop()
 
         if (mqttClient.publish("from/esp", payload))
         {
-            Serial.println("Sensor data published");
+            Serial.println("Sensor data published: " + String(payload));
         }
     }
 }
