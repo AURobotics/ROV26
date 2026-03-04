@@ -10,3 +10,11 @@ float Controller::output(const float setpoint, const float angle, const float dt
     }
     return static_cast<float>(angle_pid.update(setpoint, angle, dt));
 }
+
+void Controller::set_angle_pid(float kp, float ki, float kd) { angle_pid.set_gains(kp, ki, kd); }
+
+void Controller::set_rate_pid(float kp, float ki, float kd) {
+    if (rate_pid.has_value()) {
+        rate_pid->set_gains(kp, ki, kd);
+    }
+}
