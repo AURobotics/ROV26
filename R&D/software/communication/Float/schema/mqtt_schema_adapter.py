@@ -1,9 +1,9 @@
 import json
-from SOFTWARE.communication.Float.base_types import MqttMessage
+from ..base_types import MqttMessage
 
 from typing import Any, Dict, cast
-from SOFTWARE.communication.Float.schema.abstract_schema_configuration.abstract_schema import FieldSchema
-from SOFTWARE.communication.Float.schema.mqtt_schema_types import MQTTBrokerConfig, AllTopicsSchema, MessageSchema
+from .abstract_schema_configuration.abstract_schema import FieldSchema
+from .mqtt_schema_types import MQTTBrokerConfig, AllTopicsSchema, MessageSchema
 
 
 class MessageSchema_to_MqttMessage_Adapter(MqttMessage):
