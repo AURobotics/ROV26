@@ -5,9 +5,7 @@ ESPMqttClient::ESPMqttClient(
     const char *mqtt_server,
     int mqtt_port,
     const char *mqtt_username,
-    const char *mqtt_password,
-    const bool as_AccessPoint) : _as_AccessPoint(as_AccessPoint),
-                                 _mqtt_broker(mqtt_server),
+    const char *mqtt_password) : _mqtt_broker(mqtt_server),
                                  _mqtt_port(mqtt_port),
                                  _mqtt_username(mqtt_username),
                                  _mqtt_password(mqtt_password),
@@ -38,6 +36,7 @@ void ESPMqttClient::begin()
         if (_callback) {
             _callback(topic, payload, length);
         } });
+    connectToMQTT();
 }
 
 // =============================================================================
@@ -48,14 +47,6 @@ void ESPMqttClient::begin()
 // =============================================================================
 void ESPMqttClient::loop()
 {
-    // Ensure WiFi is still connected before checking MQTT state
-    if (!_as_AccessPoint && WiFi.status() != WL_CONNECTED)
-    {
-        Serial.println("WiFi connection lost. Reconnecting...");
-        WiFi.reconnect();
-        delay(500);
-    }
-
     // If MQTT connection has dropped, attempt to reconnect
     if (!_mqttClient.connected())
     {
@@ -139,12 +130,12 @@ bool ESPMqttClient::publish(const char *topic, const char *payload, bool retaine
 // =============================================================================
 bool ESPMqttClient::subscribe(const char *topic)
 {
-    if (!_mqttClient.connected())
+    std::string t(topic);
+    // avoid duplicate entries
+    if (std::find(_subscribed_topics.begin(), _subscribed_topics.end(), t) == _subscribed_topics.end())
     {
-        Serial.println("Cannot subscribe, MQTT client not connected");
-        return false;
+        _subscribed_topics.push_back(t);
     }
-    _subscribed_topics.push_back(std::string(topic));
     return _mqttClient.subscribe(topic);
 }
 

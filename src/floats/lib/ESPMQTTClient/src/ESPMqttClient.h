@@ -19,8 +19,7 @@ public:
         const char *mqtt_broker,
         int mqtt_port = 1883,
         const char *mqtt_username = nullptr,
-        const char *mqtt_password = nullptr,
-        const bool as_AccessPoint = true);
+        const char *mqtt_password = nullptr);
 
     // Destructor
     ~ESPMqttClient();
@@ -39,7 +38,6 @@ private:
     // WiFi
     const char *_ssid;
     const char *_password;
-    const bool _as_AccessPoint; // determines if esp will work as access point or connect to wifi
 
     // MQTT Broker
     const char *_mqtt_broker;
