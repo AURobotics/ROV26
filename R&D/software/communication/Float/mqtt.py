@@ -1,5 +1,7 @@
 import logging
+from random import randint
 import threading
+
 from .base_types import MqttMessage
 
 
@@ -7,83 +9,126 @@ from threading import Thread
 import time
 import typing
 
+from paho.mqtt import client as mqtt_client
 from paho.mqtt.client import Client as pahoMC # paho_mqtt_client
 from paho.mqtt.enums import CallbackAPIVersion
 
 
 # class holding data for connection
 class Mqtt():
-    def __init__(self, address = 'localhost', port = 1883):
+    def __init__(self, address = 'localhost', port = 1883, client_id = None, username = None, password = None):
         self.address = address
         self.port = port
+        self.client_id = client_id or f'python-mqtt-{randint(0, 1000)}'
+        self.username = username
+        self.password = password
         self.unacked_publish = set()
         self._lock = threading.Lock()
-        self._pubSetup()
+        # Registry mapping topic string -> list of MqttMessage handlers
+        self._topic_handlers: dict[str, list[MqttMessage]] = {} # for subscribed topics
+        self._connect()
 
-    def _pubSetup(self):
-        self.pub = pahoMC(CallbackAPIVersion.VERSION2)
-        self.pub.user_data_set(self.unacked_publish)
-        self.pub.on_publish = self._on_publish
-        self.pub.connect(self.address, self.port)
-        self.pub.loop_start()
+    def _connect(self):
+        def on_connect(client, userdata, flags, rc, *args, **kwargs):
+            if rc == 0:
+                print("Connected to MQTT Broker")
+                # re-subscribe to all registered topics on (re)connect
+                for topic in self._topic_handlers:
+                    client.subscribe(topic)
+                    print(f'Subscribed to {topic}')
+            else:
+                print(f"Failed to connect, return code {rc}")
+
+        self.client = mqtt_client.Client(CallbackAPIVersion.VERSION2, client_id=self.client_id)
+        if self.username and self.password:
+            self.client.username_pw_set(self.username, self.password)
+        self.client.on_connect = on_connect
+        self.client.on_message = self._on_message
+        self.client.on_publish = self._on_publish
+        self.client.connect(self.address, self.port)
+        self.client.loop_start()
 
     def _on_publish(self, client, userdata, mid, *args, **kwargs):
         # paho-mqtt (MQTT v5) may pass extra parameters (reason_code, properties).
         # Accept extras defensively so the callback works across versions.
         with self._lock:
+            self.unacked_publish.discard(mid)
+
+    def _on_message(self, client, userdata, message):
+        """Dispatch incoming messages to all handlers registered for the topic."""
+        payload_str: str = message.payload.decode()
+        print(f'Received on {message.topic}: {payload_str}')
+        handlers = self._topic_handlers.get(message.topic, [])
+        for handler in handlers:
             try:
-                if userdata is not None:
-                    userdata.discard(mid)
+                handler.decode(payload_str)
             except Exception as e:
-                logging.error(f"Error in on_publish callback: {e}")
+                logging.error(f"Error in message handler for {message.topic}: {e}")
+
+    def register_handler(self, topic: str, handler: MqttMessage):
+        """register a message handler for a topic. subscribes if not already subscribed."""
+        if topic not in self._topic_handlers:
+            self._topic_handlers[topic] = []
+            # Only subscribe once the client is connected; on_connect will handle reconnects
+            if self.client.is_connected():
+                self.client.subscribe(topic)
+                print(f'Subscribed to {topic}')
+        self._topic_handlers[topic].append(handler)
 
     def reset_address(self, address):
         self.address = address
-        self.pub.disconnect()
-        self._pubSetup()
+        self.client.loop_stop()
+        self.client.disconnect()
+        self._connect()
 
     def reset_port(self, port):
         self.port = port
-        self.pub.disconnect()
-        self._pubSetup()
+        self.client.loop_stop()
+        self.client.disconnect()
+        self._connect()
 
-    def cleanup(self):
-        """Clean up MQTT resources"""
-        self.pub.loop_stop()
-        self.pub.disconnect()
-    
+    def disconnect(self):
+        self.client.loop_stop()
+        self.client.disconnect()
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.cleanup()
-    
+        self.disconnect()
+
 
 class Topic():
-    def __init__(self, topic: str, mqtt_connection:Mqtt):
+    def __init__(self, topic: str, mqtt_connection: Mqtt):
         self.topic = topic
         self.mqtt = mqtt_connection
 
     @property
-    def get_topic(self) -> str:
+    def topic_name(self) -> str:
         return self.topic
-    
+
     @property
-    def get_mqtt_connection(self) -> Mqtt:
+    def mqtt_connection(self) -> Mqtt:
         return self.mqtt
 
-    def publish(self, message:str):
-        self._pub_thread = Thread(target=self._publishing, args=[self.topic, message], daemon=True)
+    def publish(self, message: str):
+        self._pub_thread = Thread(target=self._publishing, args=[self.topic, message], daemon=False)
         self._pub_thread.start()
-        
-    def _publishing(self, topic, message):    
-        mqtt_client = self.mqtt
-        
-        msg = mqtt_client.pub.publish(topic, message)
-        if mqtt_client.unacked_publish is not None:
-            mqtt_client.unacked_publish.add(msg.mid)
-        while len(mqtt_client.unacked_publish):
+
+    def _publishing(self, topic, message):
+        mqtt_conn = self.mqtt
+
+        msg = mqtt_conn.client.publish(topic, message)
+        with mqtt_conn._lock:
+            mqtt_conn.unacked_publish.add(msg.mid)
+
+        # Wait until ack is received
+        while True:
+            with mqtt_conn._lock:
+                if msg.mid not in mqtt_conn.unacked_publish:
+                    break
             time.sleep(0.1)
+
         msg.wait_for_publish()
 
     def subscribe(self, message_handler:MqttMessage):
@@ -109,16 +154,14 @@ class Topic():
 """
     How does this work?
     1. We create an Mqtt connection object (mqtt_connection).
-    2. We create a concrete implementation of MqttMessage (TestMessageHandler)
+    2. We create a concrete implementation of MqttMessage (e.g. SensorDataMessage).
     3. We create a Topic object with the topic name and the mqtt_connection.
-    4. to subscribe to a topic: with our message handler (topic.subscribe(message_handler)).
-    5. to publish messages to a topic: using encode method (after putting your values in the message handler) in TestMessageHandler (topic.publish(message_handler.encode())).
-    6. The message handler's decode method is called with the received message, and it updates its internal state (received_data and message_count) accordingly.
-
-    summarizing MqttMessage:
-    - MqttMessage is an abstract base class that defines the structure for MQTT messages.
-    - It has a class method "encode" -> use that to encode messages before publishing.
-    - It has an abstract method decode -> this is how message will be decoded when received
+    4. To subscribe to a topic: topic.subscribe(message_handler).
+       Multiple handlers can be registered for the same topic, and multiple topics
+       are all handled by a single shared on_message callback on the Mqtt object.
+    5. To publish: topic.publish(message_handler.encode()).
+    6. The message handler's decode method is called with the received message,
+       and it updates its internal state accordingly.
 """
 
 
@@ -281,7 +324,6 @@ if __name__ == "__main__":
     class SensorDataMessage(MqttMessage):
         def __init__(self):
             super().__init__()
-            # Initialize default values
             self.add_variable("temperature", 0.0)
             self.add_variable("humidity", 0.0)
             
@@ -310,7 +352,6 @@ if __name__ == "__main__":
         def __str__(self):
             return f"esp led: {self.message}"
 
-    # Create MQTT connection
     mqtt_connection = Mqtt(address='localhost', port=1883)
 
     # Create topics
@@ -318,19 +359,16 @@ if __name__ == "__main__":
     sensor_topic = Topic("from/esp", mqtt_connection)
     to_esp = Topic("to/esp", mqtt_connection)
 
-    # Create message handlers
     sensor_handler = SensorDataMessage()
     to_esp_handler = DeviceLed()
     to_esp_test_handler = DeviceLed()
 
-    # Subscribe to topics
     print("\nSubscribing to topics...")
     sensor_topic.subscribe(sensor_handler)
     # to_esp.subscribe(to_esp_test_handler)
     # Give time for subscriptions to establish
     time.sleep(1)
 
-    # Test publishing sensor data
     print("\nPublishing sensor data...")
 
     
@@ -347,3 +385,4 @@ if __name__ == "__main__":
             time.sleep(1)
     except KeyboardInterrupt:
         print("\nExiting test...")
+        mqtt_connection.disconnect()
