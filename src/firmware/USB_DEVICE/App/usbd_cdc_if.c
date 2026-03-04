@@ -22,7 +22,7 @@
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-#include "usb_comms.h"
+#include "../../Core/Inc/usb_comms.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -123,6 +123,11 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
  * @brief Private functions declaration.
  * @{
  */
+volatile uint32_t last_receive_time = 0;
+volatile RxPacket rx_pkt = {0};
+volatile uint8_t data_received = 0;
+volatile Operation_Mode_Msg op_pkt = {0};
+volatile Parameter_Msg param_msg = {0};
 
 static int8_t CDC_Init_FS(void);
 static int8_t CDC_DeInit_FS(void);
@@ -257,8 +262,8 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t* Len) {
         uint8_t msg_type = Buf[1];
         switch (msg_type) {
         case 1 :
-            if (*Len == PAYLOAD_SIZE) {
-                memcpy(&rx_pkt, Buf, sizeof(struct RxPacket));
+            if (*Len == PAYLOAD_SIZE) { //TODO: why not use LEN instead of sizeof
+                memcpy(&rx_pkt, Buf, sizeof(RxPacket));
                 last_receive_time = HAL_GetTick();
                 memset(Buf, '\0', PAYLOAD_SIZE);
             }

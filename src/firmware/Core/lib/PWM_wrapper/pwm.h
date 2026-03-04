@@ -6,7 +6,7 @@ class PWM {
     uint32_t channel;
 
 public:
-    explicit constexpr PWM(TIM_HandleTypeDef* timer, uint32_t ch);
+    explicit constexpr PWM(TIM_HandleTypeDef* timer, uint32_t ch) : htim(timer), channel(ch) {}
     PWM(const PWM&) = delete; // copy constructor
     PWM& operator=(const PWM&) = delete;
 

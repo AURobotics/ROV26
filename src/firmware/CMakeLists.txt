@@ -29,7 +29,7 @@ project(${CMAKE_PROJECT_NAME})
 message("Build type: " ${CMAKE_BUILD_TYPE})
 
 # Enable CMake support for ASM and C languages
-enable_language(ASM)
+enable_language(ASM C CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 # Create an executable object type
@@ -40,7 +40,7 @@ add_subdirectory(cmake/stm32cubemx)
 
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined library search paths
+
 )
 
 # Add sources to executable
@@ -51,7 +51,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/motor/Motor.cpp
         Core/lib/controller/Controller.cpp
         Core/lib/kinematics/Kinematics.cpp
-        Core/lib/usb_comms/usb_comms.cpp
         Core/lib/i2c_wrapper/i2c_wrapper.cpp
         Core/lib/PWM_wrapper/pwm.cpp
     # Add user sources here
@@ -68,6 +67,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/usb_comms
         Core/lib/i2c_wrapper
         Core/lib/PWM_wrapper
+        Core/Inc
     # Add user defined include paths
 )
 

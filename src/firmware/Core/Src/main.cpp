@@ -145,22 +145,22 @@ int main(void) {
     for (const auto& motor : motors)
         motor.setup();
 
-    Motor gripper(
-        [](float speed)
-        {
-            if (speed > 0.1f) {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-            }
-            else if (speed < -0.1f) {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
-            }
-            else {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-            }
-        });
+    // Motor gripper(
+    //     [](float speed)
+    //     {
+    //         if (speed > 0.1f) {
+    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+    //         }
+    //         else if (speed < -0.1f) {
+    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+    //         }
+    //         else {
+    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+    //         }
+    //     });
 
     float prev{};
     uint32_t now = HAL_GetTick();
