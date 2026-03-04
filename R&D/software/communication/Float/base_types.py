@@ -25,5 +25,5 @@ class MqttMessage(ABC):
         try:
             self.args = json.loads(payload)  # SAFE - only parses JSON
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON payload: {e}")
+            raise ValueError(f"Invalid JSON payload: {e}, payload: {payload}")
 
