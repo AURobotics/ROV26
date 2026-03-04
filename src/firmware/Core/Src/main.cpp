@@ -5,14 +5,15 @@
 #include "adc.h"
 #include "bno055.h"
 #include "gpio.h"
-#include "i2c.h"
 #include "i2c_wrapper.h"
 #include "ms5611.h"
 #include "tim.h"
 #include "usb_comms.h"
 #include "usb_device.h"
 #include "usbd_cdc.h"
-
+extern "C" {
+#include "i2c.h"
+}
 #include <cmath>
 #include <cstdio>
 #include <optional>
