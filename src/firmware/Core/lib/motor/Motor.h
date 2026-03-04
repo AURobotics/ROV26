@@ -13,6 +13,7 @@ class Motor {
         void (*handler_function)(float);
     } Handler{};
 
+public:
     explicit Motor(void (*fn)(float)) : handler_type(HandlerType::FUNCTION) {
         Handler.handler_function = fn;
     }
@@ -21,6 +22,9 @@ class Motor {
         Handler.pwm_handler.p1 = p1;
         Handler.pwm_handler.p2 = p2;
     }
+
+    Motor(const Motor&) = delete;
+    Motor& operator=(const Motor&) = delete;
 
     void setup() const;
     void move(float speed) const;
