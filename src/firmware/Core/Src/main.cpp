@@ -253,16 +253,17 @@ int main(void) {
                     controller_output[i] = 0; // make sure that other axes are off
                 controller_output[test_axis + 2] = 0.4; // any constant value
 
-                if (test_axis == 3) // yaw
+                if (test_axis == 3){// yaw
                     if (angle_diff(sensor_data[test_axis].value(), start_yaw) >=
                         max_testing[test_axis]) {
                         controller_output[test_axis + 2] = 0;
                         test_state = Test_state::DONE;
                     }
-                    else if (sensor_data[test_axis].value() >= max_testing[test_axis]) {
-                        controller_output[test_axis + 2] = 0;
-                        test_state = Test_state::DONE;
-                    }
+                }
+                else if (sensor_data[test_axis].value() >= max_testing[test_axis]) {
+                    controller_output[test_axis + 2] = 0;
+                    test_state = Test_state::DONE;
+                }
             }
 
             if (test_state == Test_state::DONE && msg_type == Message_Type::PARAMETERS_MESSAGE) {
