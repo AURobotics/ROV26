@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 try:
     from base_types import MqttMessage
     from mqtt import Mqtt, Topic
-    from config_manager import MQTTConfigManager
-    from mqtt_schema_adapter import MessageSchema_to_MqttMessage_Adapter
-    from mqtt_schema_types import MessageSchema, TopicSchema
-    from abstract_schema_data_types import DataType
+    from schema.config_manager import MQTTConfigManager
+    from schema.mqtt_schema_adapter import MessageSchema_to_MqttMessage_Adapter
+    from schema.mqtt_schema_types import MessageSchema, TopicSchema
+    from schema.abstract_schema_configuration.abstract_schema_data_types import DataType
 except ImportError as e:
     logger.error(f"Import error: {e}")
     raise
@@ -355,7 +355,7 @@ def demo_smart_home():
     logger.info("Configuration saved to /tmp/smart_home_config.yaml")
     
     time.sleep(2)
-    mqtt.cleanup()
+    mqtt.disconnect()
     
     logger.info("Smart Home demo completed\n")
 
@@ -398,7 +398,7 @@ def demo_industrial_sensors():
     logger.info("Configuration saved to /tmp/industrial_config.yaml")
     
     time.sleep(2)
-    mqtt.cleanup()
+    mqtt.disconnect()
     
     logger.info("Industrial Sensors demo completed\n")
 
@@ -449,7 +449,7 @@ def demo_vehicle_fleet():
     logger.info("Configuration saved to /tmp/fleet_config.yaml")
     
     time.sleep(2)
-    mqtt.cleanup()
+    mqtt.disconnect()
     
     logger.info("Vehicle Fleet demo completed\n")
 

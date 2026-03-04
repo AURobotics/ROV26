@@ -17,7 +17,7 @@ topics:
     - name: timestamp
       type: integer
       description: ''
-      value: 1770997474
+      value: 1771590805
 - name: home/living_room/humidity
   type: custom
   description: Schema for topic 'home/living_room/humidity'
@@ -33,7 +33,7 @@ topics:
     - name: timestamp
       type: integer
       description: ''
-      value: 1770997474
+      value: 1771590805
 - name: home/devices/thermostat
   type: custom
   description: Schema for topic 'home/devices/thermostat'
