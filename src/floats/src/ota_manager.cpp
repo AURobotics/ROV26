@@ -2,22 +2,8 @@
 #include <WiFi.h>
 #include <ArduinoOTA.h>
 
-void setupOTA(const char *ssid, const char *password)
+void setupOTA()
 {
-    // Connect to WiFi
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
-
-    Serial.print("Connecting to WiFi");
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        delay(500);
-        Serial.print(".");
-    }
-    Serial.println();
-    Serial.print("Connected! IP: ");
-    Serial.println(WiFi.localIP());
-
     // Configure OTA
     ArduinoOTA.setHostname("esp32-ota");
 

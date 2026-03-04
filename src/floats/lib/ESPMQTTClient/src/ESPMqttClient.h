@@ -16,8 +16,6 @@ class ESPMqttClient
 public:
     // Constructor
     ESPMqttClient(
-        const char *ssid,
-        const char *password,
         const char *mqtt_broker,
         int mqtt_port = 1883,
         const char *mqtt_username = nullptr,
@@ -57,8 +55,6 @@ private:
     std::function<void(char *, uint8_t *, unsigned int)> _callback;
 
     // Private methods
-    void connectToWiFi();
-    void initAccessPoint();
     void connectToMQTT();
 };
 
