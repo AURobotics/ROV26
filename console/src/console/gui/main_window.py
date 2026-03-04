@@ -1,85 +1,39 @@
-from PySide6.QtWidgets import QMainWindow, QWidget, QToolBar, QStatusBar, QLabel, QPushButton, QDockWidget, QVBoxLayout, QTabWidget
-from PySide6.QtGui import QAction, QIcon
-from console.gui.camera_display import Camera
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QMainWindow, QTabWidget
+from console.core.comms.comms import CommunicationManager
+from console.core.comms.stm32 import STM32
+from console.core.gamepad import Controller
+from console.core.vision.camera import VideoStream
+from console.gui.menubar import MenuBar
+from console.gui.model.sensors import Sensors
 from console.gui.pilot_tab import PilotTab
-from console.gui.copilot_tab import CoPilotTab
 from console.gui.pitch_roll import PitchRollWidget
 from console.gui.thruster_layout import ThrusterLayoutWidget
 from console.gui.compass import CompassWidget
-
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Main Window")
+        self.setWindowTitle("ROV Console")
+
+        self._controller = Controller()
+        self._stm = STM32(baudrate=115200)
+
+        menubar = MenuBar(self, self._controller, self._stm)
+        self.setMenuBar(menubar)
+
+        self._comms = CommunicationManager(self._stm, self._controller)
+
+        self.camera = VideoStream(0)
         
-        tool_bar = QToolBar("Main ToolBar")
-        self.addToolBar(tool_bar)
-        connect_esp_action = QAction("Connect ESP", self)
-        connect_esp_action.setStatusTip("Connect ESP to App")
-        connect_esp_action.triggered.connect(self.connect_esp)
-        tool_bar.addAction(connect_esp_action)
+        self.pilot_tab = PilotTab(self.camera, self.camera, self.camera)
 
-        connect_controller_action = QAction(QIcon("playstation-controller.webp"), "Connect Controller", self)
-        connect_controller_action.setStatusTip("Connect Controller to App")
-        connect_controller_action.triggered.connect(self.connect_controller)
-        tool_bar.addAction(connect_controller_action)
-
-        tool_bar.addSeparator()
-
-        self.setStatusBar(QStatusBar(self))
-
-        self.sidebar = QDockWidget("Controls", self)
-        self.sidebar.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
-        #self.sidebar.resize(400, self.height())
-        
-        button1 = QPushButton("One")
-        button2 = QPushButton("Two")
-        label1 = QLabel("A Label")
-
-        sidebar_layout = QVBoxLayout()
-        sidebar_layout.addWidget(button1)
-        sidebar_layout.addWidget(button2)
-        sidebar_layout.addWidget(label1)
-
-        sidebar_widget = QWidget()
-        sidebar_widget.setLayout(sidebar_layout)
-
-        self.sidebar.setWidget(sidebar_widget)
-
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.sidebar)
-        self.resizeDocks([self.sidebar], [250], Qt.Orientation.Horizontal)
-        self.sidebar.hide()
-
-        self.camera = Camera(0)
-        
-        self.pilot_tab = PilotTab(self.toggle_sidebar, self.camera, self.camera, self.camera)
-        self.copilot_tab = CoPilotTab(self.toggle_sidebar, self.camera)
-
-        tab_widget = QTabWidget()
-        tab_widget.addTab(self.pilot_tab, "Pilot")
-        tab_widget.addTab(self.copilot_tab, "Co-Pilot")
-
-        self.setCentralWidget(tab_widget)
+        self.setCentralWidget(self.pilot_tab)
 
         #Temporary addition of 2 widgets
-        self.pitch_roll_widget = PitchRollWidget()
+        self.pitch_roll_widget = PitchRollWidget(Sensors(self._comms))
         self.pilot_tab.grid_layout.addWidget(self.pitch_roll_widget, 1, 2)
-        self.thruster_layout_widget = ThrusterLayoutWidget()
+        self.thruster_layout_widget = ThrusterLayoutWidget(Sensors(self._comms))
         self.pilot_tab.grid_layout.addWidget(self.thruster_layout_widget, 1, 1)
-        self.compass_widget = CompassWidget()
+        self.compass_widget = CompassWidget(Sensors(self._comms))
         self.pilot_tab.grid_layout.addWidget(self.compass_widget, 1, 0)
-
-
-
-    def connect_esp(self):
-        print("ESP Connected")
-
-    def connect_controller(self):
-        print("Controller Connected")
-
-    def toggle_sidebar(self, checked):
-        self.sidebar.setVisible(checked)
-          

@@ -1,5 +1,6 @@
 from PySide6.QtCore import QTimer, Slot, QObject, Property, Signal
-from random import randint
+
+from console.gui.model.sensors import Sensors
 
 class ROVData(QObject):
     bearingChanged = Signal()
@@ -7,8 +8,9 @@ class ROVData(QObject):
     rollChanged = Signal()
     pitchFOVChanged = Signal()
 
-    def __init__(self):
+    def __init__(self, model: Sensors):
         super().__init__()
+        self._model = model
         self._bearing = 0
         self._pitch = 0
         self._roll = 0
@@ -16,7 +18,7 @@ class ROVData(QObject):
 
         self._timer = QTimer()
         self._timer.timeout.connect(self.update_orientation)
-        self._timer.start(200)
+        self._timer.start(40)
 
     # This 'Property' is what QML "binds" to
     @Property(float, notify=bearingChanged)
@@ -37,15 +39,15 @@ class ROVData(QObject):
 
     @Slot()
     def update_orientation(self):
-        new_bearing = (self._bearing + randint(-1, 1)) % 360
+        new_bearing = self._model.yaw
         if self._bearing != new_bearing:
             self._bearing = new_bearing
             self.bearingChanged.emit() # This tells QML to refresh!
-        new_pitch = (self._pitch+180 + randint(-1, 1)) % 360 - 180
+        new_pitch = self._model.pitch
         if self._pitch != new_pitch:
             self._pitch = new_pitch
             self.pitchChanged.emit()
-        new_roll = (self._roll + randint(-1, 1)) % 360
+        new_roll = self._model.roll
         if self._roll != new_roll:
             self._roll = new_roll
             self.rollChanged.emit()

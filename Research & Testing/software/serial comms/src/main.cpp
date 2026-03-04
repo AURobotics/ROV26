@@ -7,15 +7,6 @@
 Ready_Msg ready_msg;
 
 // Sensor data packet sent back to Python
-TxPacket tx_packet = {
-    .sync_byte = 0xFF,
-    .type = Message_Type::SENSOR_MESSAGE,
-    .status = 0x00,
-    .depth = 0.0f,
-    .yaw = 0.0f,
-    .pitch = 0.0f,
-    .roll = 0.0f,
-    .motor_speeds = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}};
 
 volatile uint32_t last_send_time = 0;
 volatile uint32_t last_ready_time = 0;
@@ -25,6 +16,16 @@ volatile bool synced = false;
 
 void process_command()
 {
+  TxPacket tx_packet = {
+      .sync_byte = 0xFF,
+      .type = Message_Type::SENSOR_MESSAGE,
+      .status = 0x00,
+      .depth = (random(0, 10001) / 5000.0) - 1.0,
+      .yaw = (random(0, 10001) / 5000.0) - 1.0,
+      .pitch = (random(0, 10001) / 5000.0) - 1.0,
+      .roll = (random(0, 10001) / 5000.0) - 1.0,
+      .motor_speeds = {(random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0}};
+
   // Parse the received bytes into an RxPacket
   RxPacket *cmd = (RxPacket *)rx_buffer;
 
@@ -56,6 +57,16 @@ void setup()
 
 void loop()
 {
+  TxPacket tx_packet = {
+      .sync_byte = 0xFF,
+      .type = Message_Type::SENSOR_MESSAGE,
+      .status = 0x00,
+      .depth = (random(0, 10001) / 5000.0) - 1.0,
+      .yaw = (random(0, 10001) / 5000.0) - 1.0,
+      .pitch = (random(0, 10001) / 5000.0) - 1.0,
+      .roll = (random(0, 10001) / 5000.0) - 1.0,
+      .motor_speeds = {(random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0, (random(0, 10001) / 5000.0) - 1.0}};
+
   // --- SEND SENSOR_MESSAGE every 50ms (20Hz) ---
   if (millis() - last_send_time >= 50)
   {

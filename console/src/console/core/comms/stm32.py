@@ -11,11 +11,10 @@ class STM32:
         self._connection_in_progress = False
         self.baudrate = baudrate
         self._port = None
-        self.esp_ready = False  # FIX: added — used by CommunicationManager
 
     @property
     def serial_ready(self):
-        return self._connected  # FIX: added — used by CommunicationManager
+        return self._connected
 
     @property
     def connected(self):
@@ -74,13 +73,12 @@ class STM32:
         self._serial.close()
         self._serial.port = None
         self._connected = False
-        self.esp_ready = False
 
     def send(self, data):
         if self.connected:
             self._serial.write(data)
 
-    def recieve(self, size=1):  # FIX: removed @property — can't pass args to a property
+    def recieve(self, size=1):
         if self.connected and self.incoming:
             buf = self._serial.read(size)
             if buf is None:
@@ -89,12 +87,3 @@ class STM32:
             if len(buf) > 0:
                 return buf
         return None
-
-    def reset_connection(self):
-        if self.connected and not self.incoming:
-            self._serial.reset_input_buffer()
-            self._serial.reset_output_buffer()
-            self.disconnect()
-            self._serial = serial.Serial(port=None, baudrate=self.baudrate)
-            if self._port is not None:
-                self.connect(self._port)
