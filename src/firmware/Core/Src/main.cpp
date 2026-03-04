@@ -68,6 +68,8 @@ TxPacket dummy = {
     .motor_speeds = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
 };
 
+enum class Test_state { OFF, STEPPING, DONE };
+
 void SystemClock_Config(void);
 
 /**
@@ -89,6 +91,10 @@ int main(void) {
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
 
+    Test_state test_state = Test_state::OFF; // normal mode
+    float start_yaw = 0;
+    float max_testing[4] = {0.1, 30, 30, 90}; // need to set these
+    uint8_t test_axis;
 
     uint32_t last_send_time = 0;
     // depth roll pitch yaw
@@ -96,9 +102,9 @@ int main(void) {
                    // if control bit = 1 setpoint hatetba3at makan
                    // el force fa will use this array as setpoint too
 
-    float controller_output[6]; // depth pitch roll yaw surge sway
+    float controller_output[6]; // surge sway depth roll pitch yaw
 
-    float hold[4]; // yaw pitch roll depth
+    float hold[4]; // depth roll pitch yaw
 
     /*Initialize all controllers: depth roll pitch yaw*/
     Controller controller[4] = {Controller(PID(0, 0, 0)),
@@ -194,43 +200,85 @@ int main(void) {
         }
         fetch_sensor_data(sensor_data);
 
-        const unsigned char control_byte = rx_pkt.control_byte;
-        for (int i = 0; i < 6; i++)
-            data[i] = rx_pkt.forces[i];
+        if (op_pkt.operation_mode == 0) // Normal mode
+        {
+            const unsigned char control_byte = rx_pkt.control_byte;
+            for (int i = 0; i < 6; i++)
+                data[i] = rx_pkt.forces[i];
 
-        prev = now;
-        now = HAL_GetTick();
-        float dt = (now - prev) / 1000.0; // convert ms->seconds
+            prev = now;
+            now = HAL_GetTick();
+            float dt = (now - prev) / 1000.0; // convert ms->seconds
 
 
-        for (int i = 0, j = 0; i < 8; i += 2, j++)
-            if (control_byte & 1 << (7 - j)) { // setpoint
-                if (j > 0) // not depth
-                    controller_output[j + 2] = controller[j].output(
-                        angle_diff(data[j + 2], sensor_data[i].value()), 0, dt, sensor_data[i + 1]);
+            for (int i = 0, j = 0; i < 8; i += 2, j++)
+                if (control_byte & 1 << (7 - j)) { // setpoint
+                    if (j > 0) // not depth
+                        controller_output[j + 2] =
+                            controller[j].output(angle_diff(data[j + 2], sensor_data[i].value()),
+                                                 0,
+                                                 dt,
+                                                 sensor_data[i + 1]);
 
-                else // depth
-                    controller_output[j + 2] = controller[j].output(
-                        data[j + 2], sensor_data[i].value(), dt, sensor_data[i + 1].value());
-            }
-            else {
-                if (data[j + 2] == 0) // hold position
-                    controller_output[j + 2] = controller[j].output(
-                        hold[j], sensor_data[i].value(), dt, sensor_data[i + 1].value());
-                else { // pilot command
-                    controller_output[j + 2] = data[j + 2];
-                    hold[j] = sensor_data[i].value();
+                    else // depth
+                        controller_output[j + 2] = controller[j].output(
+                            data[j + 2], sensor_data[i].value(), dt, sensor_data[i + 1].value());
                 }
+                else {
+                    if (data[j + 2] == 0) // hold position
+                        controller_output[j + 2] = controller[j].output(
+                            hold[j], sensor_data[i].value(), dt, sensor_data[i + 1].value());
+                    else { // pilot command
+                        controller_output[j + 2] = data[j + 2];
+                        hold[j] = sensor_data[i].value();
+                    }
+                }
+
+            // surge
+            controller_output[0] = data[0];
+            // sway
+            controller_output[1] = data[1];
+        }
+
+        else { // Testing mode
+            if (msg_type == Message_Type::TUNING_MESSAGE && test_state == Test_state::OFF) {
+                test_axis = tuning_msg.axis;
+                if (test_axis == 3)
+                    start_yaw = sensor_data[test_axis].value();
+                test_state = Test_state::STEPPING;
             }
 
-        // surge
-        controller_output[0] = data[0];
-        // sway
-        controller_output[1] = data[1];
+            if (test_state == Test_state::STEPPING) {
+                for (int i = 0; i < 6; i++)
+                    controller_output[i] = 0; // make sure that other axes are off
+                controller_output[test_axis + 2] = 0.4; // any constant value
+
+                if (test_axis == 3) // yaw
+                    if (angle_diff(sensor_data[test_axis].value(), start_yaw) >=
+                        max_testing[test_axis]) {
+                        controller_output[test_axis + 2] = 0;
+                        test_state = Test_state::DONE;
+                    }
+                    else if (sensor_data[test_axis].value() >= max_testing[test_axis]) {
+                        controller_output[test_axis + 2] = 0;
+                        test_state = Test_state::DONE;
+                    }
+            }
+
+            if (test_state == Test_state::DONE && msg_type == Message_Type::PARAMETERS_MESSAGE) {
+                if (param_msg.pid_type) // angle pid
+                    controller[test_axis].set_angle_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
+                else // rate pid
+                    controller[test_axis].set_rate_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
+
+                test_state = Test_state::OFF;
+            }
+        }
+
+        float clamped_motors[8] = {};
+        apply_pseudo_inverse(controller_output, clamped_motors);
+        Motor::move_motor(motors, clamped_motors);
     }
-    float clamped_motors[8] = {};
-    apply_pseudo_inverse(controller_output, clamped_motors);
-    Motor::move_motor(motors, clamped_motors);
 }
 
 /**
