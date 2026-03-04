@@ -12,4 +12,12 @@ private:
 
 public:
     float output(float setpoint, float angle, float dt, std::optional<float> rate = std::nullopt);
+
+    void set_angle_pid(float kp, float ki, float kd) { angle_pid.set_gains(kp, ki, kd); }
+
+    void set_rate_pid(float kp, float ki, float kd) {
+        if (rate_pid.has_value()) {
+            rate_pid->set_gains(kp, ki, kd);
+        }
+    }
 };

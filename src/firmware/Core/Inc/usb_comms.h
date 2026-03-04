@@ -38,6 +38,7 @@ typedef struct __attribute__((packed)) {
     uint8_t sync_byte;
     uint8_t type;
     uint8_t axis; // 0 depth, 1 pitch, 2 roll, 3 yaw
+    uint8_t pid_type;
     float Kp, kd, ki;
 } Parameter_Msg;
 
@@ -82,6 +83,8 @@ extern volatile RxPacket rx_pkt;
 extern volatile uint8_t data_received;
 extern volatile Operation_Mode_Msg op_pkt;
 extern volatile Parameter_Msg param_msg;
+extern volatile Tuning_Msg tuning_msg;
+extern volatile Message_Type msg_type;
 
 
 void load_tx(TxPacket* tx);
