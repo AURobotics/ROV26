@@ -47,6 +47,10 @@ private:
     const char *_mqtt_password;
     const int _mqtt_port;
 
+    // subscribed topics
+    std::vector<std::string> _subscribed_topics;
+
+
     // WiFi and MQTT clients
     WiFiClient _wifiClient;
     PubSubClient _mqttClient;

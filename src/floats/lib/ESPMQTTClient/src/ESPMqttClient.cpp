@@ -52,7 +52,8 @@ void ESPMqttClient::loop()
     if (!_as_AccessPoint && WiFi.status() != WL_CONNECTED)
     {
         Serial.println("WiFi connection lost. Reconnecting...");
-        connectToWiFi();
+        WiFi.reconnect();
+        delay(500);
     }
 
     // If MQTT connection has dropped, attempt to reconnect
@@ -86,6 +87,22 @@ void ESPMqttClient::connectToMQTT()
         if (isConnected)
         {
             Serial.println("broker connected");
+
+            // Re-subscribe to all previously subscribed topics after reconnecting
+            if (!_subscribed_topics.empty())
+            {
+                for (const auto &topic : _subscribed_topics)
+                {
+                    if (_mqttClient.subscribe(topic.c_str()))
+                    {
+                        Serial.printf("Subscribed to topic: %s\n", topic.c_str());
+                    }
+                    else
+                    {
+                        Serial.printf("Failed to subscribe to topic: %s\n", topic.c_str());
+                    }
+                }
+            }
         }
         else
         {
@@ -122,6 +139,12 @@ bool ESPMqttClient::publish(const char *topic, const char *payload, bool retaine
 // =============================================================================
 bool ESPMqttClient::subscribe(const char *topic)
 {
+    if (!_mqttClient.connected())
+    {
+        Serial.println("Cannot subscribe, MQTT client not connected");
+        return false;
+    }
+    _subscribed_topics.push_back(std::string(topic));
     return _mqttClient.subscribe(topic);
 }
 
@@ -133,6 +156,12 @@ bool ESPMqttClient::subscribe(const char *topic)
 // =============================================================================
 bool ESPMqttClient::unsubscribe(const char *topic)
 {
+    if (!_mqttClient.connected())
+    {
+        Serial.println("Cannot unsubscribe, MQTT client not connected");
+        return false;
+    }
+    _subscribed_topics.erase(std::remove(_subscribed_topics.begin(), _subscribed_topics.end(), std::string(topic)), _subscribed_topics.end());
     return _mqttClient.unsubscribe(topic);
 }
 
@@ -152,6 +181,9 @@ bool ESPMqttClient::isConnected()
 // =============================================================================
 void ESPMqttClient::disconnect()
 {
+    // Clear the list of subscribed topics since we're disconnecting
+    _subscribed_topics.clear();
+
     _mqttClient.disconnect();
     WiFi.disconnect();
 }
