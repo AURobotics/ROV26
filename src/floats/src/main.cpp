@@ -1,9 +1,12 @@
 #include <Arduino.h>
 #include <ESPMQTTClient.h>
+#include "ota_manager.h"
+#include <WiFi.h>
+
 
 // WiFi credentials
-const char *WIFI_SSID = "";
-const char *WIFI_PASSWORD = "";
+const char *WIFI_SSID = "realme 12";
+const char *WIFI_PASSWORD = "12345678";
 
 // MQTT broker settings
 const char *MQTT_SERVER = "broker.emqx.io";
@@ -21,9 +24,14 @@ ESPMqttClient mqttClient(
     MQTT_PASSWORD,
     AS_ACCESS_POINT);
 
+//ArduinoOTAClass ArduinoOTA;
+
 void setup()
 {
     Serial.begin(115200);
+    setupOTA(WIFI_SSID, WIFI_PASSWORD);
+    Serial.println("\nConnected! IP address: " + WiFi.localIP().toString());
+    Serial.println("OTA Ready");
 
     // Set callback for incoming messages
     mqttClient.setCallback([](char *topic, uint8_t *payload, unsigned int length)
@@ -68,6 +76,7 @@ void setup()
 
 void loop()
 {
+    otaupdate();
     mqttClient.loop();
 
     // Publish sensor data every 10 seconds
