@@ -1,8 +1,7 @@
 #pragma once
 
-#include "bno055.h"
-#include "I2C.h"
-#include "bno055_reg_map.h"
+#include "i2c_wrapper.h"
+
 struct CalibrationData {
   uint16_t mag_radius;
   uint16_t acc_radius;
@@ -13,27 +12,41 @@ struct CalibrationData {
 };
 
 struct euler_angles {
-  float pitch;
   float yaw;
+  float pitch;
   float roll;
 };
+
 struct body_rates {
-  float z;
-  float y;
-  float x;
+  float z; //angular yaw
+  float y; //angular pitch
+  float x; //angular roll
+};
+
+struct vec_3 {
+    float vec[3];
+    float& x() { return vec[0]; }
+    float& y() { return vec[1]; }
+    float& z() { return vec[2]; }
+    const float& x() const { return vec[0]; }
+    const float& y() const { return vec[1]; }
+    const float& z() const { return vec[2]; }
 };
 
 class BNO055 {
-  I2C *i2c;
+public:
+    BNO055() = default;
+private:
+    I2C *i2c;
 
 public:
-  BNO055(I2C *i2c_hal);
+  explicit BNO055(I2C *i2c_hal);
   void calibration();
   void init();
-  void saveCalibration(CalibrationData &data);
-  bool loadCalibration(CalibrationData &data);
-  body_rates get_body_rates();
-  euler_angles get_euler_angles();
+  static void saveCalibration(const CalibrationData &data);
+  static bool loadCalibration(CalibrationData &data);
+  vec_3 get_body_rates();
+  vec_3 get_euler_angles() const;
 };
 
 
