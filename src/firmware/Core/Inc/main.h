@@ -113,7 +113,18 @@ void Error_Handler(void);
 #define MOTOR_6_B_GPIO_Port GPIOB
 #define MOTOR_6_A_Pin GPIO_PIN_9
 #define MOTOR_6_A_GPIO_Port GPIOB
-
+#define LEAKAGE_ADC_CHANNEL_1 ADC_CHANNEL_4      
+#define LEAKAGE_ADC_CHANNEL_2 ADC_CHANNEL_0 
+//coms cmds 
+#define COMS_LEAKAGE_SAFETY_ENABLE  0xA1
+#define COMS_LEAKAGE_SAFETY_DISABLE 0xA0
+#define COMS_GRIPPER_OPEN   0xB1
+#define COMS_GRIPPER_CLOSE  0xB2
+#define COMS_GRIPPER_STOP   0xB3
+#define COMS_GRIPPER_SAFETY_ENABLE   0xB4
+#define COMS_GRIPPER_SAFETY_DISABLE   0xB5
+//telemetry IDs
+#define GRIPPER_TELEMETRY_ID            0xC1
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
