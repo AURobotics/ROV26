@@ -1,8 +1,8 @@
 #include "main.h"
 #include "../../USB_DEVICE/App/usb_comms.h"
+#include "../lib/pid/PID.h"
 #include "Controller.h"
 #include "Motor.h"
-#include "PID.h"
 #include "adc.h"
 #include "bno055.h"
 #include "gpio.h"
@@ -70,46 +70,52 @@ TxPacket dummy = {
     .roll = 5.0f,
     .motor_speeds = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
 };
- // water leakage
- #define LEAKAGE_THRESHOLD  2000U //need to be adjusted based on testing
+// water leakage
+#define LEAKAGE_THRESHOLD 2000U // need to be adjusted based on testing
 static uint32_t read_adc(uint32_t channel) {
-  ADC_ChannelConfTypeDef sConfig = {};
-  sConfig.Channel = channel;
-  sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_84CYCLES; //sampling time is 84 cycles, which is 84/84MHz = 1us
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) return 0u;
+    ADC_ChannelConfTypeDef sConfig = {};
+    sConfig.Channel = channel;
+    sConfig.Rank = 1;
+    sConfig.SamplingTime =
+        ADC_SAMPLETIME_84CYCLES; // sampling time is 84 cycles, which is 84/84MHz = 1us
+    if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+        return 0u;
 
-  HAL_ADC_Start(&hadc1);
-  if (HAL_ADC_PollForConversion(&hadc1,10)!= HAL_OK) return 0u;
-  uint32_t value = HAL_ADC_GetValue(&hadc1);
-  HAL_ADC_Stop(&hadc1);
-  return value;
+    HAL_ADC_Start(&hadc1);
+    if (HAL_ADC_PollForConversion(&hadc1, 10) != HAL_OK)
+        return 0u;
+    uint32_t value = HAL_ADC_GetValue(&hadc1);
+    HAL_ADC_Stop(&hadc1);
+    return value;
 }
 
 
 volatile bool leakage_safety_enabled = true;
-volatile bool leak_detected = false;  // Latched leak flag --> once a leak is detected the relay stays off
+
+// Latched leak flag --> once a leak is detected the relay stays off
+volatile bool leak_detected = false;
 static void checkWaterLeakage() {
-  if (!leakage_safety_enabled) {
-    // Safety disabled, ensure relay is energised
-    HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
-    return;
-  }
+    if (!leakage_safety_enabled) {
+        // Safety disabled, ensure relay is energised
+        HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
+        return;
+    }
 
- if (leak_detected) {
-    // Leak already detected, ensure relay is tripped
-    HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_RESET);
-    return;
-  }
+    if (leak_detected) {
+        // Leak already detected, ensure relay is tripped
+        HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_RESET);
+        return;
+    }
 
-  uint32_t sensor1 = read_adc(LEAKAGE_ADC_CHANNEL_1);
-  uint32_t sensor2 = read_adc(LEAKAGE_ADC_CHANNEL_2);
+    uint32_t sensor1 = read_adc(LEAKAGE_ADC_CHANNEL_1);
+    uint32_t sensor2 = read_adc(LEAKAGE_ADC_CHANNEL_2);
 
     if (sensor1 > LEAKAGE_THRESHOLD || sensor2 > LEAKAGE_THRESHOLD) {
         leak_detected = true;
         // Leak detected --> trip the relay
         HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_RESET);
-    } else {
+    }
+    else {
         // No leak detected --> ensure relay is energized if not already tripped
         HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
     }
@@ -119,156 +125,163 @@ enum class Test_state { OFF, STEPPING, DONE };
 
 void leakageCommsHandler(uint8_t cmd) {
     switch (cmd) {
-        case COMS_LEAKAGE_SAFETY_ENABLE:
-            leakage_safety_enabled = true;
-            leak_detected = false;
-            HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
-            break;
-        case COMS_LEAKAGE_SAFETY_DISABLE:
-            leakage_safety_enabled = false;
-            leak_detected = false;
-              HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
-            break;
-        default:
-            break;
+    case COMS_LEAKAGE_SAFETY_ENABLE :
+        leakage_safety_enabled = true;
+        leak_detected = false;
+        HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
+        break;
+    case COMS_LEAKAGE_SAFETY_DISABLE :
+        leakage_safety_enabled = false;
+        leak_detected = false;
+        HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
+        break;
+    default :
+        break;
     }
 }
 // End of water leakage code
 
-//gripper limit switch
+// gripper limit switch
 volatile bool gripper_safety_enabled = true;
-static void GripperStop(void){
-  HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_RESET);
+static void GripperStop(void) {
+    HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_RESET);
 }
-static void GripperOpen(void){
-  HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_RESET);
+static void GripperOpen(void) {
+    HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_RESET);
 }
-static void GripperClose(void){
-  HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_SET);
+static void GripperClose(void) {
+    HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_SET);
 }
 static void checkGripperLimitSwitches() {
-  if (!gripper_safety_enabled) {
-    return;
-  }
-  GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
-  GPIO_PinState closedState = HAL_GPIO_ReadPin(LIMIT_SWITCH_CLOSED_GPIO_Port, LIMIT_SWITCH_CLOSED_Pin);
+    if (!gripper_safety_enabled) {
+        return;
+    }
+    GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
+    GPIO_PinState closedState =
+        HAL_GPIO_ReadPin(LIMIT_SWITCH_CLOSED_GPIO_Port, LIMIT_SWITCH_CLOSED_Pin);
 
-  GPIO_PinState gripperAState = HAL_GPIO_ReadPin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin);
-  GPIO_PinState gripperBState = HAL_GPIO_ReadPin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin);
+    GPIO_PinState gripperAState = HAL_GPIO_ReadPin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin);
+    GPIO_PinState gripperBState = HAL_GPIO_ReadPin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin);
 
-  bool isOpening = (gripperAState == GPIO_PIN_SET && gripperBState == GPIO_PIN_RESET);
-  bool isClosing = (gripperAState == GPIO_PIN_RESET && gripperBState == GPIO_PIN_SET);
+    bool isOpening = (gripperAState == GPIO_PIN_SET && gripperBState == GPIO_PIN_RESET);
+    bool isClosing = (gripperAState == GPIO_PIN_RESET && gripperBState == GPIO_PIN_SET);
 
-  if (isOpening && openState == GPIO_PIN_SET) {
-    GripperStop();
-  } else if (isClosing && closedState == GPIO_PIN_SET) {
-    GripperStop();
-  }
+    if (isOpening && openState == GPIO_PIN_SET) {
+        GripperStop();
+    }
+    else if (isClosing && closedState == GPIO_PIN_SET) {
+        GripperStop();
+    }
 }
 
 
 void gripperCommsHandler(uint8_t cmd) {
-  GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
-  GPIO_PinState closedState = HAL_GPIO_ReadPin(LIMIT_SWITCH_CLOSED_GPIO_Port, LIMIT_SWITCH_CLOSED_Pin);
+    GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
+    GPIO_PinState closedState =
+        HAL_GPIO_ReadPin(LIMIT_SWITCH_CLOSED_GPIO_Port, LIMIT_SWITCH_CLOSED_Pin);
     switch (cmd) {
-        case COMS_GRIPPER_OPEN:
-            if (gripper_safety_enabled&&openState == GPIO_PIN_SET) { // Only open if not already at open limit
-                GripperStop();
-            }
-            else {
-                GripperOpen();
-            }
-            break;
-        case COMS_GRIPPER_CLOSE:
-            if (gripper_safety_enabled&&closedState == GPIO_PIN_SET) {  // Only close if not already at closed limit
-                GripperStop();
-            }
-            else {
-                GripperClose();
-            }
-            break;
-        case COMS_GRIPPER_STOP:
+    case COMS_GRIPPER_OPEN :
+        if (gripper_safety_enabled &&
+            openState == GPIO_PIN_SET) { // Only open if not already at open limit
             GripperStop();
-            break;
-        case COMS_GRIPPER_SAFETY_ENABLE:
-            gripper_safety_enabled = true;
-            break;
-        case COMS_GRIPPER_SAFETY_DISABLE:
-            gripper_safety_enabled = false;
-              break;
-        default:
-            break;
+        }
+        else {
+            GripperOpen();
+        }
+        break;
+    case COMS_GRIPPER_CLOSE :
+        if (gripper_safety_enabled &&
+            closedState == GPIO_PIN_SET) { // Only close if not already at closed limit
+            GripperStop();
+        }
+        else {
+            GripperClose();
+        }
+        break;
+    case COMS_GRIPPER_STOP :
+        GripperStop();
+        break;
+    case COMS_GRIPPER_SAFETY_ENABLE :
+        gripper_safety_enabled = true;
+        break;
+    case COMS_GRIPPER_SAFETY_DISABLE :
+        gripper_safety_enabled = false;
+        break;
+    default :
+        break;
     }
 }
 static void sendGripperStatus() {
-  GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
-  GPIO_PinState closedState = HAL_GPIO_ReadPin(LIMIT_SWITCH_CLOSED_GPIO_Port, LIMIT_SWITCH_CLOSED_Pin);
+    GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
+    GPIO_PinState closedState =
+        HAL_GPIO_ReadPin(LIMIT_SWITCH_CLOSED_GPIO_Port, LIMIT_SWITCH_CLOSED_Pin);
 
-  uint8_t statusByte = 0x00;
-  if (openState == GPIO_PIN_SET) {
-    statusByte |= (1<<1); // bit 1 indicates open limit reached
-  }
-  if (closedState == GPIO_PIN_SET) {
-    statusByte |= (1<<0); // bit 0 indicates closed limit reached
-  }
-  uint8_t packet[3] = {GRIPPER_TELEMETRY_ID, statusByte, 0x00};
-  CDC_Transmit_FS(packet, sizeof(packet)); // Transmit the status packet over USB CDC
-
+    uint8_t statusByte = 0x00;
+    if (openState == GPIO_PIN_SET) {
+        statusByte |= (1 << 1); // bit 1 indicates open limit reached
+    }
+    if (closedState == GPIO_PIN_SET) {
+        statusByte |= (1 << 0); // bit 0 indicates closed limit reached
+    }
+    uint8_t packet[3] = {GRIPPER_TELEMETRY_ID, statusByte, 0x00};
+    CDC_Transmit_FS(packet, sizeof(packet)); // Transmit the status packet over USB CDC
 }
 // End of gripper limit switch
 
-//communication loss
-#define TIMEOUT_MS   500U   // ms of silence before declaring comms lost
-#define BLINK_MS     100U  // ms for toggling LED to indicate comms loss
-  volatile uint32_t lastCommsTime = 0;
+// communication loss
+#define TIMEOUT_MS 500U // ms of silence before declaring comms lost
+#define BLINK_MS 100U // ms for toggling LED to indicate comms loss
+volatile uint32_t lastCommsTime = 0;
 
- static void StopMotors(void){
-  GripperStop();
-  HAL_GPIO_WritePin(MOTOR_1_A_GPIO_Port, MOTOR_1_A_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_1_B_GPIO_Port, MOTOR_1_B_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_2_A_GPIO_Port, MOTOR_2_A_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_2_B_GPIO_Port, MOTOR_2_B_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_3_A_GPIO_Port, MOTOR_3_A_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_3_B_GPIO_Port, MOTOR_3_B_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_4_A_GPIO_Port, MOTOR_4_A_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_4_B_GPIO_Port, MOTOR_4_B_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_5_A_GPIO_Port, MOTOR_5_A_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_5_B_GPIO_Port, MOTOR_5_B_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_6_A_GPIO_Port, MOTOR_6_A_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_6_B_GPIO_Port, MOTOR_6_B_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_7_A_GPIO_Port, MOTOR_7_A_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_7_B_GPIO_Port, MOTOR_7_B_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_8_A_GPIO_Port, MOTOR_8_A_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(MOTOR_8_B_GPIO_Port, MOTOR_8_B_Pin, GPIO_PIN_RESET);
- }
+static void StopMotors(void) {
+    GripperStop();
+    HAL_GPIO_WritePin(MOTOR_1_A_GPIO_Port, MOTOR_1_A_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_1_B_GPIO_Port, MOTOR_1_B_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_2_A_GPIO_Port, MOTOR_2_A_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_2_B_GPIO_Port, MOTOR_2_B_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_3_A_GPIO_Port, MOTOR_3_A_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_3_B_GPIO_Port, MOTOR_3_B_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_4_A_GPIO_Port, MOTOR_4_A_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_4_B_GPIO_Port, MOTOR_4_B_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_5_A_GPIO_Port, MOTOR_5_A_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_5_B_GPIO_Port, MOTOR_5_B_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_6_A_GPIO_Port, MOTOR_6_A_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_6_B_GPIO_Port, MOTOR_6_B_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_7_A_GPIO_Port, MOTOR_7_A_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_7_B_GPIO_Port, MOTOR_7_B_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_8_A_GPIO_Port, MOTOR_8_A_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_8_B_GPIO_Port, MOTOR_8_B_Pin, GPIO_PIN_RESET);
+}
 
-  static void checkCommsTimeout() {
-    static bool     CommsLostPrev   = false; // tracks previous state for edge detection
-  static uint32_t BlinkTick        = 0;     // last LED toggle time
-  static bool     LedState         = false;
+static void checkCommsTimeout() {
+    static bool CommsLostPrev = false; // tracks previous state for edge detection
+    static uint32_t BlinkTick = 0; // last LED toggle time
+    static bool LedState = false;
     uint32_t now = HAL_GetTick();
     bool commsLost = (now - lastCommsTime > TIMEOUT_MS);
     if (commsLost) {
-      if (!CommsLostPrev) {
-      // Comms timeout --> stop all motors and indicate loss of comms
-      StopMotors();
+        if (!CommsLostPrev) {
+            // Comms timeout --> stop all motors and indicate loss of comms
+            StopMotors();
+        }
+        if ((now - BlinkTick) >= BLINK_MS) {
+            LedState = !LedState;
+            HAL_GPIO_WritePin(
+                LED_FLASHER_GPIO_Port, LED_FLASHER_Pin, LedState ? GPIO_PIN_SET : GPIO_PIN_RESET);
+            BlinkTick = now;
+        }
     }
-  if ((now - BlinkTick) >= BLINK_MS) {
-    LedState = !LedState;
-    HAL_GPIO_WritePin(LED_FLASHER_GPIO_Port, LED_FLASHER_Pin, LedState ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    BlinkTick = now;
-  }}
-else{
-  LedState = false;
-  HAL_GPIO_WritePin(LED_FLASHER_GPIO_Port,LED_FLASHER_Pin, GPIO_PIN_RESET);
+    else {
+        LedState = false;
+        HAL_GPIO_WritePin(LED_FLASHER_GPIO_Port, LED_FLASHER_Pin, GPIO_PIN_RESET);
+    }
+    CommsLostPrev = commsLost;
 }
-  CommsLostPrev = commsLost;
-    }
 
-    // End of communication loss
+// End of communication loss
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
@@ -451,11 +464,11 @@ int main() {
             }
 
             if (test_state == Test_state::STEPPING) {
-                for (float & i : controller_output)
+                for (float& i : controller_output)
                     i = 0; // make sure that other axes are off
                 controller_output[test_axis + 2] = 0.4; // any constant value
 
-                if (test_axis == 3){// yaw
+                if (test_axis == 3) { // yaw
                     if (angle_diff(sensor_data[test_axis].value(), start_yaw) >=
                         max_testing[test_axis]) {
                         controller_output[test_axis + 2] = 0;
@@ -468,7 +481,8 @@ int main() {
                 }
             }
 
-            if (test_state == Test_state::DONE && last_received_msg_type == Message_Type::PARAMETERS_MESSAGE) {
+            if (test_state == Test_state::DONE &&
+                last_received_msg_type == Message_Type::PARAMETERS_MESSAGE) {
                 if (param_msg.pid_type) // angle pid
                     controller[test_axis].set_angle_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
                 else // rate pid
@@ -482,21 +496,21 @@ int main() {
         apply_pseudo_inverse(controller_output, clamped_motors);
         Motor::move_motor(motors, clamped_motors);
     }
-  HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET); // power relay on by default
-  GripperStop(); // ensure gripper is stopped by default
-  lastCommsTime = HAL_GetTick(); // initialize comms timer
-  uint32_t lastTelemetrySend = 0;
-  while (1) {
-    checkCommsTimeout();
-    checkWaterLeakage();
-    checkGripperLimitSwitches();
-    uint32_t now = HAL_GetTick();
-    if (now - lastTelemetrySend >= 20u) { // Send gripper status every 20ms
-      sendGripperStatus();
-      lastTelemetrySend = now;
+    HAL_GPIO_WritePin(
+        POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET); // power relay on by default
+    GripperStop(); // ensure gripper is stopped by default
+    lastCommsTime = HAL_GetTick(); // initialize comms timer
+    uint32_t lastTelemetrySend = 0;
+    while (1) {
+        checkCommsTimeout();
+        checkWaterLeakage();
+        checkGripperLimitSwitches();
+        uint32_t now = HAL_GetTick();
+        if (now - lastTelemetrySend >= 20u) { // Send gripper status every 20ms
+            sendGripperStatus();
+            lastTelemetrySend = now;
+        }
     }
-
-  }
 }
 
 /**
@@ -504,45 +518,45 @@ int main() {
  * @retval None
  */
 void SystemClock_Config(void) {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /** Configure the main internal regulator output voltage
-   */
-  __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
+    /** Configure the main internal regulator output voltage
+     */
+    __HAL_RCC_PWR_CLK_ENABLE();
+    __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
 
-  /** Initializes the RCC Oscillators according to the specified parameters
-   * in the RCC_OscInitTypeDef structure.
-   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 25;
-  RCC_OscInitStruct.PLL.PLLN = 384;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV6;
-  RCC_OscInitStruct.PLL.PLLQ = 8;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
-    Error_Handler();
-  }
+    /** Initializes the RCC Oscillators according to the specified parameters
+     * in the RCC_OscInitTypeDef structure.
+     */
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+    RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+    RCC_OscInitStruct.PLL.PLLM = 25;
+    RCC_OscInitStruct.PLL.PLLN = 384;
+    RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV6;
+    RCC_OscInitStruct.PLL.PLLQ = 8;
+    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
+        Error_Handler();
+    }
 
-  /** Initializes the CPU, AHB and APB buses clocks
-   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK |
-                                RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+    /** Initializes the CPU, AHB and APB buses clocks
+     */
+    RCC_ClkInitStruct.ClockType =
+        RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) {
-    Error_Handler();
-  }
+    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) {
+        Error_Handler();
+    }
 
-  /** Enables the Clock Security System
-   */
-  HAL_RCC_EnableCSS();
+    /** Enables the Clock Security System
+     */
+    HAL_RCC_EnableCSS();
 }
 
 /* USER CODE BEGIN 4 */
@@ -554,12 +568,12 @@ void SystemClock_Config(void) {
  * @retval None
  */
 void Error_Handler(void) {
-  /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1) {
-  }
-  /* USER CODE END Error_Handler_Debug */
+    /* USER CODE BEGIN Error_Handler_Debug */
+    /* User can add his own implementation to report the HAL error return state */
+    __disable_irq();
+    while (1) {
+    }
+    /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
 /**
@@ -569,11 +583,11 @@ void Error_Handler(void) {
  * @param  line: assert_param error line source number
  * @retval None
  */
-void assert_failed(uint8_t *file, uint32_t line) {
-  /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line
-     number, ex: printf("Wrong parameters value: file %s on line %d\r\n", file,
-     line) */
-  /* USER CODE END 6 */
+void assert_failed(uint8_t* file, uint32_t line) {
+    /* USER CODE BEGIN 6 */
+    /* User can add his own implementation to report the file name and line
+       number, ex: printf("Wrong parameters value: file %s on line %d\r\n", file,
+       line) */
+    /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
