@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "usb_comms.h"
+#include "../../USB_DEVICE/App/usb_comms.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

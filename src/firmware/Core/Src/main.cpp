@@ -1,4 +1,5 @@
 #include "main.h"
+#include "../../USB_DEVICE/App/usb_comms.h"
 #include "Controller.h"
 #include "Motor.h"
 #include "PID.h"
@@ -8,7 +9,6 @@
 #include "i2c_wrapper.h"
 #include "ms5611.h"
 #include "tim.h"
-#include "usb_comms.h"
 #include "usb_device.h"
 #include "usbd_cdc.h"
 extern "C" {
@@ -177,8 +177,8 @@ int main(void) {
     while (true) {
         TxPacket tx_pkt;
 
-        if (data_received && HAL_GetTick() - last_receive_time < 30) {
-            data_received = 0;
+        if (data_received_flag && HAL_GetTick() - last_receive_time < 30) {
+            data_received_flag = 0;
             CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
             // process_data(data_type) // idk do something.
             // depends on type of message do something.
@@ -201,11 +201,11 @@ int main(void) {
         }
         fetch_sensor_data(sensor_data);
 
-        if (op_pkt.operation_mode == 0) // Normal mode
+        if (operation_mode_msg.operation_mode == 0) // Normal mode
         {
-            const unsigned char control_byte = rx_pkt.control_byte;
+            const unsigned char control_byte = command_msg.control_byte;
             for (int i = 0; i < 6; i++)
-                data[i] = rx_pkt.forces[i];
+                data[i] = command_msg.forces[i];
 
             prev = now;
             now = HAL_GetTick();
@@ -242,7 +242,7 @@ int main(void) {
         }
 
         else { // Testing mode
-            if (msg_type == Message_Type::TUNING_MESSAGE && test_state == Test_state::OFF) {
+            if (last_received_msg_type == TUNING_MESSAGE && test_state == Test_state::OFF) {
                 test_axis = tuning_msg.axis;
                 if (test_axis == 3)
                     start_yaw = sensor_data[test_axis].value();
@@ -267,7 +267,7 @@ int main(void) {
                 }
             }
 
-            if (test_state == Test_state::DONE && msg_type == Message_Type::PARAMETERS_MESSAGE) {
+            if (test_state == Test_state::DONE && last_received_msg_type == Message_Type::PARAMETERS_MESSAGE) {
                 if (param_msg.pid_type) // angle pid
                     controller[test_axis].set_angle_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
                 else // rate pid

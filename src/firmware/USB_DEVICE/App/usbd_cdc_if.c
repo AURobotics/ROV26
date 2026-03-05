@@ -22,7 +22,7 @@
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-#include "../../Core/Inc/usb_comms.h"
+#include "usb_comms.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -124,10 +124,12 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
  * @{
  */
 volatile uint32_t last_receive_time = 0;
-volatile RxPacket rx_pkt = {0};
-volatile uint8_t data_received = 0;
-volatile Operation_Mode_Msg op_pkt = {0};
+volatile Command_msg command_msg = {0};
+volatile uint8_t data_received_flag = 0;
+volatile Operation_Mode_Msg operation_mode_msg = {0};
 volatile Parameter_Msg param_msg = {0};
+volatile Tuning_Msg tuning_msg = {0};
+volatile Message_Type last_received_msg_type = 0;
 
 static int8_t CDC_Init_FS(void);
 static int8_t CDC_DeInit_FS(void);
@@ -263,7 +265,7 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t* Len) {
         switch (msg_type) {
         case 1 :
             if (*Len == PAYLOAD_SIZE) { //TODO: why not use LEN instead of sizeof
-                memcpy(&rx_pkt, Buf, sizeof(RxPacket));
+                memcpy(&command_msg, Buf, sizeof(Command_msg));
                 last_receive_time = HAL_GetTick();
                 memset(Buf, '\0', PAYLOAD_SIZE);
             }
@@ -277,7 +279,7 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t* Len) {
             break;
         case 3 :
             if (*Len == OPERATION_PAYLOAD) {
-                memcpy(&op_pkt, Buf, OPERATION_PAYLOAD);
+                memcpy(&operation_mode_msg, Buf, OPERATION_PAYLOAD);
                 last_receive_time = HAL_GetTick();
                 memset(Buf, '\0', OPERATION_PAYLOAD);
             }

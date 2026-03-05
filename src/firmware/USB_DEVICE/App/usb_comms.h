@@ -32,7 +32,7 @@ typedef struct __attribute__((packed)) {
                            // down , 1 up / 1 bit enable or disable water sensors / 1 bit enable//
                            // disable limit switches
     float forces[6];
-} RxPacket;
+} Command_msg;
 
 typedef struct __attribute__((packed)) {
     uint8_t sync_byte;
@@ -79,12 +79,12 @@ typedef struct __attribute__((packed)) {
 } TxPacket;
 
 extern volatile uint32_t last_receive_time;
-extern volatile RxPacket rx_pkt;
-extern volatile uint8_t data_received;
-extern volatile Operation_Mode_Msg op_pkt;
+extern volatile Command_msg command_msg;
+extern volatile uint8_t data_received_flag;
+extern volatile Operation_Mode_Msg operation_mode_msg;
 extern volatile Parameter_Msg param_msg;
 extern volatile Tuning_Msg tuning_msg;
-extern volatile Message_Type msg_type;
+extern volatile Message_Type last_received_msg_type;
 
 
 void load_tx(TxPacket* tx);
