@@ -57,7 +57,7 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pins : LIMIT_SWITCH_CLOSED_Pin LIMIT_SWITCH_OPEN_Pin */
   GPIO_InitStruct.Pin = LIMIT_SWITCH_CLOSED_Pin|LIMIT_SWITCH_OPEN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED_FLASHER_Pin MOTOR_GRIPPER_A_Pin MOTOR_GRIPPER_B_Pin DCV_1_Pin

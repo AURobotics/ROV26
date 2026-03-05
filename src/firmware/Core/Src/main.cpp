@@ -24,6 +24,9 @@ extern "C" {
 #include "array"
 #include "usbd_cdc_if.h"
 
+static constexpr int16_t LEAKAGE_THRESHOLD = 2000;
+
+
 I2C i2c_wrapper(&hi2c3);
 BNO055 bno(&i2c_wrapper);
 MS5611 ms5611(&hi2c3);
@@ -70,8 +73,9 @@ TxPacket dummy = {
     .roll = 5.0f,
     .motor_speeds = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
 };
+
 // water leakage
-#define LEAKAGE_THRESHOLD 2000U // need to be adjusted based on testing
+// #define LEAKAGE_THRESHOLD 2000U // need to be adjusted based on testing //TODO: test this function
 static uint32_t read_adc(uint32_t channel) {
     ADC_ChannelConfTypeDef sConfig = {};
     sConfig.Channel = channel;
@@ -94,6 +98,7 @@ volatile bool leakage_safety_enabled = true;
 
 // Latched leak flag --> once a leak is detected the relay stays off
 volatile bool leak_detected = false;
+
 static void checkWaterLeakage() {
     if (!leakage_safety_enabled) {
         // Safety disabled, ensure relay is energised
@@ -123,7 +128,7 @@ static void checkWaterLeakage() {
 
 enum class Test_state { OFF, STEPPING, DONE };
 
-void leakageCommsHandler(uint8_t cmd) {
+void leakageCommsHandler(uint8_t cmd) { //TODO: change switch case
     switch (cmd) {
     case COMS_LEAKAGE_SAFETY_ENABLE :
         leakage_safety_enabled = true;
@@ -142,19 +147,20 @@ void leakageCommsHandler(uint8_t cmd) {
 // End of water leakage code
 
 // gripper limit switch
-volatile bool gripper_safety_enabled = true;
-static void GripperStop(void) {
+volatile bool gripper_safety_enabled = true; // TODO nafs el funciton el fo2
+static void GripperStop() {
     HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_RESET);
 }
-static void GripperOpen(void) {
+static void GripperOpen() {
     HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_RESET);
 }
-static void GripperClose(void) {
+static void GripperClose() {
     HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_SET);
 }
+
 static void checkGripperLimitSwitches() {
     if (!gripper_safety_enabled) {
         return;
@@ -169,9 +175,8 @@ static void checkGripperLimitSwitches() {
     bool isOpening = (gripperAState == GPIO_PIN_SET && gripperBState == GPIO_PIN_RESET);
     bool isClosing = (gripperAState == GPIO_PIN_RESET && gripperBState == GPIO_PIN_SET);
 
-    if (isOpening && openState == GPIO_PIN_SET) {
+    if (isOpening && openState == GPIO_PIN_SET)
         GripperStop();
-    }
     else if (isClosing && closedState == GPIO_PIN_SET) {
         GripperStop();
     }
@@ -214,6 +219,7 @@ void gripperCommsHandler(uint8_t cmd) {
         break;
     }
 }
+
 static void sendGripperStatus() {
     GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
     GPIO_PinState closedState =
@@ -226,34 +232,20 @@ static void sendGripperStatus() {
     if (closedState == GPIO_PIN_SET) {
         statusByte |= (1 << 0); // bit 0 indicates closed limit reached
     }
-    uint8_t packet[3] = {GRIPPER_TELEMETRY_ID, statusByte, 0x00};
+    uint8_t packet[3] = {GRIPPER_TELEMETRY_ID, statusByte, 0x00}; //TODO: pack only in message
     CDC_Transmit_FS(packet, sizeof(packet)); // Transmit the status packet over USB CDC
 }
 // End of gripper limit switch
 
 // communication loss
-#define TIMEOUT_MS 500U // ms of silence before declaring comms lost
-#define BLINK_MS 100U // ms for toggling LED to indicate comms loss
+#define TIMEOUT_MS 100U // ms of silence before declaring comms lost
+#define BLINK_MS 250U // ms for toggling LED to indicate comms loss
 volatile uint32_t lastCommsTime = 0;
 
-static void StopMotors(void) {
+static void StopMotors(Motor motor_arr[8]) {
     GripperStop();
-    HAL_GPIO_WritePin(MOTOR_1_A_GPIO_Port, MOTOR_1_A_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_1_B_GPIO_Port, MOTOR_1_B_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_2_A_GPIO_Port, MOTOR_2_A_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_2_B_GPIO_Port, MOTOR_2_B_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_3_A_GPIO_Port, MOTOR_3_A_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_3_B_GPIO_Port, MOTOR_3_B_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_4_A_GPIO_Port, MOTOR_4_A_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_4_B_GPIO_Port, MOTOR_4_B_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_5_A_GPIO_Port, MOTOR_5_A_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_5_B_GPIO_Port, MOTOR_5_B_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_6_A_GPIO_Port, MOTOR_6_A_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_6_B_GPIO_Port, MOTOR_6_B_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_7_A_GPIO_Port, MOTOR_7_A_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_7_B_GPIO_Port, MOTOR_7_B_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_8_A_GPIO_Port, MOTOR_8_A_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_8_B_GPIO_Port, MOTOR_8_B_Pin, GPIO_PIN_RESET);
+    for (int i = 0; i < 7; i++)
+        motor_arr[i].stop();
 }
 
 static void checkCommsTimeout() {
@@ -261,13 +253,13 @@ static void checkCommsTimeout() {
     static uint32_t BlinkTick = 0; // last LED toggle time
     static bool LedState = false;
     uint32_t now = HAL_GetTick();
-    bool commsLost = (now - lastCommsTime > TIMEOUT_MS);
+    bool commsLost = now - lastCommsTime > TIMEOUT_MS;
     if (commsLost) {
         if (!CommsLostPrev) {
             // Comms timeout --> stop all motors and indicate loss of comms
-            StopMotors();
+            // StopMotors(); //TODO
         }
-        if ((now - BlinkTick) >= BLINK_MS) {
+        if (now - BlinkTick >= BLINK_MS) {
             LedState = !LedState;
             HAL_GPIO_WritePin(
                 LED_FLASHER_GPIO_Port, LED_FLASHER_Pin, LedState ? GPIO_PIN_SET : GPIO_PIN_RESET);
@@ -389,7 +381,7 @@ int main() {
     std::array<std::optional<float>, 8> sensor_data;
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
-        TxPacket tx_pkt;
+        TxPacket tx_pkt; //TODO: should be moved to outer scope
 
         if (data_received_flag && HAL_GetTick() - last_receive_time < 30) {
             data_received_flag = 0;
@@ -404,11 +396,11 @@ int main() {
             // new data -> just output pid without setpoints suggestions: in main loop, read sensor
             // data and process pid, if setpoint changes then
         }
-        else {
+        else
             CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
-        }
 
-        if (HAL_GetTick() - last_send_time >= 50) {
+
+        if (HAL_GetTick() - last_send_time >= 50) { //TODO: tx packet should be moved to outer scope
             last_send_time = HAL_GetTick();
             // load_tx(&tx_pkt);
             CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&tx_pkt), sizeof(TxPacket));
@@ -453,6 +445,8 @@ int main() {
             controller_output[0] = data[0];
             // sway
             controller_output[1] = data[1];
+
+            //TODO: rowan: pneumatics (DCV1 DCV2)
         }
 
         else { // Testing mode

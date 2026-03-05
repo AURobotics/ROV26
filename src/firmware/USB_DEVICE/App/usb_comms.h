@@ -70,7 +70,7 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
     uint8_t sync_byte;
     uint8_t type;
-    uint8_t status; // led, 2 grippers, 2 bits for switches
+    uint8_t status; // led, 2 grippers, 2 bits for limit switches
     float depth;
     float yaw;
     float pitch;
