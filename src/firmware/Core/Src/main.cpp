@@ -71,13 +71,13 @@ TxPacket dummy = {
 
 enum class Test_state { OFF, STEPPING, DONE };
 
-void SystemClock_Config(void);
+void SystemClock_Config();
 
 /**
  * @brief  The application entry point.
  * @retval int
  */
-int main(void) {
+int main() {
 
     HAL_Init();
     SystemClock_Config();
@@ -95,7 +95,7 @@ int main(void) {
     Test_state test_state = Test_state::OFF; // normal mode
     float start_yaw = 0;
     float max_testing[4] = {0.1, 30, 30, 90}; // need to set these
-    uint8_t test_axis;
+    uint8_t test_axis = 0;
 
     uint32_t last_send_time = 0;
     // depth roll pitch yaw
@@ -152,22 +152,22 @@ int main(void) {
     for (const auto& motor : motors)
         motor.setup();
 
-    // Motor gripper(
-    //     [](float speed)
-    //     {
-    //         if (speed > 0.1f) {
-    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
-    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-    //         }
-    //         else if (speed < -0.1f) {
-    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
-    //         }
-    //         else {
-    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-    //         }
-    //     });
+    Motor gripper(
+        [](float speed)
+        {
+            if (speed > 0.1f) {
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+            }
+            else if (speed < -0.1f) {
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+            }
+            else {
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+            }
+        });
 
     float prev{};
     uint32_t now = HAL_GetTick();
@@ -250,8 +250,8 @@ int main(void) {
             }
 
             if (test_state == Test_state::STEPPING) {
-                for (int i = 0; i < 6; i++)
-                    controller_output[i] = 0; // make sure that other axes are off
+                for (float & i : controller_output)
+                    i = 0; // make sure that other axes are off
                 controller_output[test_axis + 2] = 0.4; // any constant value
 
                 if (test_axis == 3){// yaw
