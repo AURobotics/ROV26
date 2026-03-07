@@ -1,0 +1,187 @@
+#include "bno055.h"
+#include "bno055_reg_map.h"
+#include "stm32f4xx_hal.h"
+
+using namespace BNO055_Reg;
+
+BNO055::BNO055(I2C* i2c_hal) { i2c = i2c_hal; }
+
+void BNO055::calibration() {
+    i2c->write_reg(BNO055_I2C_ADDR, OPR_MODE, 0x0C); // NDOF fusion mode
+    i2c->write_reg(BNO055_I2C_ADDR, UNIT_SEL, 0x00);
+    HAL_Delay(30);
+
+
+    uint8_t calib_status{};
+    i2c->read_reg(BNO055_I2C_ADDR, CALIB_STAT, &calib_status);
+    // ReSharper disable once CppDFALoopConditionNotUpdated
+    while (calib_status != 0xFF) {
+        HAL_Delay(500);
+        i2c->read_reg(BNO055_I2C_ADDR, CALIB_STAT, &calib_status);
+    }
+
+    i2c->write_reg(BNO055_I2C_ADDR, OPR_MODE, 0x00); // back to config mode
+    HAL_Delay(30);
+
+    CalibrationData data{};
+
+    i2c->read_2reg(BNO055_I2C_ADDR, MAG_RADIUS_MSB, MAG_RADIUS_LSB, &data.mag_radius);
+    i2c->read_2reg(BNO055_I2C_ADDR, ACC_RADIUS_MSB, ACC_RADIUS_LSB, &data.acc_radius);
+
+    i2c->read_2reg(BNO055_I2C_ADDR, GYR_OFFSET_Z_MSB, GYR_OFFSET_Z_LSB, &data.gyr_offset_z);
+    i2c->read_2reg(BNO055_I2C_ADDR, GYR_OFFSET_Y_MSB, GYR_OFFSET_Y_LSB, &data.gyr_offset_y);
+    i2c->read_2reg(BNO055_I2C_ADDR, GYR_OFFSET_X_MSB, GYR_OFFSET_X_LSB, &data.gyr_offset_x);
+
+    i2c->read_2reg(BNO055_I2C_ADDR, MAG_OFFSET_Z_MSB, MAG_OFFSET_Z_LSB, &data.mag_offset_z);
+    i2c->read_2reg(BNO055_I2C_ADDR, MAG_OFFSET_Y_MSB, MAG_OFFSET_Y_LSB, &data.mag_offset_y);
+    i2c->read_2reg(BNO055_I2C_ADDR, MAG_OFFSET_X_MSB, MAG_OFFSET_X_LSB, &data.mag_offset_x);
+
+    i2c->read_2reg(BNO055_I2C_ADDR, ACC_OFFSET_Z_MSB, ACC_OFFSET_Z_LSB, &data.acc_offset_z);
+    i2c->read_2reg(BNO055_I2C_ADDR, ACC_OFFSET_Y_MSB, ACC_OFFSET_Y_LSB, &data.acc_offset_y);
+    i2c->read_2reg(BNO055_I2C_ADDR, ACC_OFFSET_X_MSB, ACC_OFFSET_X_LSB, &data.acc_offset_x);
+
+    data.calibration_status = 0x01;
+
+    saveCalibration(data);
+    HAL_Delay(30);
+}
+
+void BNO055::init() {
+    CalibrationData data{};
+    if (!loadCalibration(data)) {
+        calibration();
+        loadCalibration(data);
+    }
+
+    // ReSharper disable once CppExpressionWithoutSideEffects
+    i2c->write_reg(BNO055_I2C_ADDR, OPR_MODE, 0x00); // back to config mode
+    HAL_Delay(30);
+    // ReSharper disable once CppExpressionWithoutSideEffects
+    i2c->write_reg(BNO055_I2C_ADDR, UNIT_SEL, 0x00);
+
+    i2c->write_2reg(BNO055_I2C_ADDR, MAG_RADIUS_MSB, MAG_RADIUS_LSB, data.mag_radius);
+    i2c->write_2reg(BNO055_I2C_ADDR, ACC_RADIUS_MSB, ACC_RADIUS_LSB, data.acc_radius);
+
+    i2c->write_2reg(BNO055_I2C_ADDR, GYR_OFFSET_Z_MSB, GYR_OFFSET_Z_LSB, data.gyr_offset_z);
+    i2c->write_2reg(BNO055_I2C_ADDR, GYR_OFFSET_Y_MSB, GYR_OFFSET_Y_LSB, data.gyr_offset_y);
+    i2c->write_2reg(BNO055_I2C_ADDR, GYR_OFFSET_X_MSB, GYR_OFFSET_X_LSB, data.gyr_offset_x);
+
+    i2c->write_2reg(BNO055_I2C_ADDR, MAG_OFFSET_Z_MSB, MAG_OFFSET_Z_LSB, data.mag_offset_z);
+    i2c->write_2reg(BNO055_I2C_ADDR, MAG_OFFSET_Y_MSB, MAG_OFFSET_Y_LSB, data.mag_offset_y);
+    i2c->write_2reg(BNO055_I2C_ADDR, MAG_OFFSET_X_MSB, MAG_OFFSET_X_LSB, data.mag_offset_x);
+
+    i2c->write_2reg(BNO055_I2C_ADDR, ACC_OFFSET_Z_MSB, ACC_OFFSET_Z_LSB, data.acc_offset_z);
+    i2c->write_2reg(BNO055_I2C_ADDR, ACC_OFFSET_Y_MSB, ACC_OFFSET_Y_LSB, data.acc_offset_y);
+    i2c->write_2reg(BNO055_I2C_ADDR, ACC_OFFSET_X_MSB, ACC_OFFSET_X_LSB, data.acc_offset_x);
+
+    // ReSharper disable once CppExpressionWithoutSideEffects
+    i2c->write_reg(BNO055_I2C_ADDR, OPR_MODE, 0x0C); // NDOF fusion mode
+    HAL_Delay(10);
+}
+
+vec_3 BNO055::get_body_rates() {
+    vec_3 data{};
+    int16_t raw_x, raw_y, raw_z;
+    i2c->read_2reg(BNO055_I2C_ADDR, GYR_DATA_Z_MSB, GYR_DATA_Z_LSB, (uint16_t*)&raw_z);
+    i2c->read_2reg(BNO055_I2C_ADDR, GYR_DATA_Y_MSB, GYR_DATA_Y_LSB, (uint16_t*)&raw_y);
+    i2c->read_2reg(BNO055_I2C_ADDR, GYR_DATA_X_MSB, GYR_DATA_X_LSB, (uint16_t*)&raw_x);
+
+    data.z() = (float)raw_z / 16.0f;
+    data.y() = (float)raw_y / 16.0f;
+    data.x() = (float)raw_x / 16.0f;
+
+    return data;
+}
+
+vec_3 BNO055::get_euler_angles() const {
+    vec_3 data{};
+    uint16_t *raw_x = nullptr , *raw_y = nullptr , *raw_z = nullptr ;
+    i2c->read_2reg(BNO055_I2C_ADDR, EUL_Heading_MSB, EUL_Heading_LSB, raw_z);
+    i2c->read_2reg(BNO055_I2C_ADDR, EUL_Pitch_MSB, EUL_Pitch_LSB, raw_y);
+    i2c->read_2reg(BNO055_I2C_ADDR, EUL_Roll_MSB, EUL_Roll_LSB, raw_x);
+
+    data.z() = static_cast<float>(*raw_z) / 16.0f;
+    data.y() = static_cast<float>(*raw_y) / 16.0f;
+    data.x() = static_cast<float>(*raw_x) / 16.0f;
+
+    return data;
+}
+
+void BNO055::saveCalibration(const CalibrationData& data) {
+    constexpr uint32_t flash_address = 0x08020000;
+
+    uint32_t register1[4] = {};
+    uint32_t register2[4] = {};
+
+    register1[3] = static_cast<uint32_t>(data.mag_radius) << 16 | static_cast<uint32_t>(data.acc_radius);
+    register1[2] = static_cast<uint32_t>(data.gyr_offset_x) << 16 | static_cast<uint32_t>(data.gyr_offset_y);
+    register1[1] = static_cast<uint32_t>(data.gyr_offset_z) << 16 | static_cast<uint32_t>(data.mag_offset_x);
+    register1[0] = static_cast<uint32_t>(data.mag_offset_y) << 16 | static_cast<uint32_t>(data.mag_offset_z);
+    register2[3] = static_cast<uint32_t>(data.acc_offset_x) << 16 | static_cast<uint32_t>(data.acc_offset_y);
+    register2[2] = static_cast<uint32_t>(data.acc_offset_z) << 16 | (static_cast<uint32_t>(data.calibration_status) << 8);
+    register2[1] = 0;
+    register2[0] = 0;
+
+    HAL_FLASH_Unlock();
+
+    FLASH_EraseInitTypeDef EraseInitStruct;
+    uint32_t SectorError;
+
+    EraseInitStruct.TypeErase = FLASH_TYPEERASE_SECTORS;
+    EraseInitStruct.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+    EraseInitStruct.Sector = FLASH_SECTOR_5;
+    EraseInitStruct.NbSectors = 1;
+
+    if (HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError) != HAL_OK) {
+        HAL_FLASH_Lock();
+        return;
+    }
+
+    for (int i = 0; i < 4; i++) {
+        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, flash_address + i * 4, register1[i]) !=
+            HAL_OK) {
+            HAL_FLASH_Lock();
+            return;
+        }
+    }
+
+    for (int i = 0; i < 4; i++) {
+        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, flash_address + 16 + i * 4, register2[i]) !=
+            HAL_OK) {
+            HAL_FLASH_Lock();
+            return;
+        }
+    }
+
+    HAL_FLASH_Lock();
+}
+
+bool BNO055::loadCalibration(CalibrationData& data) {
+    constexpr uint32_t flash_address = 0x08020000;
+
+    uint32_t register1[4];
+    uint32_t register2[4];
+
+    for (int i = 0; i < 4; i++)
+        register1[i] = *reinterpret_cast<__IO uint32_t*>(flash_address + i * 4);
+
+    for (int i = 0; i < 4; i++)
+        register2[i] = *reinterpret_cast<__IO uint32_t*>(flash_address + 16 + i * 4);
+
+
+    data.mag_radius = static_cast<uint16_t>(register1[3] >> 16 & 0xFFFF);
+    data.acc_radius = static_cast<uint16_t>(register1[3] & 0xFFFF);
+    data.gyr_offset_x = static_cast<uint16_t>(register1[2] >> 16 & 0xFFFF);
+    data.gyr_offset_y = static_cast<uint16_t>(register1[2] & 0xFFFF);
+    data.gyr_offset_z = static_cast<uint16_t>(register1[1] >> 16 & 0xFFFF);
+    data.mag_offset_x = static_cast<uint16_t>(register1[1] & 0xFFFF);
+    data.mag_offset_y = static_cast<uint16_t>(register1[0] >> 16 & 0xFFFF);
+    data.mag_offset_z = static_cast<uint16_t>(register1[0] & 0xFFFF);
+
+    data.acc_offset_x = static_cast<uint16_t>(register2[3] >> 16 & 0xFFFF);
+    data.acc_offset_y = static_cast<uint16_t>(register2[3] & 0xFFFF);
+    data.acc_offset_z = static_cast<uint16_t>(register2[2] >> 16 & 0xFFFF);
+    data.calibration_status = static_cast<uint8_t>(register2[2] >> 8 & 0xFF);
+
+    return (data.calibration_status == 0x01);
+}
