@@ -5,10 +5,13 @@ from console.core.gamepad import Controller
 from console.core.vision.camera import VideoStream
 from console.gui.menubar import MenuBar
 from console.gui.model.sensors import Sensors
+from console.gui.model.orientation_data import OrientationData
+from console.gui.model.thruster_status import ThrusterStatus
 from console.gui.pilot_tab import PilotTab
-from console.gui.pitch_roll import PitchRollWidget
-from console.gui.thruster_layout import ThrusterLayoutWidget
-from console.gui.compass import CompassWidget
+#from console.gui.pitch_roll import PitchRollWidget
+#from console.gui.thruster_layout import ThrusterLayoutWidget
+#from console.gui.compass import CompassWidget
+from console.gui.status_widget import StatusWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -30,10 +33,13 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.pilot_tab)
 
-        #Temporary addition of 2 widgets
-        self.pitch_roll_widget = PitchRollWidget(Sensors(self._comms))
+        #Temporary addition of 3 widgets
+#        self.pitch_roll_widget = PitchRollWidget(Sensors(self._comms))
+        self.pitch_roll_widget = StatusWidget(OrientationData(Sensors(self._comms)), "pitch_roll")
         self.pilot_tab.grid_layout.addWidget(self.pitch_roll_widget, 1, 2)
-        self.thruster_layout_widget = ThrusterLayoutWidget(Sensors(self._comms))
+#        self.thruster_layout_widget = ThrusterLayoutWidget(Sensors(self._comms))
+        self.thruster_layout_widget = StatusWidget(ThrusterStatus(Sensors(self._comms)), "thruster_layout")
         self.pilot_tab.grid_layout.addWidget(self.thruster_layout_widget, 1, 1)
-        self.compass_widget = CompassWidget(Sensors(self._comms))
+#        self.compass_widget = CompassWidget(Sensors(self._comms))
+        self.compass_widget = StatusWidget(OrientationData(Sensors(self._comms)), "compass")
         self.pilot_tab.grid_layout.addWidget(self.compass_widget, 1, 0)
