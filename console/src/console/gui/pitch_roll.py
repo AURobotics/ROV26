@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtCore import QUrl, Qt
-from console.gui.model.rov_data import ROVData
+from console.gui.model.orientation_data import OrientationData
 from console.assets import get_asset
 from console.gui.model.sensors import Sensors
 
@@ -9,7 +9,7 @@ class PitchRollWidget(QWidget):
     def __init__(self, model: Sensors):
         super().__init__()
 
-        self.data_bridge = ROVData(model)
+        self.data_bridge = OrientationData(model)
 
         self._layout = QVBoxLayout(self)
         self._view = QQuickWidget()

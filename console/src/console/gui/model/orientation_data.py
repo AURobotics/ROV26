@@ -2,7 +2,7 @@ from PySide6.QtCore import QTimer, Slot, QObject, Property, Signal
 
 from console.gui.model.sensors import Sensors
 
-class ROVData(QObject):
+class OrientationData(QObject):
     bearingChanged = Signal()
     pitchChanged = Signal()
     rollChanged = Signal()
@@ -51,3 +51,9 @@ class ROVData(QObject):
         if self._roll != new_roll:
             self._roll = new_roll
             self.rollChanged.emit()
+
+    def stop_timer(self):
+        self._timer.stop()
+
+    def start_timer(self):
+        self._timer.start(40)

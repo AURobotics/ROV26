@@ -91,3 +91,9 @@ class ThrusterStatus(QObject):
         if changed:
             self.calc_direction()
             self.thrustLevelChanged.emit()
+
+    def stop_timer(self):
+        self._timer.stop()
+
+    def start_timer(self):
+        self._timer.start(40)
