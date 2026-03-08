@@ -35,11 +35,11 @@ class MainWindow(QMainWindow):
 
         #Temporary addition of 3 widgets
 #        self.pitch_roll_widget = PitchRollWidget(Sensors(self._comms))
-        self.pitch_roll_widget = StatusWidget(OrientationData(Sensors(self._comms)), "pitch_roll")
+        self.pitch_roll_widget = StatusWidget(OrientationData(Sensors(self._comms)), "pitchRoll.qml")
         self.pilot_tab.grid_layout.addWidget(self.pitch_roll_widget, 1, 2)
 #        self.thruster_layout_widget = ThrusterLayoutWidget(Sensors(self._comms))
-        self.thruster_layout_widget = StatusWidget(ThrusterStatus(Sensors(self._comms)), "thruster_layout")
+        self.thruster_layout_widget = StatusWidget(ThrusterStatus(Sensors(self._comms)), "thrusterLayout.qml")
         self.pilot_tab.grid_layout.addWidget(self.thruster_layout_widget, 1, 1)
 #        self.compass_widget = CompassWidget(Sensors(self._comms))
-        self.compass_widget = StatusWidget(OrientationData(Sensors(self._comms)), "compass")
+        self.compass_widget = StatusWidget(OrientationData(Sensors(self._comms)), "compassWidget.qml")
         self.pilot_tab.grid_layout.addWidget(self.compass_widget, 1, 0)
