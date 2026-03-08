@@ -29,7 +29,7 @@ void Motor::move(float speed) const {
         const auto pwm1 = this->Handler.pwm_handler.p1;
         const auto pwm2 = this->Handler.pwm_handler.p2;
         speed = constrain(speed, -1, 1);
-        const auto duty = static_cast<uint16_t>(std::fabs(speed) * 255);
+        const auto duty = static_cast<uint16_t>(std::fabs(speed) * 1000);
         if (speed > 0) {
             pwm1->set_duty(duty);
             pwm2->set_duty(0);
