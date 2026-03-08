@@ -6,7 +6,7 @@ Rectangle {
     width: 70; height: width
     radius: width / 2
     border.width: 2
-    border.color: "#555555"
+    border.color: (palette.window.hsvValue > 0.5) ? "#555555" : "#808080"
     color: "white"
 
     Rectangle {

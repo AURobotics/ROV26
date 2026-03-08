@@ -5,11 +5,12 @@ import Qt5Compat.GraphicalEffects
 
 pragma ComponentBehavior: Bound
 
-Item {
-    id: rootWidget
+Rectangle {
+    id: root
     width: 300
     height: 300
     antialiasing: true
+    color: palette.window
 
     Rectangle {
         id: bezelRing
@@ -18,7 +19,7 @@ Item {
         anchors.centerIn: parent
         radius: width / 2 // Makes a perfect circle
         color: "transparent"
-        border.color: "#555555"
+        border.color: (palette.window.hsvValue > 0.5) ? "#444444" : "#555555"
         border.width: 15
 
         Repeater {

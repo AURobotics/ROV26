@@ -8,7 +8,7 @@ Rectangle {
     width: 50; height: 100
     rotation: (thrustLevel > 0) ? baseRotation : (baseRotation + 180) % 360 // Rotate 180 degrees if thrust is negative
     border.width: 2
-    border.color: "#555555"
+    border.color: (palette.window.hsvValue > 0.5) ? "#555555" : "#808080"
     color: "white"
 
     Rectangle {
