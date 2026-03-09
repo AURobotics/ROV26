@@ -89,8 +89,8 @@ class CommunicationManager:
 
     def _serial_outgoing_loop(self):
         while not self._killswitch:
-            self._data_ready_event.wait(timeout=self._IDLE_TIMOUT)
-
+            self._data_ready_event.wait()
+            # print("Ready")
             if self._serial.serial_ready and self._controller.connected:
                 current_state = self._controller.bindings_state
                 payload = self._serial_controller_payload(current_state)
