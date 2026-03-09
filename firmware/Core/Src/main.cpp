@@ -305,14 +305,15 @@ int main() {
     SystemClock_Config();
 
     MX_GPIO_Init();
-    MX_ADC1_Init();
-    MX_I2C3_Init();
+    // MX_ADC1_Init();
+    // MX_I2C3_Init();
     MX_TIM1_Init();
     MX_TIM2_Init();
     MX_TIM3_Init();
     MX_TIM4_Init();
     MX_TIM5_Init();
-    MX_USB_DEVICE_Init();
+    // MX_USB_DEVICE_Init();
+    HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
 
     Test_state test_state = Test_state::OFF; // normal mode
     float start_yaw = 0;
@@ -325,7 +326,7 @@ int main() {
                    // if control bit = 1 setpoint hatetba3at makan
                    // el force fa will use this array as setpoint too
 
-    float controller_output[6]; // surge sway depth roll pitch yaw
+    float controller_output[6] = {0}; // surge sway depth roll pitch yaw
 
     float hold[4]; // depth roll pitch yaw
 
@@ -361,58 +362,140 @@ int main() {
     PWM pwm8A(&htim5, TIM_CHANNEL_4);
     PWM pwm8B(&htim2, TIM_CHANNEL_2);
 
-
-    Motor motors[] = {Motor(&pwm1A, &pwm1B),
-                      Motor(&pwm2A, &pwm2B),
-                      Motor(&pwm3A, &pwm3B),
-                      Motor(&pwm4A, &pwm4B),
-                      Motor(&pwm5A, &pwm5B),
-                      Motor(&pwm6A, &pwm6B),
-                      Motor(&pwm7A, &pwm7B),
-                      Motor(&pwm8A, &pwm8B)};
-
+    //
+    Motor motors[] = {Motor(&pwm1B, &pwm1A),
+                      Motor(&pwm2B, &pwm2A),
+                      Motor(&pwm3B, &pwm3A),
+                      Motor(&pwm4B, &pwm4A),
+                      Motor(&pwm5B, &pwm5A),
+                      Motor(&pwm6B, &pwm6A),
+                      Motor(&pwm7B, &pwm7A),
+                      Motor(&pwm8B, &pwm8A)};
+    //
     for (const auto& motor : motors)
         motor.setup();
 
-    Motor gripper( // TODO: use this variable
-        [](float speed)
-        {
-            if (speed > 0.1f) {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-            }
-            else if (speed < -0.1f) {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
-            }
-            else {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-            }
-        });
+    // Motor gripper( // TODO: use this variable
+    //     [](float speed)
+    //     {
+    //         if (speed > 0.1f) {
+    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+    //         }
+    //         else if (speed < -0.1f) {
+    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+    //         }
+    //         else {
+    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+    //         }
+    //     });
 
-    float prev{};
-    uint32_t now = HAL_GetTick();
+    // float prev{};
+    // uint32_t now = HAL_GetTick();
+    //
+    // std::array<std::optional<float>, 8> sensor_data;
+    // // ReSharper disable once CppDFAEndlessLoop
 
-    std::array<std::optional<float>, 8> sensor_data;
-    // ReSharper disable once CppDFAEndlessLoop
+    // for (auto &motor : motors) {
+    //     motor.move(1);
+    // }
+
+
+    // // Motor 1
+    // HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+    // HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+    //
+    // // Motor 2
+    // HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
+    // HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+    //
+    // // Motor 3
+    // HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+    // HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+    //
+    // // Motor 4
+    // HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+    // HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+    //
+    // // Motor 5
+    // HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_3);
+    // HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_2);
+    //
+    // // Motor 6
+    // HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
+    // HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+    //
+    // // Motor 7
+    // HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
+    // HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
+    //
+    // // Motor 8
+    // HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_4);
+    // HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
+    //
+    // // Motor 1: 1A=10, 1B=900
+    // __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);
+    // __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, 999);
+    //
+    // // Motor 2: 2A=10, 2B=900
+    // __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
+    // __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 999);
+    //
+    // // Motor 3: 3A=10, 3B=900
+    // __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
+    // __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 999);
+    //
+    // // Motor 4: 4A=10, 4B=900
+    // __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
+    // __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 999);
+    //
+    // // Motor 5: 5A=10, 5B=900
+    // __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_3, 0);
+    // __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_2, 999);
+    //
+    // // Motor 6: 6A=10, 6B=900
+    // __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
+    // __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 999);
+    //
+    // // Motor 7: 7A=10, 7B=900
+    // __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, 0);
+    // __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, 999);
+    //
+    // // Motor 8: 8A=10, 8B=900
+    // __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, 0);
+    // __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 999);
+
+
     while (true) {
-        static bool data_received_first_time = false;
-        if (!data_received_first_time) {
-            CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
-            HAL_Delay(500);
-        }
+        // static bool data_received_first_time = false;
+        // if (!data_received_first_time) {
+        //     CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
+        //     HAL_Delay(500);
+        // }
+        //
+        // if (data_received_flag) {
+        //     data_received_first_time = true;
+        //     data_received_flag = 0;
+        //     CDC_Transmit_FS((uint8_t*)&command_pkt, sizeof(Command_msg));
+        //     HAL_Delay(1);
+        //     CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
+        // }
+        //
+        // HAL_Delay(1);
 
-        if (data_received_flag) {
-            data_received_first_time = true;
-            data_received_flag = 0;
-            CDC_Transmit_FS((uint8_t*)&command_pkt, sizeof(Command_msg));
-            HAL_Delay(1);
-            CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
-        }
-
-        HAL_Delay(1);
-
+        // float buffer[8] = {};
+        // for (int i = 0; i <= 1000; i++) {
+        //     float current_speed = (float)i / 1000.0f; // Scale 0.0 to 1.0
+        //
+        //     // Fill the buffer and move each motor
+        //     for (int k = 0; k < 8; k++) {
+        //         buffer[k] = current_speed;
+        //         motors[k].move(buffer[k]); // Internal logic: TIMx->CCRy = buffer[k] * 1000
+        //     }
+        //     // HAL_Delay(10); // Delays 10ms accurately via SysTick while PWM runs in hardware
+        // }
 
 
         // TxPacket tx_pkt; //TODO: should be moved to outer scope
@@ -534,9 +617,14 @@ int main() {
         //         test_state = Test_state::OFF;
         //     }
         // }
-        //
-        // float clamped_motors[8] = {};
-        // apply_pseudo_inverse(controller_output, clamped_motors);
+
+
+        controller_output[0] = 1;
+        float clamped_motors[8] = {};
+        apply_pseudo_inverse(controller_output, clamped_motors);
+        normalize_thrusters(clamped_motors);
+        for (int i = 0; i < 7; i++)
+            motors[i].move(clamped_motors[i]);
         // Motor::move_motor(motors, clamped_motors);
 
 
