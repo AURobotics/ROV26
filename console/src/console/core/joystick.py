@@ -10,8 +10,19 @@ from __future__ import annotations
 import sys
 import threading
 import time
-from enum import IntEnum
-from typing import Dict, Optional, Callable, Self, TypedDict, List, Union
+from enum import IntEnum, StrEnum
+from typing import (
+    Dict,
+    Optional,
+    Callable,
+    Self,
+    Tuple,
+    TypedDict,
+    List,
+    Union,
+    Annotated,
+)
+from annotated_types import Ge, Le
 import os
 
 if "PYGAME_HIDE_SUPPORT_PROMPT" not in os.environ:
@@ -26,26 +37,44 @@ class ConnectionUpdate(TypedDict):
     open: bool
 
 
-class StandardButtons(IntEnum):
-    SOUTH = pygame.CONTROLLER_BUTTON_A
-    NORTH = pygame.CONTROLLER_BUTTON_Y
-    EAST = pygame.CONTROLLER_BUTTON_B
-    WEST = pygame.CONTROLLER_BUTTON_X
-    DPAD_UP = pygame.CONTROLLER_BUTTON_DPAD_UP
-    DPAD_DOWN = pygame.CONTROLLER_BUTTON_DPAD_DOWN
-    DPAD_RIGHT = pygame.CONTROLLER_BUTTON_DPAD_RIGHT
-    DPAD_LEFT = pygame.CONTROLLER_BUTTON_DPAD_LEFT
-    RIGHT_STICK = pygame.CONTROLLER_BUTTON_RIGHTSTICK
-    LEFT_STICK = pygame.CONTROLLER_BUTTON_LEFTSTICK
-    RIGHT_SHOULDER = pygame.CONTROLLER_BUTTON_RIGHTSHOULDER
-    LEFT_SHOULDER = pygame.CONTROLLER_BUTTON_LEFTSHOULDER
-    START = pygame.CONTROLLER_BUTTON_START
-    BACK = pygame.CONTROLLER_BUTTON_BACK
-    GUIDE = pygame.CONTROLLER_BUTTON_GUIDE
-    TOUCHPAD = -1
+class NotAGamepadError(AttributeError): ...
 
 
-class StandardAxes(IntEnum): ...
+class UnsupportedFeatureError(AttributeError, ValueError): ...
+
+
+class IndexOutOfRangeError(ValueError): ...
+
+
+class GamepadButton(StrEnum):
+    SOUTH = "a"
+    NORTH = "y"
+    EAST = "b"
+    WEST = "x"
+    DPAD_UP = "dpup"
+    DPAD_DOWN = "dpdown"
+    DPAD_RIGHT = "dpright"
+    DPAD_LEFT = "dpleft"
+    RIGHT_STICK = "rightstick"
+    LEFT_STICK = "leftstick"
+    RIGHT_SHOULDER = "rightshoulder"
+    LEFT_SHOULDER = "leftshoulder"
+    START = "start"
+    BACK = "back"
+    GUIDE = "guide"
+    TOUCHPAD = "touchpad"
+
+
+class GamepadTrigger(StrEnum):
+    RIGHT_TRIGGER = "righttrigger"
+    LEFT_TRIGGER = "lefttrigger"
+
+
+class GamepadStick(StrEnum):
+    LEFT_X = "leftx"
+    LEFT_Y = "lefty"
+    RIGHT_X = "rightx"
+    RIGHT_Y = "righty"
 
 
 _CONNECTION_EVENT_TYPES = (pygame.JOYDEVICEADDED, pygame.JOYDEVICEREMOVED)
@@ -145,4 +174,40 @@ class Joystick:
 
     @property
     def is_standard_gamepad(self) -> bool:
-        return self._gamepad is not None
+        return self._gamepad is not None and self._gamepad.attached()
+
+    def get_gpbutton(self, button: GamepadButton) -> bool:
+        if not self.is_standard_gamepad:
+            raise NotAGamepadError()
+        if button == GamepadButton.TOUCHPAD:
+            mapping = self._gamepad.get_mapping()
+            touchpad = mapping.get("touchpad")
+            if touchpad is None:
+                return False
+            return self._joystick.get_button(int(touchpad[1:]))
+        return self._gamepad.get_button(button)
+
+    def get_gpstick(self, axis: GamepadStick) -> Annotated[float, Ge(-1.0), Le(1.0)]:
+        if not self.is_standard_gamepad:
+            raise NotAGamepadError()
+        return self._gamepad.get_axis(axis)
+
+    def get_gptrigger(self, trigger: GamepadTrigger) -> Annotated[float, Ge(0), Le(1.0)]:
+        if not self.is_standard_gamepad:
+            raise NotAGamepadError()
+        
+
+    def get_button(self, button_idx: int) -> bool:
+        if self._joystick.get_numbuttons() < button_idx:
+            raise IndexOutOfRangeError()
+        return self._joystick.get_button(button_idx)
+
+    def get_axis(self, axis_idx: int) -> Annotated[float, Ge(-1.0), Le(1.0)]:
+        if self._joystick.get_numaxes() < axis_idx:
+            raise IndexOutOfRangeError()
+        return self._joystick.get_axis(axis_idx)
+
+    def get_hat(self, hat_idx: int) -> Tuple[float, float]:
+        if self._joystick.get_numhats() < hat_idx:
+            raise IndexOutOfRangeError()
+        return self._joystick.get_hat(hat_idx)
