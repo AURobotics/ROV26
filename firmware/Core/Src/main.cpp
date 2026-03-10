@@ -312,7 +312,7 @@ int main() {
     MX_TIM3_Init();
     MX_TIM4_Init();
     MX_TIM5_Init();
-    // MX_USB_DEVICE_Init();
+    MX_USB_DEVICE_Init();
     HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
 
     Test_state test_state = Test_state::OFF; // normal mode
@@ -363,14 +363,14 @@ int main() {
     PWM pwm8B(&htim2, TIM_CHANNEL_2);
 
     //
-    Motor motors[] = {Motor(&pwm1B, &pwm1A),
-                      Motor(&pwm2B, &pwm2A),
-                      Motor(&pwm3B, &pwm3A),
-                      Motor(&pwm4B, &pwm4A),
-                      Motor(&pwm5B, &pwm5A),
-                      Motor(&pwm6B, &pwm6A),
-                      Motor(&pwm7B, &pwm7A),
-                      Motor(&pwm8B, &pwm8A)};
+    Motor motors[] = {Motor(&pwm1A, &pwm1B),
+                      Motor(&pwm2A, &pwm2B),
+                      Motor(&pwm3A, &pwm3B),
+                      Motor(&pwm4A, &pwm4B),
+                      Motor(&pwm5A, &pwm5B),
+                      Motor(&pwm6A, &pwm6B),
+                      Motor(&pwm7A, &pwm7B),
+                      Motor(&pwm8A, &pwm8B)};
     //
     for (const auto& motor : motors)
         motor.setup();
@@ -467,14 +467,14 @@ int main() {
     // __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, 0);
     // __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 999);
 
-
+    HAL_Delay(1000);
     while (true) {
-        // static bool data_received_first_time = false;
-        // if (!data_received_first_time) {
-        //     CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
-        //     HAL_Delay(500);
-        // }
-        //
+        static bool data_received_first_time = false;
+        if (!data_received_first_time) {
+            CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
+            HAL_Delay(1);
+        }
+
         // if (data_received_flag) {
         //     data_received_first_time = true;
         //     data_received_flag = 0;
@@ -619,12 +619,29 @@ int main() {
         // }
 
 
-        controller_output[0] = 1;
-        float clamped_motors[8] = {};
+        for (int i = 0; i < 6; i++)
+            controller_output[i] = command_pkt.forces[i] * 4;
+
+        float clamped_motors[8] = {0};
         apply_pseudo_inverse(controller_output, clamped_motors);
         normalize_thrusters(clamped_motors);
         for (int i = 0; i < 7; i++)
             motors[i].move(clamped_motors[i]);
+
+        // char buffer[200];
+        // int len = 0;
+        // len += sprintf(buffer + len, "clamped_motors: [");
+        // for (int i = 0; i < 8; i++)
+        // {
+        //     len += sprintf(buffer + len, "%.4f", clamped_motors[i]);
+        //     if (i < 7)
+        //         len += sprintf(buffer + len, ", ");
+        // }
+        // len += sprintf(buffer + len, "]\r\n");
+        // CDC_Transmit_FS((uint8_t*)buffer, len);
+
+
+
         // Motor::move_motor(motors, clamped_motors);
 
 
