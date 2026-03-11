@@ -203,11 +203,11 @@ struct vec_3 {
     const float& z() const { return vec[2]; }
 };
 
-uint8_t Ascale = AFS_2G;     // AFS_2G, AFS_4G, AFS_8G, AFS_16G
-uint8_t Gscale = GFS_250DPS; // GFS_250DPS, GFS_500DPS, GFS_1000DPS, GFS_2000DPS
-uint8_t Mscale = MFS_16BITS; // MFS_14BITS or MFS_16BITS, 14-bit or 16-bit magnetometer resolution
-uint8_t Mmode = 0x06;        // Either 8 Hz 0x02) or 100 Hz (0x06) magnetometer data ODR
-float aRes, gRes, mRes;      // scale resolutions per LSB for the sensors
+// uint8_t Ascale = AFS_2G;     // AFS_2G, AFS_4G, AFS_8G, AFS_16G
+// uint8_t Gscale = GFS_250DPS; // GFS_250DPS, GFS_500DPS, GFS_1000DPS, GFS_2000DPS
+// uint8_t Mscale = MFS_16BITS; // MFS_14BITS or MFS_16BITS, 14-bit or 16-bit magnetometer resolution
+// uint8_t Mmode = 0x06;        // Either 8 Hz 0x02) or 100 Hz (0x06) magnetometer data ODR
+// float aRes, gRes, mRes;      // scale resolutions per LSB for the sensors
 
 #define Kp 2.0f * 5.0f // these are the free parameters in the Mahony filter and fusion scheme, Kp for proportional feedback, Ki for integral
 #define Ki 0.0f
@@ -221,10 +221,20 @@ public:
     //====== Set of useful function to access acceleratio, gyroscope, and temperature data
     //===================================================================================================================
 
+    uint8_t Ascale = AFS_2G;
+    uint8_t Gscale = GFS_250DPS;
+    uint8_t Mscale = MFS_16BITS;
+    uint8_t Mmode = 0x06;
+    float aRes = 0.0f;
+    float gRes = 0.0f;
+    float mRes = 0.0f;
+
     explicit MPU9250(I2C_HandleTypeDef* hi2c);
     HAL_StatusTypeDef writeByte(uint8_t address, uint8_t subAddress, uint8_t data);
     uint8_t readByte(uint8_t address, uint8_t subAddress);
     HAL_StatusTypeDef readBytes(uint8_t address, uint8_t subAddress, uint8_t count, uint8_t * dest);
+    void init();
+    void update();
     void readAccelData(int16_t *destination);
     void readGyroData(int16_t *destination);
     void readMagData(int16_t *destination);
@@ -236,6 +246,8 @@ public:
     void selfTest(float *destination);
     void saveCalibration(CalibrationData& data);
     bool loadCalibration(CalibrationData& data);
+    void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
+    void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
     vec_3 getEulerAngles();
     vec_3 getBodyRates();
 
