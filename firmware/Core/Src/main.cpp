@@ -23,30 +23,31 @@ extern "C" {
 #include "Kinematics.h"
 #include "array"
 #include "usbd_cdc_if.h"
+#include "mpu9250.h"
 
 static constexpr int16_t LEAKAGE_THRESHOLD = 2000;
 
 
 I2C i2c_wrapper(&hi2c3);
-BNO055 bno(&i2c_wrapper);
+MPU9250 mpu9250(&hi2c3);
 MS5611 ms5611(&hi2c3);
-Ready_Msg ready_msg;
+Ready_Msg ready_msg = {.sync_byte = 0xFF,.type = 0};
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
-void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
-    data[0] = ms5611.getDepth();
-    data[1] = std::nullopt;
-
-    vec_3 angles = bno.get_euler_angles();
-    vec_3 rates = bno.get_body_rates();
-
-    data[2] = angles.x(); // roll
-    data[3] = rates.x();
-    data[4] = angles.y(); // pitch
-    data[5] = rates.y();
-    data[6] = angles.z(); // yaw
-    data[7] = rates.z();
-}
+// void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
+//     data[0] = ms5611.getDepth();
+//     data[1] = std::nullopt;
+//
+//     vec_3 angles = bno.get_euler_angles();
+//     vec_3 rates = bno.get_body_rates();
+//
+//     data[2] = angles.x(); // roll
+//     data[3] = rates.x();
+//     data[4] = angles.y(); // pitch
+//     data[5] = rates.y();
+//     data[6] = angles.z(); // yaw
+//     data[7] = rates.z();
+// }
 
 double normalize_angle(double angle) {
     angle = fmod(angle, 360.0);
@@ -397,6 +398,7 @@ int main() {
 
     std::array<std::optional<float>, 8> sensor_data;
     // ReSharper disable once CppDFAEndlessLoop
+    TxPacket tx;
     while (true) {
         // TxPacket tx_pkt; // TODO: should be moved to outer scope
         //
@@ -436,8 +438,18 @@ int main() {
         // Motor::move_motor(motors, buff);
         // HAL_Delay(100);
 
+        mpu9250.init();
+        mpu9250.update();
+
+        vec_3 eulers = mpu9250.getEulerAngles();
+        vec_3 rates = mpu9250.getBodyRates();
 
 
+        tx.pitch = eulers.y();
+        tx.roll = eulers.x();
+        tx.yaw = eulers.z();
+
+        CDC_Transmit_FS((uint8_t*)&tx, sizeof(tx));
 
 
 

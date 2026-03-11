@@ -10,6 +10,7 @@ float ax, ay, az, gx, gy, gz, mx, my, mz; // variables to hold latest sensor dat
 int16_t tempCount;   // Stores the real internal chip temperature in degrees Celsius
 float temperature;
 float SelfTest[6];
+CalibrationData calib;
 
 int delt_t = 0; // used to control display output rate
 int count = 0;  // used to control display output rate
@@ -29,6 +30,8 @@ float eInt[3] = {0.0f, 0.0f, 0.0f};              // vector to hold integral erro
 
 constexpr uint32_t flash_address = 0x08020000;
 
+MPU9250::MPU9250(I2C_HandleTypeDef *hi2c) : hi2c(hi2c) {}
+
 HAL_StatusTypeDef MPU9250::writeByte(uint8_t devAddr, uint8_t regAddr, uint8_t data) {
     uint8_t buf[2] = {regAddr, data};
     return HAL_I2C_Master_Transmit(hi2c, devAddr, buf, 2, 100);
@@ -44,6 +47,39 @@ uint8_t MPU9250::readByte(uint8_t devAddr, uint8_t regAddr) {
 HAL_StatusTypeDef MPU9250::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t count, uint8_t *dest) {
     HAL_I2C_Master_Transmit(hi2c, devAddr, &regAddr, 1, 100);
     return HAL_I2C_Master_Receive(hi2c, devAddr | 0x01, dest, count, 100);
+}
+
+void MPU9250::init() {
+    resetMPU9250(); // Reset registers to default in preparation for device calibration
+    initMPU9250();
+    initAK8963(magCalibration);
+
+    if(!loadCalibration(calib)) {
+        calibrateMPU9250(gyroBias, accelBias); // Calibrate gyro and accelerometers, load biases in bias registers
+}
+}
+
+void MPU9250::update() {
+    readAccelData(accelCount);  // Read the x/y/z adc values
+    // Now we'll calculate the accleration value into actual g's
+    ax = (float)accelCount[0]*aRes - accelBias[0];  // get actual g value, this depends on scale being set
+    ay = (float)accelCount[1]*aRes - accelBias[1];
+    az = (float)accelCount[2]*aRes - accelBias[2];
+
+    readGyroData(gyroCount);  // Read the x/y/z adc values
+    // Calculate the gyro value into actual degrees per second
+    gx = (float)gyroCount[0]*gRes - gyroBias[0];  // get actual gyro value, this depends on scale being set
+    gy = (float)gyroCount[1]*gRes - gyroBias[1];
+    gz = (float)gyroCount[2]*gRes - gyroBias[2];
+
+    readMagData(magCount);  // Read the x/y/z adc values
+    // Calculate the magnetometer values in milliGauss
+    // Include factory calibration per data sheet and user environmental corrections
+    mx = (float)magCount[0]*mRes*magCalibration[0] - magbias[0];  // get actual magnetometer value, this depends on scale being set
+    my = (float)magCount[1]*mRes*magCalibration[1] - magbias[1];
+    mz = (float)magCount[2]*mRes*magCalibration[2] - magbias[2];
+
+    MadgwickQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f,  my,  mx, mz);
 }
 
 void MPU9250::readAccelData(int16_t *destination) {
@@ -373,7 +409,7 @@ bool MPU9250::loadCalibration(CalibrationData &data) {
     return false;
 }
 
-        void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz)
+void MPU9250::MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz)
         {
             float q1 = q[0], q2 = q[1], q3 = q[2], q4 = q[3];   // short name local variable for readability
             float norm;
@@ -469,7 +505,7 @@ bool MPU9250::loadCalibration(CalibrationData &data) {
 
  // Similar to Madgwick scheme but uses proportional and integral filtering on the error between estimated reference vectors and
  // measured ones.
-            void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz)
+void MPU9250::MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz)
         {
             float q1 = q[0], q2 = q[1], q3 = q[2], q4 = q[3];   // short name local variable for readability
             float norm;
@@ -566,15 +602,15 @@ vec_3 MPU9250::getEulerAngles() {
     float q0 = q[0], q1 = q[1], q2 = q[2], q3 = q[3];
 
     // yaw 0 to 360
-    angles.x() = atan2f(2.0f*(q1*q2 + q0*q3),
+    angles.z() = atan2f(2.0f*(q1*q2 + q0*q3),
                         q0*q0 + q1*q1 - q2*q2 - q3*q3) * 180.0f / PI;
-    if (angles.x() < 0) angles.x() += 360.0f;
+    if (angles.z() < 0) angles.z() += 360.0f;
 
     // pitch -180 to 180
     angles.y() = -asinf(2.0f*(q1*q3 - q0*q2)) * 180.0f / PI;
 
     // roll -90 to 90
-    angles.z() = atan2f(2.0f*(q0*q1 + q2*q3),
+    angles.x() = atan2f(2.0f*(q0*q1 + q2*q3),
                          q0*q0 - q1*q1 - q2*q2 + q3*q3) * 180.0f / PI;
     return angles;
 }
