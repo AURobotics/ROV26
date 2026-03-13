@@ -34,6 +34,7 @@ Ready_msg ready_msg = {.sync_byte = 255, .type = READY_MESSAGE};
 
 void checkBootloaderRequest(void) {
     if (*((volatile uint32_t*)MAGIC_ADDRESS) == MAGIC_VALUE) {
+
         *((volatile uint32_t*)MAGIC_ADDRESS) = 0;
         uint32_t* bootVector = (uint32_t*)BOOTLOADER_ADDRESS;
         __disable_irq();
@@ -48,7 +49,7 @@ void checkBootloaderRequest(void) {
             NVIC->ICER[i] = 0xFFFFFFFF;
             NVIC->ICPR[i] = 0xFFFFFFFF;
         }
-        __enable_irq();
+        
         __set_MSP(bootVector[0]);
         ((void (*)(void))bootVector[1])();
     }

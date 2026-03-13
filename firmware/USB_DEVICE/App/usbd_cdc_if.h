@@ -51,81 +51,85 @@
 /* Define size for the receive and transmit buffer over CDC */
 #define APP_RX_DATA_SIZE  1024
 #define APP_TX_DATA_SIZE  1024
-/* USER CODE BEGIN EXPORTED_DEFINES */
+extern uint32_t _stack;
+#define MAGIC_ADDRESS 0x20000000 // start of ram
+#define MAGIC_VALUE 0xDEADBEEF
+#define BOOTLOADER_ADDRESS 0x1FFF0000 // STM32F401 system memory
+ /* USER CODE BEGIN EXPORTED_DEFINES */
 
-/* USER CODE END EXPORTED_DEFINES */
+ /* USER CODE END EXPORTED_DEFINES */
 
-/**
+ /**
   * @}
   */
 
-/** @defgroup USBD_CDC_IF_Exported_Types USBD_CDC_IF_Exported_Types
+ /** @defgroup USBD_CDC_IF_Exported_Types USBD_CDC_IF_Exported_Types
   * @brief Types.
   * @{
   */
 
-/* USER CODE BEGIN EXPORTED_TYPES */
+ /* USER CODE BEGIN EXPORTED_TYPES */
 
-/* USER CODE END EXPORTED_TYPES */
+ /* USER CODE END EXPORTED_TYPES */
 
-/**
+ /**
   * @}
   */
 
-/** @defgroup USBD_CDC_IF_Exported_Macros USBD_CDC_IF_Exported_Macros
+ /** @defgroup USBD_CDC_IF_Exported_Macros USBD_CDC_IF_Exported_Macros
   * @brief Aliases.
   * @{
   */
 
-/* USER CODE BEGIN EXPORTED_MACRO */
+ /* USER CODE BEGIN EXPORTED_MACRO */
 
-/* USER CODE END EXPORTED_MACRO */
+ /* USER CODE END EXPORTED_MACRO */
 
-/**
+ /**
   * @}
   */
 
-/** @defgroup USBD_CDC_IF_Exported_Variables USBD_CDC_IF_Exported_Variables
+ /** @defgroup USBD_CDC_IF_Exported_Variables USBD_CDC_IF_Exported_Variables
   * @brief Public variables.
   * @{
   */
 
-/** CDC Interface callback. */
-extern USBD_CDC_ItfTypeDef USBD_Interface_fops_FS;
+ /** CDC Interface callback. */
+ extern USBD_CDC_ItfTypeDef USBD_Interface_fops_FS;
 
-/* USER CODE BEGIN EXPORTED_VARIABLES */
+ /* USER CODE BEGIN EXPORTED_VARIABLES */
 
-/* USER CODE END EXPORTED_VARIABLES */
+ /* USER CODE END EXPORTED_VARIABLES */
 
-/**
+ /**
   * @}
   */
 
-/** @defgroup USBD_CDC_IF_Exported_FunctionsPrototype USBD_CDC_IF_Exported_FunctionsPrototype
+ /** @defgroup USBD_CDC_IF_Exported_FunctionsPrototype USBD_CDC_IF_Exported_FunctionsPrototype
   * @brief Public functions declaration.
   * @{
   */
 
-uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
+ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 
-/* USER CODE BEGIN EXPORTED_FUNCTIONS */
+ /* USER CODE BEGIN EXPORTED_FUNCTIONS */
 
-/* USER CODE END EXPORTED_FUNCTIONS */
+ /* USER CODE END EXPORTED_FUNCTIONS */
 
-/**
+ /**
   * @}
   */
 
-/**
+ /**
   * @}
   */
 
-/**
+ /**
   * @}
   */
 
 #ifdef __cplusplus
-}
+ }
 #endif
 
 #endif /* __USBD_CDC_IF_H__ */
