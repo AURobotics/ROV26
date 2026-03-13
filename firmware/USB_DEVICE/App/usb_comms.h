@@ -22,7 +22,8 @@ typedef enum {
     OPERATION_MESSAGE = 3, // received from gui to change operation mode
     SENSOR_MESSAGE = 4, // sent from stm, contains the actuator's state and sensors' data
     TUNING_MESSAGE = 5,
-    CONTROLLER_RESPONSE = 6
+    CONTROLLER_RESPONSE = 6,
+    DFU_mode = 7
 } Message_Type;
 
 

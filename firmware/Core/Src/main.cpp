@@ -664,7 +664,6 @@ int main() {
         // CDC_Transmit_FS((uint8_t*)buffer, len);
 
 
-
         // Motor::move_motor(motors, clamped_motors);
 
 
