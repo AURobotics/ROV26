@@ -1,6 +1,8 @@
 #include "mpu9250.h"
 #include <cstring>
 
+#include "usbd_cdc_if.h"
+
 int16_t accelCount[3];  // Stores the 16-bit signed accelerometer sensor output
 int16_t gyroCount[3];   // Stores the 16-bit signed gyro sensor output
 int16_t magCount[3];    // Stores the 16-bit signed magnetometer sensor output
@@ -18,7 +20,7 @@ int count = 0;  // used to control display output rate
 // parameters for 6 DoF sensor fusion calculations
 float PI = 3.14159265358979323846f;
 float GyroMeasError = PI * (60.0f / 180.0f);     // gyroscope measurement error in rads/s (start at 60 deg/s), then reduce after ~10 s to 3
-float beta = sqrt(3.0f / 4.0f) * GyroMeasError;  // compute beta
+float beta = 0.1;//sqrt(3.0f / 4.0f) * GyroMeasError;  // compute beta
 float GyroMeasDrift = PI * (1.0f / 180.0f);      // gyroscope measurement drift in rad/s/s (start at 0.0 deg/s/s)
 float zeta = sqrt(3.0f / 4.0f) * GyroMeasDrift;  // compute zeta, the other free parameter in the Madgwick scheme usually set to a small or zero value
 
@@ -33,53 +35,74 @@ constexpr uint32_t flash_address = 0x08020000;
 MPU9250::MPU9250(I2C_HandleTypeDef *hi2c) : hi2c(hi2c) {}
 
 HAL_StatusTypeDef MPU9250::writeByte(uint8_t devAddr, uint8_t regAddr, uint8_t data) {
-    uint8_t buf[2] = {regAddr, data};
-    return HAL_I2C_Master_Transmit(hi2c, devAddr, buf, 2, 100);
+    return HAL_I2C_Mem_Write(
+        hi2c, devAddr, regAddr, I2C_MEMADD_SIZE_8BIT, &data, 1, HAL_MAX_DELAY);
 }
 
 uint8_t MPU9250::readByte(uint8_t devAddr, uint8_t regAddr) {
     uint8_t data = 0;
-    HAL_I2C_Master_Transmit(hi2c, devAddr, &regAddr, 1, 100);
-    HAL_I2C_Master_Receive(hi2c, devAddr | 0x01, &data, 1, 100);
+    HAL_I2C_Mem_Read(hi2c, devAddr, regAddr, I2C_MEMADD_SIZE_8BIT,&data,1,HAL_MAX_DELAY);
     return data;
 }
 
 HAL_StatusTypeDef MPU9250::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t count, uint8_t *dest) {
-    HAL_I2C_Master_Transmit(hi2c, devAddr, &regAddr, 1, 100);
-    return HAL_I2C_Master_Receive(hi2c, devAddr | 0x01, dest, count, 100);
+    return HAL_I2C_Mem_Read(hi2c,
+                            devAddr,
+                            regAddr,
+                            I2C_MEMADD_SIZE_8BIT,
+                            dest,
+                            count,
+                            HAL_MAX_DELAY);
 }
 
 void MPU9250::init() {
     resetMPU9250(); // Reset registers to default in preparation for device calibration
+    calibrateMPU9250(gyroBias, accelBias); // Calibrate gyro and accelerometers, load biases in bias registers
     initMPU9250();
     initAK8963(magCalibration);
 
-    if(!loadCalibration(calib)) {
-        calibrateMPU9250(gyroBias, accelBias); // Calibrate gyro and accelerometers, load biases in bias registers
-}
+//     if(!loadCalibration(calib)) {
+// }
 }
 
 void MPU9250::update() {
+    static uint32_t lastTick = 0;
+    uint32_t now = HAL_GetTick();
+    deltat = (lastTick == 0) ? 0.01f : (now - lastTick) * 0.001f;
+    lastTick = now;
+
+    getAres();
     readAccelData(accelCount);  // Read the x/y/z adc values
     // Now we'll calculate the accleration value into actual g's
     ax = (float)accelCount[0]*aRes - accelBias[0];  // get actual g value, this depends on scale being set
     ay = (float)accelCount[1]*aRes - accelBias[1];
     az = (float)accelCount[2]*aRes - accelBias[2];
+    // char buffer1[100];
+    // int len = 0;
+    // len +=sprintf(buffer1+len,"\n\rax = %f, ay = %f, az = %f",ax,ay,az);
+    // CDC_Transmit_FS((uint8_t*)buffer1,len);
 
+    getGres();
     readGyroData(gyroCount);  // Read the x/y/z adc values
     // Calculate the gyro value into actual degrees per second
     gx = (float)gyroCount[0]*gRes - gyroBias[0];  // get actual gyro value, this depends on scale being set
     gy = (float)gyroCount[1]*gRes - gyroBias[1];
     gz = (float)gyroCount[2]*gRes - gyroBias[2];
+    // len =0;
+    // len +=sprintf(buffer1+len,"\n\rgx = %f, gy = %f, gz = %f",gx,gy,gz);
+    // CDC_Transmit_FS((uint8_t*)buffer1,len);
 
+    getMres();
     readMagData(magCount);  // Read the x/y/z adc values
     // Calculate the magnetometer values in milliGauss
     // Include factory calibration per data sheet and user environmental corrections
     mx = (float)magCount[0]*mRes*magCalibration[0] - magbias[0];  // get actual magnetometer value, this depends on scale being set
     my = (float)magCount[1]*mRes*magCalibration[1] - magbias[1];
     mz = (float)magCount[2]*mRes*magCalibration[2] - magbias[2];
-
-    MadgwickQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f,  my,  mx, mz);
+    // len =0;
+    // len += sprintf(buffer1+len,"\n\rmx = %f , my = %f, mz = %f",mx,my,mz);
+    // CDC_Transmit_FS((uint8_t*)buffer1,len);
+    MadgwickQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f,  mx,  my, mz);
 }
 
 void MPU9250::readAccelData(int16_t *destination) {
@@ -88,6 +111,7 @@ void MPU9250::readAccelData(int16_t *destination) {
     destination[0] = (int16_t)(((int16_t)rawData[0] << 8) | rawData[1]);
     destination[1] = (int16_t)(((int16_t)rawData[2] << 8) | rawData[3]);
     destination[2] = (int16_t)(((int16_t)rawData[4] << 8) | rawData[5]);
+
 }
 
 void MPU9250::readGyroData(int16_t *destination) {
@@ -146,6 +170,10 @@ void MPU9250::initAK8963(float *destination) {
     uint8_t mode = (uint8_t)(Mscale << 4 | 0x06);  // 0x06 = 100Hz
     writeByte(AK8963_ADDRESS, AK8963_CNTL, mode);
     HAL_Delay(10);
+    char buffer1[100];
+    int len = 0;
+    len +=sprintf(buffer1+len,"\n\rmagCalibration = %f, %f, %f",destination[0],destination[1],destination[2]);
+    CDC_Transmit_FS((uint8_t*)buffer1,len);
 }
 
 // ─────────────────────────────────────────────
@@ -500,7 +528,54 @@ void MPU9250::MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, f
             q[3] = q4 * norm;
 
         }
-
+//
+// void MPU9250::MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz)
+// {
+//     float q1 = q[0], q2 = q[1], q3 = q[2], q4 = q[3];
+//     float norm;
+//     float s1, s2, s3, s4;
+//     float qDot1, qDot2, qDot3, qDot4;
+//
+//     // Auxiliary variables
+//     float _2q1 = 2.0f * q1, _2q2 = 2.0f * q2;
+//     float _2q3 = 2.0f * q3, _2q4 = 2.0f * q4;
+//     float _4q1 = 4.0f * q1, _4q2 = 4.0f * q2, _4q3 = 4.0f * q3;
+//     float _8q2 = 8.0f * q2, _8q3 = 8.0f * q3;
+//     float q1q1 = q1*q1, q2q2 = q2*q2, q3q3 = q3*q3, q4q4 = q4*q4;
+//
+//     // Normalise accelerometer
+//     norm = sqrt(ax*ax + ay*ay + az*az);
+//     if (norm == 0.0f) return;
+//     norm = 1.0f / norm;
+//     ax *= norm; ay *= norm; az *= norm;
+//
+//     // Gradient descent - accel only (6DOF)
+//     s1 = _4q1*q3q3 + _2q3*ax + _4q1*q2q2 - _2q2*ay;
+//     s2 = _4q2*q4q4 - _2q4*ax + 4.0f*q1q1*q2 - _2q1*ay - _4q2 + _8q2*q2q2 + _8q2*q3q3 + _4q2*az;
+//     s3 = 4.0f*q1q1*q3 + _2q1*ax + _4q3*q4q4 - _2q4*ay - _4q3 + _8q3*q2q2 + _8q3*q3q3 + _4q3*az;
+//     s4 = 4.0f*q2q2*q4 - _2q2*ax + 4.0f*q3q3*q4 - _2q3*ay;
+//
+//     norm = sqrt(s1*s1 + s2*s2 + s3*s3 + s4*s4);
+//     norm = 1.0f / norm;
+//     s1 *= norm; s2 *= norm; s3 *= norm; s4 *= norm;
+//
+//     // Rate of change of quaternion
+//     qDot1 = 0.5f*(-q2*gx - q3*gy - q4*gz) - beta*s1;
+//     qDot2 = 0.5f*(q1*gx + q3*gz - q4*gy)  - beta*s2;
+//     qDot3 = 0.5f*(q1*gy - q2*gz + q4*gx)  - beta*s3;
+//     qDot4 = 0.5f*(q1*gz + q2*gy - q3*gx)  - beta*s4;
+//
+//     // Integrate
+//     q1 += qDot1 * deltat;
+//     q2 += qDot2 * deltat;
+//     q3 += qDot3 * deltat;
+//     q4 += qDot4 * deltat;
+//
+//     norm = sqrt(q1*q1 + q2*q2 + q3*q3 + q4*q4);
+//     norm = 1.0f / norm;
+//     q[0] = q1*norm; q[1] = q2*norm;
+//     q[2] = q3*norm; q[3] = q4*norm;
+// }
 
 
  // Similar to Madgwick scheme but uses proportional and integral filtering on the error between estimated reference vectors and

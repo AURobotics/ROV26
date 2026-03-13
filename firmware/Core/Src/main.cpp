@@ -25,6 +25,8 @@ extern "C" {
 #include "usbd_cdc_if.h"
 #include "mpu9250.h"
 
+#define FLOAT_PRINT(f) (int)(f), (int)(((f) - (int)(f)) * 100)
+
 static constexpr int16_t LEAKAGE_THRESHOLD = 2000;
 
 
@@ -398,8 +400,26 @@ int main() {
 
     std::array<std::optional<float>, 8> sensor_data;
     // ReSharper disable once CppDFAEndlessLoop
-    TxPacket tx;
+    mpu9250.init();
+
+    int last_time = HAL_GetTick();
     while (true) {
+        mpu9250.update();
+        vec_3 eulers = mpu9250.getEulerAngles();
+        // vec_3 rates = mpu9250.getBodyRates();
+
+
+        char buffer[200];
+        int len = 0;
+        if (HAL_GetTick()- last_time > 1000) {
+            last_time = HAL_GetTick();
+        len += sprintf(buffer+len, "\n\rroll = %f, pitch = %f, yaw = %f\n", eulers.x(),eulers.y(),eulers.z());
+
+        CDC_Transmit_FS((uint8_t*)buffer, len);
+    }
+
+
+
         // TxPacket tx_pkt; // TODO: should be moved to outer scope
         //
         // if (data_received_flag) {
@@ -438,18 +458,6 @@ int main() {
         // Motor::move_motor(motors, buff);
         // HAL_Delay(100);
 
-        mpu9250.init();
-        mpu9250.update();
-
-        vec_3 eulers = mpu9250.getEulerAngles();
-        vec_3 rates = mpu9250.getBodyRates();
-
-
-        tx.pitch = eulers.y();
-        tx.roll = eulers.x();
-        tx.yaw = eulers.z();
-
-        CDC_Transmit_FS((uint8_t*)&tx, sizeof(tx));
 
 
 

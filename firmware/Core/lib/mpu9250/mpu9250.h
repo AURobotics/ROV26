@@ -209,8 +209,8 @@ struct vec_3 {
 // uint8_t Mmode = 0x06;        // Either 8 Hz 0x02) or 100 Hz (0x06) magnetometer data ODR
 // float aRes, gRes, mRes;      // scale resolutions per LSB for the sensors
 
-#define Kp 2.0f * 5.0f // these are the free parameters in the Mahony filter and fusion scheme, Kp for proportional feedback, Ki for integral
-#define Ki 0.0f
+static constexpr float Kp = 2.0f * 5.0f;
+static constexpr float Ki = 0.005f;
 
 class MPU9250 {
 private:
