@@ -51,7 +51,7 @@
 /* Define size for the receive and transmit buffer over CDC */
 #define APP_RX_DATA_SIZE  1024
 #define APP_TX_DATA_SIZE  1024
-extern uint32_t _stack;
+extern uint32_t _estack;
 #define MAGIC_ADDRESS 0x20000000 // start of ram
 #define MAGIC_VALUE 0xDEADBEEF
 #define BOOTLOADER_ADDRESS 0x1FFF0000 // STM32F401 system memory

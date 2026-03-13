@@ -12,6 +12,16 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
+set(CUBE_PROGRAMMER "C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe")
+
+add_custom_target(flash
+    COMMAND ${CUBE_PROGRAMMER}
+        -c port=USB1
+        -d B:/AUR/ROV26/src/firmware/build/Debug/firmware.elf
+        -v
+    DEPENDS ${PROJECT_NAME}
+    COMMENT "Flashing via USB..."
+)
 
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
