@@ -24,7 +24,7 @@ extern "C" {
 #include "array"
 #include "usbd_cdc_if.h"
 
-static constexpr int16_t LEAKAGE_THRESHOLD = 2000;
+static constexpr int16_t LEAKAGE_THRESHOLD = 0;
 
 
 I2C i2c_wrapper(&hi2c3);
@@ -75,7 +75,7 @@ TxPacket dummy = {
 };
 
 // water leakage
-// #define LEAKAGE_THRESHOLD 2000U // need to be adjusted based on testing //TODO: test this
+ #define LEAKAGE_THRESHOLD 200U // need to be adjusted based on testing //TODO: test this
 // function
 static uint32_t read_adc(uint32_t channel) {
     ADC_ChannelConfTypeDef sConfig = {};
@@ -83,12 +83,11 @@ static uint32_t read_adc(uint32_t channel) {
     sConfig.Rank = 1;
     sConfig.SamplingTime =
         ADC_SAMPLETIME_84CYCLES; // sampling time is 84 cycles, which is 84/84MHz = 1us
-    if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-        return 0u;
+    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+    //     return 0u;
 
     HAL_ADC_Start(&hadc1);
-    if (HAL_ADC_PollForConversion(&hadc1, 10) != HAL_OK)
-        return 0u;
+    HAL_ADC_PollForConversion(&hadc1, 10);
     uint32_t value = HAL_ADC_GetValue(&hadc1);
     HAL_ADC_Stop(&hadc1);
     return value;
@@ -101,11 +100,11 @@ volatile bool leakage_safety_enabled = true;
 volatile bool leak_detected = false;
 
 static void checkWaterLeakage() {
-    if (!leakage_safety_enabled) {
-        // Safety disabled, ensure relay is energised
-        HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
-        return;
-    }
+    // if (!leakage_safety_enabled) {
+    //     // Safety disabled, ensure relay is energised
+    //     // HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
+    //     return;
+    // }
 
     if (leak_detected) {
         // Leak already detected, ensure relay is tripped
@@ -115,6 +114,13 @@ static void checkWaterLeakage() {
 
     uint32_t sensor1 = read_adc(LEAKAGE_ADC_CHANNEL_1);
     uint32_t sensor2 = read_adc(LEAKAGE_ADC_CHANNEL_2);
+
+    char buffer[200];
+    int len = 0;
+    len += sprintf(buffer + len, "sensor 1 %lu ", sensor1);
+    len += sprintf(buffer + len, " sensor 2 %lu \n", sensor2);
+    CDC_Transmit_FS((uint8_t*)buffer, len);
+
 
     if (sensor1 > LEAKAGE_THRESHOLD || sensor2 > LEAKAGE_THRESHOLD) {
         leak_detected = true;
@@ -129,14 +135,14 @@ static void checkWaterLeakage() {
 
 enum class Test_state { OFF, STEPPING, DONE };
 
-void leakageCommsHandler(uint8_t cmd) { // TODO: change switch case
-    switch (cmd) {
-    case COMS_LEAKAGE_SAFETY_ENABLE :
+void leakageCommsHandler(uint16_t cmd) { // TODO: change switch case
+    switch (cmd & (1 << 10)) {
+    case 1 :
         leakage_safety_enabled = true;
         leak_detected = false;
         HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
         break;
-    case COMS_LEAKAGE_SAFETY_DISABLE :
+    case 0 :
         leakage_safety_enabled = false;
         leak_detected = false;
         HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
@@ -184,12 +190,12 @@ static void checkGripperLimitSwitches() {
 }
 
 
-void gripperCommsHandler(uint8_t cmd) {
+void gripperCommsHandler(uint16_t cmd) {
     GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
     GPIO_PinState closedState =
         HAL_GPIO_ReadPin(LIMIT_SWITCH_CLOSED_GPIO_Port, LIMIT_SWITCH_CLOSED_Pin);
-    switch (cmd) {
-    case COMS_GRIPPER_OPEN :
+    switch (cmd & (1 << 10)) {
+    case 1 :
         if (gripper_safety_enabled &&
             openState == GPIO_PIN_SET) { // Only open if not already at open limit
             GripperStop();
@@ -198,7 +204,7 @@ void gripperCommsHandler(uint8_t cmd) {
             GripperOpen();
         }
         break;
-    case COMS_GRIPPER_CLOSE :
+    case 0 :
         if (gripper_safety_enabled &&
             closedState == GPIO_PIN_SET) { // Only close if not already at closed limit
             GripperStop();
@@ -220,6 +226,38 @@ void gripperCommsHandler(uint8_t cmd) {
         break;
     }
 }
+
+// switch (cmd &(1<<5)) {
+// case 1:
+//     if (gripper_safety_enabled &&
+//         openState == GPIO_PIN_SET) { // Only open if not already at open limit
+//         GripperStop();
+//         }
+//     else {
+//         GripperOpen();
+//     }
+//     break;
+// case 0 :
+//     if (gripper_safety_enabled &&
+//         closedState == GPIO_PIN_SET) { // Only close if not already at closed limit
+//         GripperStop();
+//         }
+//     else {
+//         GripperClose();
+//     }
+//     break;
+// case COMS_GRIPPER_STOP :
+//     GripperStop();
+//     break;
+// case COMS_GRIPPER_SAFETY_ENABLE :
+//     gripper_safety_enabled = true;
+//     break;
+// case COMS_GRIPPER_SAFETY_DISABLE :
+//     gripper_safety_enabled = false;
+//     break;
+// default :
+//     break;
+// }
 
 static uint8_t loadStatus() {
     uint8_t statusByte = 0;
@@ -305,8 +343,8 @@ int main() {
     SystemClock_Config();
 
     MX_GPIO_Init();
-    // MX_ADC1_Init();
-    // MX_I2C3_Init();
+    MX_ADC1_Init();
+    MX_I2C3_Init();
     MX_TIM1_Init();
     MX_TIM2_Init();
     MX_TIM3_Init();
@@ -469,11 +507,16 @@ int main() {
 
     HAL_Delay(1000);
     while (true) {
-        static bool data_received_first_time = false;
-        if (!data_received_first_time) {
-            CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
-            HAL_Delay(1);
-        }
+
+
+        checkWaterLeakage();
+        HAL_Delay(1000);
+
+        // static bool data_received_first_time = false;
+        // if (!data_received_first_time) {
+        //     // CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
+        //     HAL_Delay(1);
+        // }
 
         // if (data_received_flag) {
         //     data_received_first_time = true;
@@ -578,6 +621,10 @@ int main() {
         //     controller_output[1] = data[1];
         //
         //     //TODO: rowan: pneumatics (DCV1 DCV2)
+        //  HAL_GPIO_WritePin(GPIOB
+        //  ,GPIO_PIN_14,command_pkt.control_byte&(1<<5)?GPIO_PIN_SET:GPIO_PIN_RESET);
+        // HAL_GPIO_WritePin(GPIOB
+        // ,GPIO_PIN_15,command_pkt.control_byte&(1<<6)?GPIO_PIN_SET:GPIO_PIN_RESET);
         // }
         //
         // else { // Testing mode
@@ -619,19 +666,21 @@ int main() {
         // }
 
 
-        for (int i = 0; i < 6; i++)
-            controller_output[i] = command_pkt.forces[i] * 4;
+        // for (int i = 0; i < 6; i++)
+        //     controller_output[i] = command_pkt.forces[i] * 4;
+
+        controller_output[3] = 4;
 
         float clamped_motors[8] = {0};
         apply_pseudo_inverse(controller_output, clamped_motors);
         normalize_thrusters(clamped_motors);
-        for (int i = 0; i < 7; i++)
+        for (int i = 0; i < 8; i++)
             motors[i].move(clamped_motors[i]);
-
         // char buffer[200];
         // int len = 0;
-        // len += sprintf(buffer + len, "clamped_motors: [");
+        // len += sprintf(buffer + len,"leakage_sensor =%f");
         // for (int i = 0; i < 8; i++)
+
         // {
         //     len += sprintf(buffer + len, "%.4f", clamped_motors[i]);
         //     if (i < 7)
@@ -639,7 +688,6 @@ int main() {
         // }
         // len += sprintf(buffer + len, "]\r\n");
         // CDC_Transmit_FS((uint8_t*)buffer, len);
-
 
 
         // Motor::move_motor(motors, clamped_motors);
