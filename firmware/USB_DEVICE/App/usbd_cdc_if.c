@@ -267,7 +267,9 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t* Len) {
     last_receive_time = HAL_GetTick();
     // DFU trigger check
     if (Buf[0] == 0xFF/*start byte*/ && Buf[1] == 0x07/*msg type*/) {
-        *((volatile uint32_t*)MAGIC_ADDRESS) = MAGIC_VALUE;
+        uint64_t* ptr = (uint64_t*)&_stack;
+        *ptr = 0xDEADBEEFCC00FFEEULL;
+
         HAL_Delay(100);
         NVIC_SystemReset();
     }
