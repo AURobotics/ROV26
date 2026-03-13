@@ -57,6 +57,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define MAGIC_ADDRESS 0x20000000 // start of ram
+#define MAGIC_VALUE 0xDEADBEEF
+#define BOOTLOADER_ADDRESS 0x1FFF0000 // STM32F401 system memory
+
 #define LIMIT_SWITCH_CLOSED_Pin GPIO_PIN_14
 #define LIMIT_SWITCH_CLOSED_GPIO_Port GPIOC
 #define LIMIT_SWITCH_OPEN_Pin GPIO_PIN_15
