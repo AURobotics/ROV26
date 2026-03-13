@@ -265,6 +265,12 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t* Len) {
     //call function
     data_received_flag = 1;
     last_receive_time = HAL_GetTick();
+    // DFU trigger check
+    if (Buf[0] == 0xFF && Buf[1] == 0x04) {
+        *((volatile uint32_t*)MAGIC_ADDRESS) = MAGIC_VALUE;
+        HAL_Delay(100);
+        NVIC_SystemReset();
+    }
     memcpy(&command_pkt, Buf, sizeof(Command_msg));
     USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
     USBD_CDC_ReceivePacket(&hUsbDeviceFS);

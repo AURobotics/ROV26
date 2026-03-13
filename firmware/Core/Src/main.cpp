@@ -32,6 +32,28 @@ BNO055 bno(&i2c_wrapper);
 MS5611 ms5611(&hi2c3);
 Ready_msg ready_msg = {.sync_byte = 255, .type = READY_MESSAGE};
 
+void checkBootloaderRequest(void) {
+    if (*((volatile uint32_t*)MAGIC_ADDRESS) == MAGIC_VALUE) {
+        *((volatile uint32_t*)MAGIC_ADDRESS) = 0;
+        uint32_t* bootVector = (uint32_t*)BOOTLOADER_ADDRESS;
+        __disable_irq();
+
+        HAL_RCC_DeInit();
+
+        SysTick->CTRL = 0;
+        SysTick->LOAD = 0;
+        SysTick->VAL = 0;
+
+        for (int i = 0; i < 8; i++) {
+            NVIC->ICER[i] = 0xFFFFFFFF;
+            NVIC->ICPR[i] = 0xFFFFFFFF;
+        }
+        __enable_irq();
+        __set_MSP(bootVector[0]);
+        ((void (*)(void))bootVector[1])();
+    }
+}
+
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
 void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
     data[0] = ms5611.getDepth();
@@ -301,6 +323,7 @@ void SystemClock_Config();
  */
 int main() {
 
+    checkBootloaderRequest();
     HAL_Init();
     SystemClock_Config();
 

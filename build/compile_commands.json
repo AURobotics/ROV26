@@ -1,0 +1,296 @@
+[
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\firmware.dir\\USB_DEVICE\\Target\\usbd_conf.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\USB_DEVICE\\Target\\usbd_conf.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/USB_DEVICE/Target/usbd_conf.c",
+  "output": "CMakeFiles/firmware.dir/USB_DEVICE/Target/usbd_conf.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\firmware.dir\\USB_DEVICE\\App\\usb_device.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\USB_DEVICE\\App\\usb_device.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/USB_DEVICE/App/usb_device.c",
+  "output": "CMakeFiles/firmware.dir/USB_DEVICE/App/usb_device.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\firmware.dir\\USB_DEVICE\\App\\usbd_desc.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\USB_DEVICE\\App\\usbd_desc.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/USB_DEVICE/App/usbd_desc.c",
+  "output": "CMakeFiles/firmware.dir/USB_DEVICE/App/usbd_desc.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\firmware.dir\\USB_DEVICE\\App\\usbd_cdc_if.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\USB_DEVICE\\App\\usbd_cdc_if.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/USB_DEVICE/App/usbd_cdc_if.c",
+  "output": "CMakeFiles/firmware.dir/USB_DEVICE/App/usbd_cdc_if.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_CXX.rsp -g -o CMakeFiles\\firmware.dir\\Core\\Src\\main.cpp.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\Src\\main.cpp",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/Src/main.cpp",
+  "output": "CMakeFiles/firmware.dir/Core/Src/main.cpp.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\firmware.dir\\Core\\Src\\gpio.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\Src\\gpio.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/Src/gpio.c",
+  "output": "CMakeFiles/firmware.dir/Core/Src/gpio.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\firmware.dir\\Core\\Src\\adc.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\Src\\adc.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/Src/adc.c",
+  "output": "CMakeFiles/firmware.dir/Core/Src/adc.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\firmware.dir\\Core\\Src\\i2c.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\Src\\i2c.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/Src/i2c.c",
+  "output": "CMakeFiles/firmware.dir/Core/Src/i2c.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\firmware.dir\\Core\\Src\\tim.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\Src\\tim.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/Src/tim.c",
+  "output": "CMakeFiles/firmware.dir/Core/Src/tim.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\firmware.dir\\Core\\Src\\stm32f4xx_it.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\Src\\stm32f4xx_it.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/Src/stm32f4xx_it.c",
+  "output": "CMakeFiles/firmware.dir/Core/Src/stm32f4xx_it.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\firmware.dir\\Core\\Src\\stm32f4xx_hal_msp.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\Src\\stm32f4xx_hal_msp.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/Src/stm32f4xx_hal_msp.c",
+  "output": "CMakeFiles/firmware.dir/Core/Src/stm32f4xx_hal_msp.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\firmware.dir\\Core\\Src\\sysmem.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\Src\\sysmem.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/Src/sysmem.c",
+  "output": "CMakeFiles/firmware.dir/Core/Src/sysmem.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\firmware.dir\\Core\\Src\\syscalls.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\Src\\syscalls.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/Src/syscalls.c",
+  "output": "CMakeFiles/firmware.dir/Core/Src/syscalls.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_ASM.rsp -g -o CMakeFiles\\firmware.dir\\startup_stm32f401xc.s.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\startup_stm32f401xc.s",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/startup_stm32f401xc.s",
+  "output": "CMakeFiles/firmware.dir/startup_stm32f401xc.s.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_CXX.rsp -g -o CMakeFiles\\firmware.dir\\Core\\lib\\pid\\PID.cpp.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\lib\\pid\\PID.cpp",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/lib/pid/PID.cpp",
+  "output": "CMakeFiles/firmware.dir/Core/lib/pid/PID.cpp.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_CXX.rsp -g -o CMakeFiles\\firmware.dir\\Core\\lib\\bno055\\bno055.cpp.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\lib\\bno055\\bno055.cpp",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/lib/bno055/bno055.cpp",
+  "output": "CMakeFiles/firmware.dir/Core/lib/bno055/bno055.cpp.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_CXX.rsp -g -o CMakeFiles\\firmware.dir\\Core\\lib\\ms5611\\ms5611.cpp.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\lib\\ms5611\\ms5611.cpp",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/lib/ms5611/ms5611.cpp",
+  "output": "CMakeFiles/firmware.dir/Core/lib/ms5611/ms5611.cpp.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_CXX.rsp -g -o CMakeFiles\\firmware.dir\\Core\\lib\\motor\\Motor.cpp.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\lib\\motor\\Motor.cpp",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/lib/motor/Motor.cpp",
+  "output": "CMakeFiles/firmware.dir/Core/lib/motor/Motor.cpp.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_CXX.rsp -g -o CMakeFiles\\firmware.dir\\Core\\lib\\controller\\Controller.cpp.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\lib\\controller\\Controller.cpp",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/lib/controller/Controller.cpp",
+  "output": "CMakeFiles/firmware.dir/Core/lib/controller/Controller.cpp.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_CXX.rsp -g -o CMakeFiles\\firmware.dir\\Core\\lib\\kinematics\\Kinematics.cpp.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\lib\\kinematics\\Kinematics.cpp",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/lib/kinematics/Kinematics.cpp",
+  "output": "CMakeFiles/firmware.dir/Core/lib/kinematics/Kinematics.cpp.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_CXX.rsp -g -o CMakeFiles\\firmware.dir\\Core\\lib\\i2c_wrapper\\i2c_wrapper.cpp.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\lib\\i2c_wrapper\\i2c_wrapper.cpp",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/lib/i2c_wrapper/i2c_wrapper.cpp",
+  "output": "CMakeFiles/firmware.dir/Core/lib/i2c_wrapper/i2c_wrapper.cpp.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/firmware.dir/includes_CXX.rsp -g -o CMakeFiles\\firmware.dir\\Core\\lib\\PWM_wrapper\\pwm.cpp.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\lib\\PWM_wrapper\\pwm.cpp",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/lib/PWM_wrapper/pwm.cpp",
+  "output": "CMakeFiles/firmware.dir/Core/lib/PWM_wrapper/pwm.cpp.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Core\\Src\\system_stm32f4xx.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Core\\Src\\system_stm32f4xx.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Core/Src/system_stm32f4xx.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Core/Src/system_stm32f4xx.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_pcd.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_pcd.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_pcd_ex.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_pcd_ex.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd_ex.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd_ex.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_ll_usb.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_ll_usb.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_rcc.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_rcc.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_rcc_ex.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_rcc_ex.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_flash.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_flash.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_flash_ex.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_flash_ex.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ex.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ex.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_flash_ramfunc.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_flash_ramfunc.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ramfunc.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ramfunc.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_gpio.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_gpio.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_gpio.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_gpio.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_dma_ex.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_dma_ex.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma_ex.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma_ex.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_dma.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_dma.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_pwr.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_pwr.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_pwr_ex.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_pwr_ex.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr_ex.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr_ex.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_cortex.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_cortex.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_exti.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_exti.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_adc.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_adc.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_adc_ex.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_adc_ex.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc_ex.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc_ex.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_i2c.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_i2c.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_i2c_ex.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_i2c_ex.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c_ex.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c_ex.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_tim.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_tim.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/STM32_Drivers.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\STM32_Drivers.dir\\__\\__\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_tim_ex.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Drivers\\STM32F4xx_HAL_Driver\\Src\\stm32f4xx_hal_tim_ex.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir/__/__/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/USB_Device_Library.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\USB_Device_Library.dir\\__\\__\\Middlewares\\ST\\STM32_USB_Device_Library\\Core\\Src\\usbd_core.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Middlewares\\ST\\STM32_USB_Device_Library\\Core\\Src\\usbd_core.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/USB_Device_Library.dir/__/__/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/USB_Device_Library.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\USB_Device_Library.dir\\__\\__\\Middlewares\\ST\\STM32_USB_Device_Library\\Core\\Src\\usbd_ctlreq.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Middlewares\\ST\\STM32_USB_Device_Library\\Core\\Src\\usbd_ctlreq.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/USB_Device_Library.dir/__/__/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/USB_Device_Library.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\USB_Device_Library.dir\\__\\__\\Middlewares\\ST\\STM32_USB_Device_Library\\Core\\Src\\usbd_ioreq.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Middlewares\\ST\\STM32_USB_Device_Library\\Core\\Src\\usbd_ioreq.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/USB_Device_Library.dir/__/__/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c.obj"
+},
+{
+  "directory": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx",
+  "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe -DDEBUG -DSTM32F401xC -DUSE_HAL_DRIVER @CMakeFiles/USB_Device_Library.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles\\USB_Device_Library.dir\\__\\__\\Middlewares\\ST\\STM32_USB_Device_Library\\Class\\CDC\\Src\\usbd_cdc.c.obj -c C:\\Users\\youss\\OneDrive\\Desktop\\AUR\\ROV26\\firmware\\Middlewares\\ST\\STM32_USB_Device_Library\\Class\\CDC\\Src\\usbd_cdc.c",
+  "file": "C:/Users/youss/OneDrive/Desktop/AUR/ROV26/firmware/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c",
+  "output": "cmake/stm32cubemx/CMakeFiles/USB_Device_Library.dir/__/__/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c.obj"
+}
+]
