@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Shapes
 import Qt5Compat.GraphicalEffects
 
@@ -106,7 +105,7 @@ Rectangle {
                     // The horizontal line
                     Rectangle {
                         anchors.centerIn: parent
-                        width: Math.abs(modelData) % 10 === 0 ? 60 : 30 // Major lines are wider
+                        width: Math.abs(parent.modelData) % 10 === 0 ? 60 : 30 // Major lines are wider
                         height: 2
                         color: "white"
                     }
@@ -115,14 +114,14 @@ Rectangle {
                     Text {
                         anchors.centerIn: parent
                         anchors.horizontalCenterOffset: -40
-                        text: Math.abs(modelData) %10 === 0 ? Math.abs(modelData) : "" // Only show text for major lines
+                        text: Math.abs(parent.modelData) %10 === 0 ? Math.abs(parent.modelData) : "" // Only show text for major lines
                         color: "white"
                         font.pixelSize: 12
                     }
                     Text {
                         anchors.centerIn: parent
                         anchors.horizontalCenterOffset: 40
-                        text: Math.abs(modelData) %10 === 0 ? Math.abs(modelData) : "" // Only show text for major lines
+                        text: Math.abs(parent.modelData) %10 === 0 ? Math.abs(parent.modelData) : "" // Only show text for major lines
                         color: "white"
                         font.pixelSize: 12
                     }

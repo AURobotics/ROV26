@@ -2,18 +2,26 @@ from PySide6.QtCore import QTimer, Slot, QObject, Property, Signal
 
 from console.gui.model.sensors import Sensors
 
+import random
+
 class OrientationData(QObject):
     bearingChanged = Signal()
     pitchChanged = Signal()
     rollChanged = Signal()
+    depthChanged = Signal()
+    maxDepthChanged = Signal()
     pitchFOVChanged = Signal()
 
     def __init__(self, model: Sensors):
         super().__init__()
         self._model = model
+
         self._bearing = 0
         self._pitch = 0
         self._roll = 0
+        self._depth = 0
+
+        self._max_depth = 5
         self._pitchFOV = 90 # (+/- 45 degrees)
 
         self._timer = QTimer()
@@ -33,6 +41,14 @@ class OrientationData(QObject):
     def roll(self):
         return self._roll
     
+    @Property(float, notify=depthChanged)
+    def depth(self):
+        return self._depth
+    
+    @Property(float, notify=maxDepthChanged)
+    def max_depth(self):
+        return self._max_depth
+    
     @Property(float, notify=pitchFOVChanged)
     def pitchFOV(self):
         return self._pitchFOV
@@ -51,6 +67,11 @@ class OrientationData(QObject):
         if self._roll != new_roll:
             self._roll = new_roll
             self.rollChanged.emit()
+        #temp
+        new_depth = max(0, min(self._max_depth, self._depth + random.uniform(-0.1, 0.1)))
+        if self._depth != new_depth:
+            self._depth = new_depth
+            self.depthChanged.emit()
 
     def stop_timer(self):
         self._timer.stop()
