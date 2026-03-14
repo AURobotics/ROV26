@@ -130,7 +130,7 @@ volatile Operation_Mode_Msg operation_mode_msg = {0};
 volatile Parameter_Msg param_msg = {0};
 volatile Tuning_Msg tuning_msg = {0};
 volatile Message_Type last_received_msg_type = 0;
-
+__attribute__((section(".noinit"))) volatile uint32_t dfu_flag = 0;
 static int8_t CDC_Init_FS(void);
 static int8_t CDC_DeInit_FS(void);
 static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length);
@@ -262,32 +262,12 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length) {
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t* Len) {
     /* USER CODE BEGIN 6 */
 
-    //call function
+    // call function
     data_received_flag = 1;
     last_receive_time = HAL_GetTick();
     // DFU trigger check
-    if (Buf[0] == 0xFF/*start byte*/ && Buf[1] == 0x07/*msg type*/) {
-        // uint64_t* ptr = (uint64_t*)&_estack;
-        // *ptr = 0xDEADBEEFCC00FFEEULL;
-        uint32_t* bootVector = (uint32_t*)BOOTLOADER_ADDRESS;
-        __disable_irq();
-
-        HAL_RCC_DeInit();
-
-        SysTick->CTRL = 0;
-        SysTick->LOAD = 0;
-        SysTick->VAL = 0;
-
-        for (int i = 0; i < 8; i++) {
-            NVIC->ICER[i] = 0xFFFFFFFF;
-            NVIC->ICPR[i] = 0xFFFFFFFF;
-        }
-
-        __enable_irq();
-        __set_MSP(bootVector[0]);
-        ((void (*)(void))bootVector[1])();
-        
-        HAL_Delay(100);
+    if (Buf[0] == 0xFF /*start byte*/ && Buf[1] == 0x07 /*msg type*/) {
+        dfu_flag = MAGIC_DFU;
         NVIC_SystemReset();
     }
 

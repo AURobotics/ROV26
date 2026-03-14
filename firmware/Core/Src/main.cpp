@@ -25,6 +25,11 @@ extern "C" {
 
 static constexpr int16_t LEAKAGE_THRESHOLD = 0;
 
+#define WR_ALL_REGS(_regs_, _data_)                                                                \
+    do                                                                                             \
+        for (size_t addr = 0; addr < sizeof(_regs_) / sizeof((_regs_)[0]); addr++)                 \
+            (_regs_)[addr] = (_data_);                                                             \
+    while (0)
 
 I2C i2c_wrapper(&hi2c3);
 BNO055 bno(&i2c_wrapper);
@@ -98,7 +103,7 @@ TxPacket dummy = {
 };
 
 // water leakage
- #define LEAKAGE_THRESHOLD 200U // need to be adjusted based on testing //TODO: test this
+#define LEAKAGE_THRESHOLD 200U // need to be adjusted based on testing //TODO: test this
 // function
 static uint32_t read_adc(uint32_t channel) {
     ADC_ChannelConfTypeDef sConfig = {};
@@ -355,14 +360,94 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
 void SystemClock_Config();
+void vJumpToDFU(uint32_t* pulMSP_PC) __attribute__((noreturn));
+
+void vJumpToDFU(uint32_t* pulMSP_PC) {
+    /*
+     * Disable interrupts upfront.
+     * This is essential to prevent any further scheduling or interrupts pre-empting
+     * while transitioning to DFU mode.
+     * The inlined `__disable_irq` operation disables all interrupts, ensuring that no
+     * further interrupts can occur while the core is entering DFU mode.
+     */
+    __disable_irq();
+
+    /*
+     * Disable SysTick timer.
+     * This is essential to prevent any further scheduling or timing operations
+     * while in DFU mode.
+     * The SysTick timer is typically used for system timing and task scheduling
+     * in FreeRTOS, and disabling it is essential to prevent any further
+     * scheduling or timing operations while in DFU mode.
+     */
+    SysTick->CTRL = 0x00000000UL;
+
+    /*
+     * Clear all interrupt enable registers.
+     * This ensures that no interrupts can occur when the core enters DFU mode.
+     */
+    WR_ALL_REGS(NVIC->ICER, 0xffffffffUL);
+
+    /*
+     * Clear all pending interrupts.
+     * This ensures that no pending interrupts can occur when the core enters DFU
+     * mode after re-enabling interrupts.
+     */
+    WR_ALL_REGS(NVIC->ICPR, 0xffffffffUL);
+
+    /*
+     * Enable interrupts again.
+     * This is necessary to allow the boot loader to handle any interrupts that
+     * may occur during the DFU process.
+     * It does not automatically re-enable interrupts, as the
+     * Cortex-M core's global interrupt enable bit resets to the unmasked state.
+     * Note that this does not re-enable the SysTick timer, which remains disabled.
+     */
+    __enable_irq();
+
+    /*
+     * Set the main stack pointer to the value provided in the pul parameter.
+     * This is necessary to ensure that the core starts executing code from the
+     * correct stack.
+     */
+    __set_MSP(pulMSP_PC[0]);
+
+    /*
+     * Jump to the DFU entry point.
+     * The boot loader is responsible for handling the actual firmware update
+     * process, including reading the new firmware, writing it to the
+     * appropriate memory locations, and verifying its integrity.
+     */
+    ((void (*)(void))(pulMSP_PC[1]))();
+
+    /*
+     * Enter an infinite loop after jumping to the DFU entry point.
+     * This is necessary to prevent the execution of any further code if the
+     * DFU process returns.
+     * The boot loader is expected to handle the firmware update process and
+     * will not return to this function.
+     */
+    while (1)
+        ;
+}
 
 /**
  * @brief  The application entry point.
  * @retval int
  */
 int main() {
+    if (dfu_flag == MAGIC_DFU) {
+        dfu_flag = 0;  // clear flag to prevent looping
+        // jump to system memory bootloader
+        void (*SysMemBootJump)(void);
+        uint32_t sysmem_start = 0x1FFF0000;  // STM32F1/F4 example, varies per series
+        SysMemBootJump = (void (*)(void)) (*((uint32_t *)(sysmem_start + 4)));
 
-    checkBootloaderRequest();
+        __set_MSP(*(__IO uint32_t*)sysmem_start);
+        SysMemBootJump();
+    }
+
+
     HAL_Init();
     SystemClock_Config();
 
