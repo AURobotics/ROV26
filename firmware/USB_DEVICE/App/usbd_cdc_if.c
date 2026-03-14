@@ -271,7 +271,8 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t* Len) {
         NVIC_SystemReset();
     }
 
-    memcpy(&command_pkt, Buf, sizeof(Command_msg));
+    on_cdc_isr(Buf, *Len);
+    
     USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
     USBD_CDC_ReceivePacket(&hUsbDeviceFS);
     return (USBD_OK);
