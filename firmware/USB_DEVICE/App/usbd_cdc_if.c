@@ -129,7 +129,8 @@ volatile uint8_t data_received_flag = 0;
 volatile Operation_Mode_Msg operation_mode_msg = {0};
 volatile Parameter_Msg param_msg = {0};
 volatile Tuning_Msg tuning_msg = {0};
-volatile Message_Type last_received_msg_type = 0;
+volatile Message_Type last_received_msg_type = {};
+
 __attribute__((section(".noinit"))) volatile uint32_t dfu_flag = 0;
 static int8_t CDC_Init_FS(void);
 static int8_t CDC_DeInit_FS(void);
