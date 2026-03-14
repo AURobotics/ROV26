@@ -11,6 +11,7 @@
 #include "tim.h"
 #include "usb_device.h"
 #include "usbd_cdc.h"
+#include "Usb_cdc_wrapper.h"
 extern "C" {
 #include "i2c.h"
 }
@@ -36,29 +37,6 @@ BNO055 bno(&i2c_wrapper);
 MS5611 ms5611(&hi2c3);
 Ready_msg ready_msg = {.sync_byte = 255, .type = READY_MESSAGE};
 
-// void checkBootloaderRequest(void) {
-//     if (*((volatile uint32_t*)MAGIC_ADDRESS) == MAGIC_VALUE) {
-
-//         *((volatile uint32_t*)MAGIC_ADDRESS) = 0;
-//         uint32_t* bootVector = (uint32_t*)BOOTLOADER_ADDRESS;
-//         __disable_irq();
-
-//         HAL_RCC_DeInit();
-
-//         SysTick->CTRL = 0;
-//         SysTick->LOAD = 0;
-//         SysTick->VAL = 0;
-
-//         for (int i = 0; i < 8; i++) {
-//             NVIC->ICER[i] = 0xFFFFFFFF;
-//             NVIC->ICPR[i] = 0xFFFFFFFF;
-//         }
-
-//         __enable_irq();
-//         __set_MSP(bootVector[0]);
-//         ((void (*)(void))bootVector[1])();
-//     }
-// }
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
 void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
@@ -359,94 +337,24 @@ static void checkCommsTimeout() {
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
-void SystemClock_Config();
-void vJumpToDFU(uint32_t* pulMSP_PC) __attribute__((noreturn));
+void checkDFUmode(){
+    if (dfu_flag == MAGIC_DFU) {
+        dfu_flag = 0; // clear flag to prevent looping
+        // jump to system memory bootloader
+        void (*SysMemBootJump)(void);
+        uint32_t sysmem_start = 0x1FFF0000; // STM32F1/F4 example, varies per series
+        SysMemBootJump = (void (*)(void))(*((uint32_t*)(sysmem_start + 4)));
 
-void vJumpToDFU(uint32_t* pulMSP_PC) {
-    /*
-     * Disable interrupts upfront.
-     * This is essential to prevent any further scheduling or interrupts pre-empting
-     * while transitioning to DFU mode.
-     * The inlined `__disable_irq` operation disables all interrupts, ensuring that no
-     * further interrupts can occur while the core is entering DFU mode.
-     */
-    __disable_irq();
-
-    /*
-     * Disable SysTick timer.
-     * This is essential to prevent any further scheduling or timing operations
-     * while in DFU mode.
-     * The SysTick timer is typically used for system timing and task scheduling
-     * in FreeRTOS, and disabling it is essential to prevent any further
-     * scheduling or timing operations while in DFU mode.
-     */
-    SysTick->CTRL = 0x00000000UL;
-
-    /*
-     * Clear all interrupt enable registers.
-     * This ensures that no interrupts can occur when the core enters DFU mode.
-     */
-    WR_ALL_REGS(NVIC->ICER, 0xffffffffUL);
-
-    /*
-     * Clear all pending interrupts.
-     * This ensures that no pending interrupts can occur when the core enters DFU
-     * mode after re-enabling interrupts.
-     */
-    WR_ALL_REGS(NVIC->ICPR, 0xffffffffUL);
-
-    /*
-     * Enable interrupts again.
-     * This is necessary to allow the boot loader to handle any interrupts that
-     * may occur during the DFU process.
-     * It does not automatically re-enable interrupts, as the
-     * Cortex-M core's global interrupt enable bit resets to the unmasked state.
-     * Note that this does not re-enable the SysTick timer, which remains disabled.
-     */
-    __enable_irq();
-
-    /*
-     * Set the main stack pointer to the value provided in the pul parameter.
-     * This is necessary to ensure that the core starts executing code from the
-     * correct stack.
-     */
-    __set_MSP(pulMSP_PC[0]);
-
-    /*
-     * Jump to the DFU entry point.
-     * The boot loader is responsible for handling the actual firmware update
-     * process, including reading the new firmware, writing it to the
-     * appropriate memory locations, and verifying its integrity.
-     */
-    ((void (*)(void))(pulMSP_PC[1]))();
-
-    /*
-     * Enter an infinite loop after jumping to the DFU entry point.
-     * This is necessary to prevent the execution of any further code if the
-     * DFU process returns.
-     * The boot loader is expected to handle the firmware update process and
-     * will not return to this function.
-     */
-    while (1)
-        ;
+        __set_MSP(*(__IO uint32_t*)sysmem_start);
+        SysMemBootJump();
+    }
 }
-
 /**
  * @brief  The application entry point.
  * @retval int
  */
 int main() {
-    if (dfu_flag == MAGIC_DFU) {
-        dfu_flag = 0;  // clear flag to prevent looping
-        // jump to system memory bootloader
-        void (*SysMemBootJump)(void);
-        uint32_t sysmem_start = 0x1FFF0000;  // STM32F1/F4 example, varies per series
-        SysMemBootJump = (void (*)(void)) (*((uint32_t *)(sysmem_start + 4)));
-
-        __set_MSP(*(__IO uint32_t*)sysmem_start);
-        SysMemBootJump();
-    }
-
+    checkDFUmode();
 
     HAL_Init();
     SystemClock_Config();
@@ -482,6 +390,8 @@ int main() {
                                 Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
                                 Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
                                 Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
+
+    GenericMessage message = usb_cdc.read_msg();
 
     /*Intialize pwms  and motors*/
     // Create PWM wrappers
