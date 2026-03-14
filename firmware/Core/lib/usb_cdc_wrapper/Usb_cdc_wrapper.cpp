@@ -1,6 +1,6 @@
 #include "Usb_cdc_wrapper.h"
 
-extern Usb_cdc_wrapper usb_cdc;
+
 
 extern "C" void on_cdc_isr(uint8_t* buf, uint32_t len) { usb_cdc.onDataReceived(buf, len); }
 
@@ -66,7 +66,7 @@ bool Usb_cdc_wrapper::parse(uint8_t* buf, uint32_t len, GenericMessage &out) {
 
 void Usb_cdc_wrapper::onDataReceived(uint8_t* buf, uint32_t len) { 
     //writes in the next slot and advances the write index
-    GenericMessage& slot = m_slots[m_write_index % BUFFER_SIZE]; 
+    GenericMessage& slot = m_slots[m_write_index ]; 
 
     if (parse(buf, len,slot))
         m_write_index = (m_write_index + 1) % BUFFER_SIZE;
@@ -75,7 +75,7 @@ void Usb_cdc_wrapper::onDataReceived(uint8_t* buf, uint32_t len) {
 GenericMessage Usb_cdc_wrapper::read_msg(){
     if(!available) return GenericMessage{};
 
-    GenericMessage msg = m_slots[m_read_index % BUFFER_SIZE];
+    GenericMessage msg = m_slots[m_read_index];
     m_read_index = (m_read_index + 1) % BUFFER_SIZE; // advance the read slot
     return msg;
 }

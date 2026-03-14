@@ -16,6 +16,8 @@ void on_cdc_isr(uint8_t* buf, uint32_t len);
 
 #ifdef __cplusplus
 
+extern Usb_cdc_wrapper usb_cdc;
+
 typedef struct {
     Message_Type type;
     uint16_t size;
