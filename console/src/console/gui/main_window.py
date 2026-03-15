@@ -19,7 +19,7 @@ class MainWindow(QMainWindow):
 
         menubar = MenuBar(self, gamepad, serial_device)
         self.setMenuBar(menubar)
-        self.camera = VideoStream(0)
+        self.camera = VideoStream('test.sdp')
 
         self.pilot_tab = PilotTab(self.camera, self.camera, self.camera)
 
