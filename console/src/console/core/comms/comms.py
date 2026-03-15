@@ -196,11 +196,12 @@ class CommunicationManager:
             control_word,
             -bindings.get("LS-V", 0),
             bindings.get("LS-H", 0),
-            bindings.get("R1", 0) - bindings.get("L1", 0),
-            -bindings.get("RS-V", 0),
+            bindings.get("L2", 0) - bindings.get("R2", 0),
             bindings.get("RS-H", 0),
-            bindings.get("R2", 0) - bindings.get("L2", 0),
+            bindings.get("RS-V", 0),
+            bindings.get("R1", 0) - bindings.get("L1", 0),
         ]
+        print(payload)
         return struct.pack(MessageFormat.COMMAND_MESSAGE, *payload)
 
     def __del__(self):

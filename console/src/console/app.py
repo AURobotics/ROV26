@@ -8,6 +8,10 @@ from console.core.comms.comms import CommunicationManager
 from console.gui.main_window import MainWindow
 
 from console.gui.splash_screen import LoadingSplash
+import os
+os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = (
+    "protocol_whitelist;file,rtp,udp,crypto|fflags;nobuffer|flags;low_delay"
+)
 
 
 class ConsoleApplication(QApplication):
