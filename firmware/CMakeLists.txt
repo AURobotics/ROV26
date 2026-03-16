@@ -56,7 +56,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/pid/PID.cpp
-        Core/lib/bno055/bno055.cpp
+        Core/lib/mpu9250/mpu9250.cpp
         Core/lib/ms5611/ms5611.cpp
         Core/lib/motor/Motor.cpp
         Core/lib/controller/Controller.cpp
@@ -70,7 +70,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/pid
-        Core/lib/bno055
+        Core/lib/mpu9250
         Core/lib/ms5611
         Core/lib/motor
         Core/lib/controller

@@ -1,7 +1,6 @@
 #include "main.h"
 #include "../../USB_DEVICE/App/usb_comms.h"
 #include "../lib/pid/PID.h"
-#include "Cdc_driver.h"
 #include "Controller.h"
 #include "Motor.h"
 #include "adc.h"
@@ -23,6 +22,9 @@ extern "C" {
 
 #include "Kinematics.h"
 #include "array"
+#include "usbd_cdc_if.h"
+#include "mpu9250.h"
+
 
 static constexpr int16_t LEAKAGE_THRESHOLD = 0;
 
@@ -33,26 +35,24 @@ static constexpr int16_t LEAKAGE_THRESHOLD = 0;
     while (0)
 
 I2C i2c_wrapper(&hi2c3);
-BNO055 bno(&i2c_wrapper);
+MPU9250 mpu9250(&hi2c3);
 MS5611 ms5611(&hi2c3);
-Ready_msg ready_msg = {.sync_byte = 255, .type = READY_MESSAGE};
-
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
-void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
-    data[0] = ms5611.getDepth();
-    data[1] = std::nullopt;
-
-    vec_3 angles = bno.get_euler_angles();
-    vec_3 rates = bno.get_body_rates();
-
-    data[2] = angles.x(); // roll
-    data[3] = rates.x();
-    data[4] = angles.y(); // pitch
-    data[5] = rates.y();
-    data[6] = angles.z(); // yaw
-    data[7] = rates.z();
-}
+// void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
+//     data[0] = ms5611.getDepth();
+//     data[1] = std::nullopt;
+//
+//     vec_3 angles = bno.get_euler_angles();
+//     vec_3 rates = bno.get_body_rates();
+//
+//     data[2] = angles.x(); // roll
+//     data[3] = rates.x();
+//     data[4] = angles.y(); // pitch
+//     data[5] = rates.y();
+//     data[6] = angles.z(); // yaw
+//     data[7] = rates.z();
+// }
 
 double normalize_angle(double angle) {
     angle = fmod(angle, 360.0);
@@ -81,7 +81,7 @@ TxPacket dummy = {
 };
 
 // water leakage
-#define LEAKAGE_THRESHOLD 200U // need to be adjusted based on testing //TODO: test this
+// #define LEAKAGE_THRESHOLD 2000U // need to be adjusted based on testing //TODO: test this
 // function
 static uint32_t read_adc(uint32_t channel) {
     ADC_ChannelConfTypeDef sConfig = {};
@@ -89,11 +89,12 @@ static uint32_t read_adc(uint32_t channel) {
     sConfig.Rank = 1;
     sConfig.SamplingTime =
         ADC_SAMPLETIME_84CYCLES; // sampling time is 84 cycles, which is 84/84MHz = 1us
-    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
-    //     return 0u;
+    if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+        return 0u;
 
     HAL_ADC_Start(&hadc1);
-    HAL_ADC_PollForConversion(&hadc1, 10);
+    if (HAL_ADC_PollForConversion(&hadc1, 10) != HAL_OK)
+        return 0u;
     uint32_t value = HAL_ADC_GetValue(&hadc1);
     HAL_ADC_Stop(&hadc1);
     return value;
@@ -106,11 +107,11 @@ volatile bool leakage_safety_enabled = true;
 volatile bool leak_detected = false;
 
 static void checkWaterLeakage() {
-    // if (!leakage_safety_enabled) {
-    //     // Safety disabled, ensure relay is energised
-    //     // HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
-    //     return;
-    // }
+    if (!leakage_safety_enabled) {
+        // Safety disabled, ensure relay is energised
+        HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
+        return;
+    }
 
     if (leak_detected) {
         // Leak already detected, ensure relay is tripped
@@ -120,13 +121,6 @@ static void checkWaterLeakage() {
 
     uint32_t sensor1 = read_adc(LEAKAGE_ADC_CHANNEL_1);
     uint32_t sensor2 = read_adc(LEAKAGE_ADC_CHANNEL_2);
-
-    char buffer[200];
-    int len = 0;
-    len += sprintf(buffer + len, "sensor 1 %lu ", sensor1);
-    len += sprintf(buffer + len, " sensor 2 %lu \n", sensor2);
-    CDC_Transmit_FS((uint8_t*)buffer, len);
-
 
     if (sensor1 > LEAKAGE_THRESHOLD || sensor2 > LEAKAGE_THRESHOLD) {
         leak_detected = true;
@@ -141,14 +135,14 @@ static void checkWaterLeakage() {
 
 enum class Test_state { OFF, STEPPING, DONE };
 
-void leakageCommsHandler(uint16_t cmd) { // TODO: change switch case
-    switch (cmd & (1 << 10)) {
-    case 1 :
+void leakageCommsHandler(uint8_t cmd) { // TODO: change switch case
+    switch (cmd) {
+    case COMS_LEAKAGE_SAFETY_ENABLE :
         leakage_safety_enabled = true;
         leak_detected = false;
         HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
         break;
-    case 0 :
+    case COMS_LEAKAGE_SAFETY_DISABLE :
         leakage_safety_enabled = false;
         leak_detected = false;
         HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
@@ -196,12 +190,12 @@ static void checkGripperLimitSwitches() {
 }
 
 
-void gripperCommsHandler(uint16_t cmd) {
+void gripperCommsHandler(uint8_t cmd) {
     GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
     GPIO_PinState closedState =
         HAL_GPIO_ReadPin(LIMIT_SWITCH_CLOSED_GPIO_Port, LIMIT_SWITCH_CLOSED_Pin);
-    switch (cmd & (1 << 10)) {
-    case 1 :
+    switch (cmd) {
+    case COMS_GRIPPER_OPEN :
         if (gripper_safety_enabled &&
             openState == GPIO_PIN_SET) { // Only open if not already at open limit
             GripperStop();
@@ -210,7 +204,7 @@ void gripperCommsHandler(uint16_t cmd) {
             GripperOpen();
         }
         break;
-    case 0 :
+    case COMS_GRIPPER_CLOSE :
         if (gripper_safety_enabled &&
             closedState == GPIO_PIN_SET) { // Only close if not already at closed limit
             GripperStop();
@@ -232,38 +226,6 @@ void gripperCommsHandler(uint16_t cmd) {
         break;
     }
 }
-
-// switch (cmd &(1<<5)) {
-// case 1:
-//     if (gripper_safety_enabled &&
-//         openState == GPIO_PIN_SET) { // Only open if not already at open limit
-//         GripperStop();
-//         }
-//     else {
-//         GripperOpen();
-//     }
-//     break;
-// case 0 :
-//     if (gripper_safety_enabled &&
-//         closedState == GPIO_PIN_SET) { // Only close if not already at closed limit
-//         GripperStop();
-//         }
-//     else {
-//         GripperClose();
-//     }
-//     break;
-// case COMS_GRIPPER_STOP :
-//     GripperStop();
-//     break;
-// case COMS_GRIPPER_SAFETY_ENABLE :
-//     gripper_safety_enabled = true;
-//     break;
-// case COMS_GRIPPER_SAFETY_DISABLE :
-//     gripper_safety_enabled = false;
-//     break;
-// default :
-//     break;
-// }
 
 static uint8_t loadStatus() {
     uint8_t statusByte = 0;
@@ -334,7 +296,7 @@ static void checkCommsTimeout() {
 }
 
 // End of communication loss
-void SystemClock_Config(void);
+void SystemClock_Config();
 /* USER CODE BEGIN PFP */
 
 void checkDFUmode() {
@@ -368,15 +330,12 @@ int main() {
     MX_TIM4_Init();
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
-    HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
 
+    HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
     Test_state test_state = Test_state::OFF; // normal mode
     float start_yaw = 0;
     float max_testing[4] = {0.1, 30, 30, 90}; // need to set these
     uint8_t test_axis = 0;
-
-    uint32_t prev{};
-    uint32_t now = HAL_GetTick();
 
     uint32_t last_send_time = 0;
     // depth roll pitch yaw
@@ -384,7 +343,7 @@ int main() {
                    // if control bit = 1 setpoint hatetba3at makan
                    // el force fa will use this array as setpoint too
 
-    float controller_output[6] = {0}; // surge sway depth roll pitch yaw
+    float controller_output[6]; // surge sway depth roll pitch yaw
 
     float hold[4]; // depth roll pitch yaw
 
@@ -393,7 +352,6 @@ int main() {
                                 Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
                                 Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
                                 Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
-
 
     /*Intialize pwms  and motors*/
     // Create PWM wrappers
@@ -421,7 +379,7 @@ int main() {
     PWM pwm8A(&htim5, TIM_CHANNEL_4);
     PWM pwm8B(&htim2, TIM_CHANNEL_2);
 
-    //
+
     Motor motors[] = {Motor(&pwm1A, &pwm1B),
                       Motor(&pwm2A, &pwm2B),
                       Motor(&pwm3A, &pwm3B),
@@ -430,118 +388,89 @@ int main() {
                       Motor(&pwm6A, &pwm6B),
                       Motor(&pwm7A, &pwm7B),
                       Motor(&pwm8A, &pwm8B)};
-    //
+
     for (const auto& motor : motors)
         motor.setup();
 
-    // Motor gripper( // TODO: use this variable
-    //     [](float speed)
-    //     {
-    //         if (speed > 0.1f) {
-    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
-    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-    //         }
-    //         else if (speed < -0.1f) {
-    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
-    //         }
-    //         else {
-    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-    //             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-    //         }
-    //     });
+    Motor gripper( // TODO: use this variable
+        [](float speed)
+        {
+            if (speed > 0.1f) {
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+            }
+            else if (speed < -0.1f) {
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+            }
+            else {
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+            }
+        });
 
-    //
+    float prev{};
+    uint32_t now = HAL_GetTick();
+
     std::array<std::optional<float>, 8> sensor_data;
-
-    HAL_Delay(1000);
-    Cdc_driver usb_cdc(30);
-    usb_cdc.setup();
-
+    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
+        // TxPacket tx_pkt; // TODO: should be moved to outer scope
         //
-        // GenericMessage message = usb_cdc.read_msg();
-        // last_received_msg_type = message.type;
-        // if (last_received_msg_type == OPERATION_MESSAGE)
-        //     test_state =
-        //         message.data.operation_msg.operation_mode ? Test_state::OFF : Test_state::STEPPING;
+        // if (data_received_flag) {
+        //     data_received_flag = 0;
+        //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
+        //     // process_data(data_type) // idk do something.
+        //     // depends on type of message do something.
+        //     // if default message -> change global variable which hold setpoints.
+        //     // if parameters message -> got set parameters.
+        //     // if operation mode (normal operation or tuning / testing) -> change global state.
+        //     // if no new message received for 100ms -> stop all motors (different than
+        //     // timeout(40ms)) and blink leds in a pattern if new data -> then set the new data if
+        //     no
+        //     // new data -> just output pid without setpoints suggestions: in main loop, read
+        //     sensor
+        //     // data and process pid, if setpoint changes then
+        // }
+        // else
+        //     // CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
         //
-
-        //
-        // // static bool data_received_first_time = false;
-        // // if (!data_received_first_time) {
-        // //     // CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
-        // //     HAL_Delay(1);
-        // // }
-        //
-        // // if (data_received_flag) {
-        // //     data_received_first_time = true;
-        // //     data_received_flag = 0;
-        // //     CDC_Transmit_FS((uint8_t*)&command_pkt, sizeof(Command_msg));
-        // //     HAL_Delay(1);
-        // //     CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
-        // // }
-        // //
-        // // HAL_Delay(1);
-        //
-        // // float buffer[8] = {};
-        // // for (int i = 0; i <= 1000; i++) {
-        // //     float current_speed = (float)i / 1000.0f; // Scale 0.0 to 1.0
-        // //
-        // //     // Fill the buffer and move each motor
-        // //     for (int k = 0; k < 8; k++) {
-        // //         buffer[k] = current_speed;
-        // //         motors[k].move(buffer[k]); // Internal logic: TIMx->CCRy = buffer[k] * 1000
-        // //     }
-        // //     // HAL_Delay(10); // Delays 10ms accurately via SysTick while PWM runs in hardware
-        // // }
-        //
-        //
-        // // TxPacket tx_pkt; //TODO: should be moved to outer scope
-        // //
-        // // if (data_received_flag ) {
-        // //     data_received_flag = 0;
-        // //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
-        // //     // process_data(data_type) // idk do something.
-        // //     // depends on type of message do something.
-        // //     // if default message -> change global variable which hold setpoints.
-        // //     // if parameters message -> got set parameters.
-        // //     // if operation mode (normal operation or tuning / testing) -> change global state.
-        // //     // if no new message received for 100ms -> stop all motors (different than
-        // //     // timeout(40ms)) and blink leds in a pattern if new data -> then set the new data if
-        // //     no
-        // //     // new data -> just output pid without setpoints suggestions: in main loop, read
-        // //     sensor
-        // //     // data and process pid, if setpoint changes then
-        // // }
-        // // else
-        // //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
-        // //
-        // // float forces[6];
-        // // float buff[8]{};
+        //     // float forces[6];
+        //     float buff[8]{};
         // // for (int i = 0; i < 6; i ++) {
         // //     forces[i] = command_msg.forces[i];
-        // // }
-        // // apply_pseudo_inverse(forces, buff);
-        // // normalize_thrusters(buff);
-        // // Motor::move_motor(motors, buff);
-        // //
-        // // HAL_Delay(1);
+        // }
+
+        // apply_pseudo_inverse(forces, buff);
+        // normalize_thrusters(buff);
+        // float buff[8] = {};
+        // for (int i = 0; i < 255; i++) {
+        //     for (float& j : buff) {
+        //         j = (float)i / 255.0;
+        //     }
+        // }
         //
-        //
-        // // if (HAL_GetTick() - last_send_time >= 50) { //TODO: tx packet should be moved to outer
-        // // scope
-        // //     last_send_time = HAL_GetTick();
-        // //     // load_tx(&tx_pkt);
-        // //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&tx_pkt), sizeof(TxPacket));
-        // // }
-        //
+        // Motor::move_motor(motors, buff);
+        // HAL_Delay(100);
+
+
+
+
+
+
+        // if (HAL_GetTick() - last_send_time >= 50) { //TODO: tx packet should be moved to outer
+        // scope
+        //     last_send_time = HAL_GetTick();
+        //     // load_tx(&tx_pkt);
+        //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&tx_pkt), sizeof(TxPacket));
+        // }
         // fetch_sensor_data(sensor_data);
-        // if (test_state == Test_state::OFF) // Normal mode
+        //
+        // if (operation_mode_msg.operation_mode == 0) // Normal mode
         // {
-        //     const unsigned char control_byte = message.data.command_pkt.control_byte;
+        //     const unsigned char control_byte = command_msg.control_byte;
         //     for (int i = 0; i < 6; i++)
-        //         data[i] = 4 * message.data.command_pkt.forces[i];
+        //         data[i] = command_msg.forces[i];
         //
         //     prev = now;
         //     now = HAL_GetTick();
@@ -576,15 +505,7 @@ int main() {
         //     // sway
         //     controller_output[1] = data[1];
         //
-        //     // TODO: rowan: pneumatics (DCV1 DCV2)
-        //     HAL_GPIO_WritePin(GPIOB,
-        //                       GPIO_PIN_14,
-        //                       message.data.command_pkt.control_byte & (1 << 5) ? GPIO_PIN_SET
-        //                                                                        : GPIO_PIN_RESET);
-        //     HAL_GPIO_WritePin(GPIOB,
-        //                       GPIO_PIN_15,
-        //                       message.data.command_pkt.control_byte & (1 << 6) ? GPIO_PIN_SET
-        //                                                                        : GPIO_PIN_RESET);
+        //     //TODO: rowan: pneumatics (DCV1 DCV2)
         // }
         //
         // else { // Testing mode
@@ -613,40 +534,20 @@ int main() {
         //         }
         //     }
         //
-        //     if (test_state == Test_state::DONE && last_received_msg_type == PARAMETERS_MESSAGE) {
+        //     if (test_state == Test_state::DONE &&
+        //         last_received_msg_type == Message_Type::PARAMETERS_MESSAGE) {
         //         if (param_msg.pid_type) // angle pid
-        //             controller[test_axis].set_angle_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
+        //             controller[test_axis].set_angle_pid(param_msg.Kp, param_msg.ki,
+        //             param_msg.kd);
         //         else // rate pid
         //             controller[test_axis].set_rate_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
         //
         //         test_state = Test_state::OFF;
         //     }
         // }
-
-
-        // for (int i = 0; i < 6; i++)
-        //     controller_output[i] = command_pkt.forces[i] * 4;
-
-        // controller_output[3] = 4;
-        // float clamped_motors[8] = {0};
+        //
+        // float clamped_motors[8] = {};
         // apply_pseudo_inverse(controller_output, clamped_motors);
-        // normalize_thrusters(clamped_motors);
-        // for (int i = 0; i < 8; i++)
-        //     motors[i].move(clamped_motors[i]);
-        // char buffer[200];
-        // int len = 0;
-        // len += sprintf(buffer + len,"leakage_sensor =%f");
-        // for (int i = 0; i < 8; i++)
-
-        // {
-        //     len += sprintf(buffer + len, "%.4f", clamped_motors[i]);
-        //     if (i < 7)
-        //         len += sprintf(buffer + len, ", ");
-        // }
-        // len += sprintf(buffer + len, "]\r\n");
-        // CDC_Transmit_FS((uint8_t*)buffer, len);
-
-
         // Motor::move_motor(motors, clamped_motors);
 
 
