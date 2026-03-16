@@ -1,4 +1,14 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
+from PySide6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QSizePolicy,
+    QMainWindow,
+    QDockWidget,
+)
+from PySide6.QtCore import Qt
+
+# Actual imports from your project
 from console.gui.camera_display import CameraDisplay
 from console.gui.leakage_display import LeakageDisplay
 from console.gui.model.orientation_data import OrientationData
@@ -6,56 +16,95 @@ from console.gui.model.sensors import Sensors
 from console.gui.model.thruster_status import ThrusterStatus
 from console.gui.status_widget import StatusWidget
 
+
 class PilotTab2(QWidget):
-    def __init__(self, cam1,cam2,cam3, comms):
+    def __init__(self, cam1, cam2, cam3, comms):
         super().__init__()
-
         self._comms = comms
+        self._sensors = Sensors(self._comms)  # Shared sensor instance
 
-        self._vLayout = QVBoxLayout(self)
+        # 1. Main Layout
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
 
-        #1. Camera Displays
-        self._cam_layout = QHBoxLayout()
+        # 2. Inner Dock Host
+        self.dock_host = QMainWindow()
+        self.dock_host.setWindowFlags(Qt.WindowType.Widget)
+        self.dock_host.setDockOptions(
+            QMainWindow.DockOption.AllowNestedDocks
+            | QMainWindow.DockOption.AnimatedDocks
+        )
+        self.main_layout.addWidget(self.dock_host)
+
+        # 3. Central Widget (Fixed Cameras)
+        self.camera_container = QWidget()
+        self._cam_layout = QHBoxLayout(self.camera_container)
+
         self.camera1 = CameraDisplay(cam1)
         self.camera2 = CameraDisplay(cam2)
         self.camera3 = CameraDisplay(cam3)
-        self.camera1.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-        self.camera2.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-        self.camera3.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-        self._cam_layout.addWidget(self.camera1, stretch=1)
-        self._cam_layout.addWidget(self.camera2, stretch=1)
-        self._cam_layout.addWidget(self.camera3, stretch=1)
 
-        self._vLayout.addLayout(self._cam_layout, stretch=1)
+        for cam in [self.camera1, self.camera2, self.camera3]:
+            cam.setSizePolicy(
+                QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding
+            )
+            self._cam_layout.addWidget(cam, stretch=1)
 
-        #2. Bottom Widgets
-        self._widget_layout = QHBoxLayout()
+        self.dock_host.setCentralWidget(self.camera_container)
 
-        #2.1 Leakage
+        # 4. Initialize and Position Docks
+        self._setup_docks()
+
+    def _setup_docks(self):
+        # 4.1 Create the actual instances of your widgets
         self.leakage_widget = LeakageDisplay()
-        self.leakage_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        self._widget_layout.addWidget(self.leakage_widget, stretch=0)
+        self.thruster_layout_widget = StatusWidget(
+            ThrusterStatus(self._sensors), "thrusterLayout.qml"
+        )
+        self.depth_widget = StatusWidget(OrientationData(self._sensors), "depth.qml")
+        self.compass_widget = StatusWidget(
+            OrientationData(self._sensors), "compassWidget.qml"
+        )
+        self.pitch_roll_widget = StatusWidget(
+            OrientationData(self._sensors), "pitchRoll.qml"
+        )
 
-        #2.2 Thrusters
-        self.thruster_layout_widget = StatusWidget(ThrusterStatus(Sensors(self._comms)), "thrusterLayout.qml")
-        self.thruster_layout_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        self._widget_layout.addWidget(self.thruster_layout_widget, stretch=0)
+        # 4.2 Wrap them in Docks
+        self.leak_dock = self._create_dock("Leakage", self.leakage_widget)
+        self.thruster_dock = self._create_dock("Thrusters", self.thruster_layout_widget)
+        self.depth_dock = self._create_dock("Depth", self.depth_widget)
+        self.compass_dock = self._create_dock("Compass", self.compass_widget)
+        self.pitch_dock = self._create_dock("Pitch/Roll", self.pitch_roll_widget)
 
-        #2.3 Depth
-        self.depth_widget = StatusWidget(OrientationData(Sensors(self._comms)), "depth.qml")
-        self.depth_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        self._widget_layout.addWidget(self.depth_widget, stretch=0)
+        # 4.3 Initial Layout Positioning
+        # Add Leakage to the left
+        self.dock_host.addDockWidget(
+            Qt.DockWidgetArea.LeftDockWidgetArea, self.leak_dock
+        )
 
+        # Add Thrusters to the bottom
+        self.dock_host.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea, self.thruster_dock
+        )
 
-        #2.4 Orientation
-        self._orientation_layout = QVBoxLayout()
-        self.compass_widget = StatusWidget(OrientationData(Sensors(self._comms)), "compassWidget.qml")
-        self.pitch_roll_widget = StatusWidget(OrientationData(Sensors(self._comms)), "pitchRoll.qml")
-        self.compass_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        self.pitch_roll_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        self._orientation_layout.addWidget(self.compass_widget, stretch=0)
-        self._orientation_layout.addWidget(self.pitch_roll_widget, stretch=0)
+        # Split Thrusters to put Depth underneath it (as originally requested)
+        self.dock_host.splitDockWidget(
+            self.thruster_dock, self.depth_dock, Qt.Orientation.Vertical
+        )
 
-        self._widget_layout.addLayout(self._orientation_layout, stretch=0)
+        # Add Compass to the right
+        self.dock_host.addDockWidget(
+            Qt.DockWidgetArea.RightDockWidgetArea, self.compass_dock
+        )
 
-        self._vLayout.addLayout(self._widget_layout, stretch=2)
+        # Stack Pitch/Roll on top of Compass as a tab
+        self.dock_host.tabifyDockWidget(self.compass_dock, self.pitch_dock)
+
+    def _create_dock(self, title, widget):
+        dock = QDockWidget(title, self)
+        dock.setWidget(widget)
+        dock.setFeatures(
+            QDockWidget.DockWidgetFeature.DockWidgetMovable
+            | QDockWidget.DockWidgetFeature.DockWidgetFloatable
+        )
+        return dock
