@@ -1,15 +1,15 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Shapes
 import Qt5Compat.GraphicalEffects
 
 pragma ComponentBehavior: Bound
 
-Item {
-    id: rootWidget
+Rectangle {
+    id: root
     width: 300
     height: 300
     antialiasing: true
+    color: palette.window
 
     Rectangle {
         id: bezelRing
@@ -18,7 +18,7 @@ Item {
         anchors.centerIn: parent
         radius: width / 2 // Makes a perfect circle
         color: "transparent"
-        border.color: "#555555"
+        border.color: (palette.window.hsvValue > 0.5) ? "#444444" : "#555555"
         border.width: 15
 
         Repeater {
@@ -105,7 +105,7 @@ Item {
                     // The horizontal line
                     Rectangle {
                         anchors.centerIn: parent
-                        width: Math.abs(modelData) % 10 === 0 ? 60 : 30 // Major lines are wider
+                        width: Math.abs(parent.modelData) % 10 === 0 ? 60 : 30 // Major lines are wider
                         height: 2
                         color: "white"
                     }
@@ -114,14 +114,14 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         anchors.horizontalCenterOffset: -40
-                        text: Math.abs(modelData) %10 === 0 ? Math.abs(modelData) : "" // Only show text for major lines
+                        text: Math.abs(parent.modelData) %10 === 0 ? Math.abs(parent.modelData) : "" // Only show text for major lines
                         color: "white"
                         font.pixelSize: 12
                     }
                     Text {
                         anchors.centerIn: parent
                         anchors.horizontalCenterOffset: 40
-                        text: Math.abs(modelData) %10 === 0 ? Math.abs(modelData) : "" // Only show text for major lines
+                        text: Math.abs(parent.modelData) %10 === 0 ? Math.abs(parent.modelData) : "" // Only show text for major lines
                         color: "white"
                         font.pixelSize: 12
                     }
