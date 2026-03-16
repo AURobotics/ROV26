@@ -1,8 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake_install.cmake",
-		"C:/Users/youss/OneDrive/Desktop/AUR/ROV26/build/cmake/stm32cubemx/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
