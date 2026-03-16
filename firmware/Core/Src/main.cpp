@@ -23,30 +23,36 @@ extern "C" {
 #include "Kinematics.h"
 #include "array"
 #include "usbd_cdc_if.h"
+#include "mpu9250.h"
 
-static constexpr int16_t LEAKAGE_THRESHOLD = 2000;
 
+static constexpr int16_t LEAKAGE_THRESHOLD = 0;
+
+#define WR_ALL_REGS(_regs_, _data_)                                                                \
+    do                                                                                             \
+        for (size_t addr = 0; addr < sizeof(_regs_) / sizeof((_regs_)[0]); addr++)                 \
+            (_regs_)[addr] = (_data_);                                                             \
+    while (0)
 
 I2C i2c_wrapper(&hi2c3);
-BNO055 bno(&i2c_wrapper);
+MPU9250 mpu9250(&hi2c3);
 MS5611 ms5611(&hi2c3);
-Ready_Msg ready_msg;
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
-void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
-    data[0] = ms5611.getDepth();
-    data[1] = std::nullopt;
-
-    vec_3 angles = bno.get_euler_angles();
-    vec_3 rates = bno.get_body_rates();
-
-    data[2] = angles.x(); // roll
-    data[3] = rates.x();
-    data[4] = angles.y(); // pitch
-    data[5] = rates.y();
-    data[6] = angles.z(); // yaw
-    data[7] = rates.z();
-}
+// void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
+//     data[0] = ms5611.getDepth();
+//     data[1] = std::nullopt;
+//
+//     vec_3 angles = bno.get_euler_angles();
+//     vec_3 rates = bno.get_body_rates();
+//
+//     data[2] = angles.x(); // roll
+//     data[3] = rates.x();
+//     data[4] = angles.y(); // pitch
+//     data[5] = rates.y();
+//     data[6] = angles.z(); // yaw
+//     data[7] = rates.z();
+// }
 
 double normalize_angle(double angle) {
     angle = fmod(angle, 360.0);
@@ -75,7 +81,8 @@ TxPacket dummy = {
 };
 
 // water leakage
-// #define LEAKAGE_THRESHOLD 2000U // need to be adjusted based on testing //TODO: test this function
+// #define LEAKAGE_THRESHOLD 2000U // need to be adjusted based on testing //TODO: test this
+// function
 static uint32_t read_adc(uint32_t channel) {
     ADC_ChannelConfTypeDef sConfig = {};
     sConfig.Channel = channel;
@@ -128,7 +135,7 @@ static void checkWaterLeakage() {
 
 enum class Test_state { OFF, STEPPING, DONE };
 
-void leakageCommsHandler(uint8_t cmd) { //TODO: change switch case
+void leakageCommsHandler(uint8_t cmd) { // TODO: change switch case
     switch (cmd) {
     case COMS_LEAKAGE_SAFETY_ENABLE :
         leakage_safety_enabled = true;
@@ -220,18 +227,15 @@ void gripperCommsHandler(uint8_t cmd) {
     }
 }
 
-static uint8_t loadStatus()
-{
+static uint8_t loadStatus() {
     uint8_t statusByte = 0;
 
-    GPIO_PinState openState =
-        HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
+    GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
 
     GPIO_PinState closedState =
         HAL_GPIO_ReadPin(LIMIT_SWITCH_CLOSED_GPIO_Port, LIMIT_SWITCH_CLOSED_Pin);
 
-    GPIO_PinState ledState =
-        HAL_GPIO_ReadPin(LED_FLASHER_GPIO_Port, LED_FLASHER_Pin);
+    GPIO_PinState ledState = HAL_GPIO_ReadPin(LED_FLASHER_GPIO_Port, LED_FLASHER_Pin);
 
     if (closedState == GPIO_PIN_SET)
         statusByte |= (1 << 0);
@@ -292,16 +296,27 @@ static void checkCommsTimeout() {
 }
 
 // End of communication loss
-void SystemClock_Config(void);
+void SystemClock_Config();
 /* USER CODE BEGIN PFP */
 
-void SystemClock_Config();
+void checkDFUmode() {
+    if (dfu_flag == MAGIC_DFU) {
+        dfu_flag = 0; // clear flag to prevent looping
+        // jump to system memory bootloader
+        void (*SysMemBootJump)(void);
+        uint32_t sysmem_start = 0x1FFF0000; // STM32F1/F4 example, varies per series
+        SysMemBootJump = (void (*)(void))(*((uint32_t*)(sysmem_start + 4)));
 
+        __set_MSP(*(__IO uint32_t*)sysmem_start);
+        SysMemBootJump();
+    }
+}
 /**
  * @brief  The application entry point.
  * @retval int
  */
 int main() {
+    checkDFUmode();
 
     HAL_Init();
     SystemClock_Config();
@@ -316,6 +331,7 @@ int main() {
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
 
+    HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
     Test_state test_state = Test_state::OFF; // normal mode
     float start_yaw = 0;
     float max_testing[4] = {0.1, 30, 30, 90}; // need to set these
@@ -376,7 +392,7 @@ int main() {
     for (const auto& motor : motors)
         motor.setup();
 
-    Motor gripper( //TODO: use this variable
+    Motor gripper( // TODO: use this variable
         [](float speed)
         {
             if (speed > 0.1f) {
@@ -399,37 +415,51 @@ int main() {
     std::array<std::optional<float>, 8> sensor_data;
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
-        TxPacket tx_pkt; //TODO: should be moved to outer scope
+        // TxPacket tx_pkt; // TODO: should be moved to outer scope
+        //
+        // if (data_received_flag) {
+        //     data_received_flag = 0;
+        //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
+        //     // process_data(data_type) // idk do something.
+        //     // depends on type of message do something.
+        //     // if default message -> change global variable which hold setpoints.
+        //     // if parameters message -> got set parameters.
+        //     // if operation mode (normal operation or tuning / testing) -> change global state.
+        //     // if no new message received for 100ms -> stop all motors (different than
+        //     // timeout(40ms)) and blink leds in a pattern if new data -> then set the new data if
+        //     no
+        //     // new data -> just output pid without setpoints suggestions: in main loop, read
+        //     sensor
+        //     // data and process pid, if setpoint changes then
+        // }
+        // else
+        //     // CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
+        //
+        //     // float forces[6];
+        //     float buff[8]{};
+        // // for (int i = 0; i < 6; i ++) {
+        // //     forces[i] = command_msg.forces[i];
+        // }
 
-        if (data_received_flag ) {
-            data_received_flag = 0;
-            CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
-            // process_data(data_type) // idk do something.
-            // depends on type of message do something.
-            // if default message -> change global variable which hold setpoints.
-            // if parameters message -> got set parameters.
-            // if operation mode (normal operation or tuning / testing) -> change global state.
-            // if no new message received for 100ms -> stop all motors (different than
-            // timeout(40ms)) and blink leds in a pattern if new data -> then set the new data if no
-            // new data -> just output pid without setpoints suggestions: in main loop, read sensor
-            // data and process pid, if setpoint changes then
-        }
-        else
-            CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
-
-        float forces[6];
-        float buff[8]{};
-        for (int i = 0; i < 6; i ++) {
-            forces[i] = command_msg.forces[i];
-        }
-        apply_pseudo_inverse(forces, buff);
-        normalize_thrusters(buff);
-        Motor::move_motor(motors, buff);
-
-        HAL_Delay(1);
+        // apply_pseudo_inverse(forces, buff);
+        // normalize_thrusters(buff);
+        // float buff[8] = {};
+        // for (int i = 0; i < 255; i++) {
+        //     for (float& j : buff) {
+        //         j = (float)i / 255.0;
+        //     }
+        // }
+        //
+        // Motor::move_motor(motors, buff);
+        // HAL_Delay(100);
 
 
-        // if (HAL_GetTick() - last_send_time >= 50) { //TODO: tx packet should be moved to outer scope
+
+
+
+
+        // if (HAL_GetTick() - last_send_time >= 50) { //TODO: tx packet should be moved to outer
+        // scope
         //     last_send_time = HAL_GetTick();
         //     // load_tx(&tx_pkt);
         //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&tx_pkt), sizeof(TxPacket));
@@ -507,7 +537,8 @@ int main() {
         //     if (test_state == Test_state::DONE &&
         //         last_received_msg_type == Message_Type::PARAMETERS_MESSAGE) {
         //         if (param_msg.pid_type) // angle pid
-        //             controller[test_axis].set_angle_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
+        //             controller[test_axis].set_angle_pid(param_msg.Kp, param_msg.ki,
+        //             param_msg.kd);
         //         else // rate pid
         //             controller[test_axis].set_rate_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
         //
@@ -520,47 +551,47 @@ int main() {
         // Motor::move_motor(motors, clamped_motors);
 
 
-///////////////////send data to GUI/////////////////////
-    //     static TxPacket feedback_pkt;
-    //
-    //     if (HAL_GetTick() - last_send_time >= 50)
-    //     {
-    //         last_send_time = HAL_GetTick();
-    //
-    //         feedback_pkt.sync_byte = 0xFF;
-    //         feedback_pkt.type = 0x01;
-    //         feedback_pkt.status = loadStatus();
-    //
-    //         // sensor telemetry
-    //         feedback_pkt.depth = sensor_data[0].value();
-    //         feedback_pkt.roll  = sensor_data[2].value();
-    //         feedback_pkt.pitch = sensor_data[4].value();
-    //         feedback_pkt.yaw   = sensor_data[6].value();
-    //
-    //         // motor telemetry
-    //         for (int i = 0; i < 8; i++)
-    //         {
-    //             feedback_pkt.motor_speeds[i] = clamped_motors[i] * 255.0f;
-    //         }
-    //
-    //         CDC_Transmit_FS((uint8_t*)&feedback_pkt, sizeof(TxPacket));
-    //     }
-    // }
-    // HAL_GPIO_WritePin(
-    //     POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET); // power relay on by default
-    // GripperStop(); // ensure gripper is stopped by default
-    // lastCommsTime = HAL_GetTick(); // initialize comms timer
-    // uint32_t lastTelemetrySend = 0;
-    // while (1) {
-    //     checkCommsTimeout();
-    //     checkWaterLeakage();
-    //     checkGripperLimitSwitches();
-    //     uint32_t now = HAL_GetTick();
-    //     if (now - lastTelemetrySend >= 20u) { // Send gripper status every 20ms
-    //         // sendGripperStatus();
-    //         lastTelemetrySend = now;
-    //     }
-     }
+        ///////////////////send data to GUI/////////////////////
+        //     static TxPacket feedback_pkt;
+        //
+        //     if (HAL_GetTick() - last_send_time >= 50)
+        //     {
+        //         last_send_time = HAL_GetTick();
+        //
+        //         feedback_pkt.sync_byte = 0xFF;
+        //         feedback_pkt.type = 0x01;
+        //         feedback_pkt.status = loadStatus();
+        //
+        //         // sensor telemetry
+        //         feedback_pkt.depth = sensor_data[0].value();
+        //         feedback_pkt.roll  = sensor_data[2].value();
+        //         feedback_pkt.pitch = sensor_data[4].value();
+        //         feedback_pkt.yaw   = sensor_data[6].value();
+        //
+        //         // motor telemetry
+        //         for (int i = 0; i < 8; i++)
+        //         {
+        //             feedback_pkt.motor_speeds[i] = clamped_motors[i] * 255.0f;
+        //         }
+        //
+        //         CDC_Transmit_FS((uint8_t*)&feedback_pkt, sizeof(TxPacket));
+        //     }
+        // }
+        // HAL_GPIO_WritePin(
+        //     POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET); // power relay on by default
+        // GripperStop(); // ensure gripper is stopped by default
+        // lastCommsTime = HAL_GetTick(); // initialize comms timer
+        // uint32_t lastTelemetrySend = 0;
+        // while (1) {
+        //     checkCommsTimeout();
+        //     checkWaterLeakage();
+        //     checkGripperLimitSwitches();
+        //     uint32_t now = HAL_GetTick();
+        //     if (now - lastTelemetrySend >= 20u) { // Send gripper status every 20ms
+        //         // sendGripperStatus();
+        //         lastTelemetrySend = now;
+        //     }
+    }
 }
 
 /**

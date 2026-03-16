@@ -22,6 +22,7 @@
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN INCLUDE */
+#include "Cdc_driver.h"
 #include "usb_comms.h"
 /* USER CODE END INCLUDE */
 
@@ -124,13 +125,14 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
  * @{
  */
 volatile uint32_t last_receive_time = 0;
-volatile Command_msg command_msg = {0};
+volatile Command_msg command_pkt = {0};
 volatile uint8_t data_received_flag = 0;
 volatile Operation_Mode_Msg operation_mode_msg = {0};
 volatile Parameter_Msg param_msg = {0};
 volatile Tuning_Msg tuning_msg = {0};
-volatile Message_Type last_received_msg_type = 0;
+volatile Message_Type last_received_msg_type = {};
 
+__attribute__((section(".noinit"))) volatile uint32_t dfu_flag = 0;
 static int8_t CDC_Init_FS(void);
 static int8_t CDC_DeInit_FS(void);
 static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length);
@@ -138,6 +140,7 @@ static int8_t CDC_Receive_FS(uint8_t* pbuf, uint32_t* Len);
 static int8_t CDC_TransmitCplt_FS(uint8_t* pbuf, uint32_t* Len, uint8_t epnum);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
+
 
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
@@ -260,33 +263,16 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length) {
  */
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t* Len) {
     /* USER CODE BEGIN 6 */
-    if (Buf[0] == 0xFF) {
-        uint8_t msg_type = Buf[1];
-        switch (msg_type) {
-        case 1 :
-            if (*Len == PAYLOAD_SIZE) { //TODO: why not use LEN instead of sizeof
-                memcpy(&command_msg, Buf, sizeof(Command_msg));
-                last_receive_time = HAL_GetTick();
-                memset(Buf, '\0', PAYLOAD_SIZE);
-            }
-            break;
-        case 2 :
-            if (*Len == PARAMETER_PAYLOAD) {
-                memcpy(&param_msg, Buf, PARAMETER_PAYLOAD);
-                last_receive_time = HAL_GetTick();
-                memset(Buf, '\0', PARAMETER_PAYLOAD);
-            }
-            break;
-        case 3 :
-            if (*Len == OPERATION_PAYLOAD) {
-                memcpy(&operation_mode_msg, Buf, OPERATION_PAYLOAD);
-                last_receive_time = HAL_GetTick();
-                memset(Buf, '\0', OPERATION_PAYLOAD);
-            }
-            break;
-        default :;
-        }
+
+    if (Buf[0] == 0xFF /*start byte*/ && Buf[1] == 0x07 /*msg type*/) {
+        dfu_flag = MAGIC_DFU;
+        NVIC_SystemReset();
     }
+
+    data_received_flag = 1;
+    last_receive_time = HAL_GetTick();
+    on_cdc_isr(Buf, *Len);
+    
     USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
     USBD_CDC_ReceivePacket(&hUsbDeviceFS);
     return (USBD_OK);

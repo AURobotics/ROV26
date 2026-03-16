@@ -12,6 +12,16 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
+set(CUBE_PROGRAMMER "C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe")
+
+add_custom_target(flash
+    COMMAND ${CUBE_PROGRAMMER}
+        -c port=USB1
+        -d B:/AUR/ROV26/src/firmware/build/Debug/firmware.elf
+        -v
+    DEPENDS ${PROJECT_NAME}
+    COMMENT "Flashing via USB..."
+)
 
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -46,28 +56,30 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/pid/PID.cpp
-        Core/lib/bno055/bno055.cpp
+        Core/lib/mpu9250/mpu9250.cpp
         Core/lib/ms5611/ms5611.cpp
         Core/lib/motor/Motor.cpp
         Core/lib/controller/Controller.cpp
         Core/lib/kinematics/Kinematics.cpp
         Core/lib/i2c_wrapper/i2c_wrapper.cpp
-        Core/lib/PWM_wrapper/pwm.cpp
+        Core/lib/pwm_wrapper/pwm.cpp
+        Core/lib/cdc_driver/Cdc_driver.cpp
         # Add user sources here
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/pid
-        Core/lib/bno055
+        Core/lib/mpu9250
         Core/lib/ms5611
         Core/lib/motor
         Core/lib/controller
         Core/lib/kinematics
         Core/lib/usb_comms
         Core/lib/i2c_wrapper
-        Core/lib/PWM_wrapper
+        Core/lib/pwm_wrapper
         Core/Inc
+        Core/lib/cdc_driver
         # Add user defined include paths
 )
 
@@ -85,4 +97,8 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         stm32cubemx
 
         # Add user defined libraries
+)
+
+target_link_options(${PROJECT_NAME} PRIVATE
+        -u _printf_float
 )
