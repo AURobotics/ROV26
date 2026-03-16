@@ -453,246 +453,175 @@ int main() {
 
     //
     std::array<std::optional<float>, 8> sensor_data;
-    // // ReSharper disable once CppDFAEndlessLoop
-
-    // for (auto &motor : motors) {
-    //     motor.move(1);
-    // }
-
-
-    // // Motor 1
-    // HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-    // HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-    //
-    // // Motor 2
-    // HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
-    // HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
-    //
-    // // Motor 3
-    // HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-    // HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-    //
-    // // Motor 4
-    // HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
-    // HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-    //
-    // // Motor 5
-    // HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_3);
-    // HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_2);
-    //
-    // // Motor 6
-    // HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
-    // HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
-    //
-    // // Motor 7
-    // HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
-    // HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
-    //
-    // // Motor 8
-    // HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_4);
-    // HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
-    //
-    // // Motor 1: 1A=10, 1B=900
-    // __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);
-    // __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, 999);
-    //
-    // // Motor 2: 2A=10, 2B=900
-    // __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
-    // __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 999);
-    //
-    // // Motor 3: 3A=10, 3B=900
-    // __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
-    // __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 999);
-    //
-    // // Motor 4: 4A=10, 4B=900
-    // __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
-    // __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 999);
-    //
-    // // Motor 5: 5A=10, 5B=900
-    // __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_3, 0);
-    // __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_2, 999);
-    //
-    // // Motor 6: 6A=10, 6B=900
-    // __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
-    // __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 999);
-    //
-    // // Motor 7: 7A=10, 7B=900
-    // __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, 0);
-    // __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, 999);
-    //
-    // // Motor 8: 8A=10, 8B=900
-    // __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_4, 0);
-    // __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 999);
 
     HAL_Delay(1000);
     Cdc_driver usb_cdc(30);
     usb_cdc.setup();
 
     while (true) {
+        //
+        // GenericMessage message = usb_cdc.read_msg();
+        // last_received_msg_type = message.type;
+        // if (last_received_msg_type == OPERATION_MESSAGE)
+        //     test_state =
+        //         message.data.operation_msg.operation_mode ? Test_state::OFF : Test_state::STEPPING;
+        //
 
-        GenericMessage message = usb_cdc.read_msg();
-        last_received_msg_type = message.type;
-        if (last_received_msg_type == OPERATION_MESSAGE)
-            test_state =
-                message.data.operation_msg.operation_mode ? Test_state::OFF : Test_state::STEPPING;
-
-        checkWaterLeakage();
-        HAL_Delay(1000);
-
-        // static bool data_received_first_time = false;
-        // if (!data_received_first_time) {
-        //     // CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
-        //     HAL_Delay(1);
-        // }
-
-        // if (data_received_flag) {
-        //     data_received_first_time = true;
-        //     data_received_flag = 0;
-        //     CDC_Transmit_FS((uint8_t*)&command_pkt, sizeof(Command_msg));
-        //     HAL_Delay(1);
-        //     CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
+        //
+        // // static bool data_received_first_time = false;
+        // // if (!data_received_first_time) {
+        // //     // CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
+        // //     HAL_Delay(1);
+        // // }
+        //
+        // // if (data_received_flag) {
+        // //     data_received_first_time = true;
+        // //     data_received_flag = 0;
+        // //     CDC_Transmit_FS((uint8_t*)&command_pkt, sizeof(Command_msg));
+        // //     HAL_Delay(1);
+        // //     CDC_Transmit_FS((uint8_t*)&ready_msg, sizeof(Ready_msg));
+        // // }
+        // //
+        // // HAL_Delay(1);
+        //
+        // // float buffer[8] = {};
+        // // for (int i = 0; i <= 1000; i++) {
+        // //     float current_speed = (float)i / 1000.0f; // Scale 0.0 to 1.0
+        // //
+        // //     // Fill the buffer and move each motor
+        // //     for (int k = 0; k < 8; k++) {
+        // //         buffer[k] = current_speed;
+        // //         motors[k].move(buffer[k]); // Internal logic: TIMx->CCRy = buffer[k] * 1000
+        // //     }
+        // //     // HAL_Delay(10); // Delays 10ms accurately via SysTick while PWM runs in hardware
+        // // }
+        //
+        //
+        // // TxPacket tx_pkt; //TODO: should be moved to outer scope
+        // //
+        // // if (data_received_flag ) {
+        // //     data_received_flag = 0;
+        // //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
+        // //     // process_data(data_type) // idk do something.
+        // //     // depends on type of message do something.
+        // //     // if default message -> change global variable which hold setpoints.
+        // //     // if parameters message -> got set parameters.
+        // //     // if operation mode (normal operation or tuning / testing) -> change global state.
+        // //     // if no new message received for 100ms -> stop all motors (different than
+        // //     // timeout(40ms)) and blink leds in a pattern if new data -> then set the new data if
+        // //     no
+        // //     // new data -> just output pid without setpoints suggestions: in main loop, read
+        // //     sensor
+        // //     // data and process pid, if setpoint changes then
+        // // }
+        // // else
+        // //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
+        // //
+        // // float forces[6];
+        // // float buff[8]{};
+        // // for (int i = 0; i < 6; i ++) {
+        // //     forces[i] = command_msg.forces[i];
+        // // }
+        // // apply_pseudo_inverse(forces, buff);
+        // // normalize_thrusters(buff);
+        // // Motor::move_motor(motors, buff);
+        // //
+        // // HAL_Delay(1);
+        //
+        //
+        // // if (HAL_GetTick() - last_send_time >= 50) { //TODO: tx packet should be moved to outer
+        // // scope
+        // //     last_send_time = HAL_GetTick();
+        // //     // load_tx(&tx_pkt);
+        // //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&tx_pkt), sizeof(TxPacket));
+        // // }
+        //
+        // fetch_sensor_data(sensor_data);
+        // if (test_state == Test_state::OFF) // Normal mode
+        // {
+        //     const unsigned char control_byte = message.data.command_pkt.control_byte;
+        //     for (int i = 0; i < 6; i++)
+        //         data[i] = 4 * message.data.command_pkt.forces[i];
+        //
+        //     prev = now;
+        //     now = HAL_GetTick();
+        //     float dt = (now - prev) / 1000.0; // convert ms->seconds
+        //
+        //
+        //     for (int i = 0, j = 0; i < 8; i += 2, j++)
+        //         if (control_byte & 1 << (7 - j)) { // setpoint
+        //             if (j > 0) // not depth
+        //                 controller_output[j + 2] =
+        //                     controller[j].output(angle_diff(data[j + 2], sensor_data[i].value()),
+        //                                          0,
+        //                                          dt,
+        //                                          sensor_data[i + 1]);
+        //
+        //             else // depth
+        //                 controller_output[j + 2] = controller[j].output(
+        //                     data[j + 2], sensor_data[i].value(), dt, sensor_data[i + 1].value());
+        //         }
+        //         else {
+        //             if (data[j + 2] == 0) // hold position
+        //                 controller_output[j + 2] = controller[j].output(
+        //                     hold[j], sensor_data[i].value(), dt, sensor_data[i + 1].value());
+        //             else { // pilot command
+        //                 controller_output[j + 2] = data[j + 2];
+        //                 hold[j] = sensor_data[i].value();
+        //             }
+        //         }
+        //
+        //     // surge
+        //     controller_output[0] = data[0];
+        //     // sway
+        //     controller_output[1] = data[1];
+        //
+        //     // TODO: rowan: pneumatics (DCV1 DCV2)
+        //     HAL_GPIO_WritePin(GPIOB,
+        //                       GPIO_PIN_14,
+        //                       message.data.command_pkt.control_byte & (1 << 5) ? GPIO_PIN_SET
+        //                                                                        : GPIO_PIN_RESET);
+        //     HAL_GPIO_WritePin(GPIOB,
+        //                       GPIO_PIN_15,
+        //                       message.data.command_pkt.control_byte & (1 << 6) ? GPIO_PIN_SET
+        //                                                                        : GPIO_PIN_RESET);
         // }
         //
-        // HAL_Delay(1);
-
-        // float buffer[8] = {};
-        // for (int i = 0; i <= 1000; i++) {
-        //     float current_speed = (float)i / 1000.0f; // Scale 0.0 to 1.0
-        //
-        //     // Fill the buffer and move each motor
-        //     for (int k = 0; k < 8; k++) {
-        //         buffer[k] = current_speed;
-        //         motors[k].move(buffer[k]); // Internal logic: TIMx->CCRy = buffer[k] * 1000
+        // else { // Testing mode
+        //     if (last_received_msg_type == TUNING_MESSAGE && test_state == Test_state::OFF) {
+        //         test_axis = tuning_msg.axis;
+        //         if (test_axis == 3)
+        //             start_yaw = sensor_data[test_axis].value();
+        //         test_state = Test_state::STEPPING;
         //     }
-        //     // HAL_Delay(10); // Delays 10ms accurately via SysTick while PWM runs in hardware
-        // }
-
-
-        // TxPacket tx_pkt; //TODO: should be moved to outer scope
         //
-        // if (data_received_flag ) {
-        //     data_received_flag = 0;
-        //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
-        //     // process_data(data_type) // idk do something.
-        //     // depends on type of message do something.
-        //     // if default message -> change global variable which hold setpoints.
-        //     // if parameters message -> got set parameters.
-        //     // if operation mode (normal operation or tuning / testing) -> change global state.
-        //     // if no new message received for 100ms -> stop all motors (different than
-        //     // timeout(40ms)) and blink leds in a pattern if new data -> then set the new data if
-        //     no
-        //     // new data -> just output pid without setpoints suggestions: in main loop, read
-        //     sensor
-        //     // data and process pid, if setpoint changes then
-        // }
-        // else
-        //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
+        //     if (test_state == Test_state::STEPPING) {
+        //         for (float& i : controller_output)
+        //             i = 0; // make sure that other axes are off
+        //         controller_output[test_axis + 2] = 0.4; // any constant value
         //
-        // float forces[6];
-        // float buff[8]{};
-        // for (int i = 0; i < 6; i ++) {
-        //     forces[i] = command_msg.forces[i];
-        // }
-        // apply_pseudo_inverse(forces, buff);
-        // normalize_thrusters(buff);
-        // Motor::move_motor(motors, buff);
+        //         if (test_axis == 3) { // yaw
+        //             if (angle_diff(sensor_data[test_axis].value(), start_yaw) >=
+        //                 max_testing[test_axis]) {
+        //                 controller_output[test_axis + 2] = 0;
+        //                 test_state = Test_state::DONE;
+        //             }
+        //         }
+        //         else if (sensor_data[test_axis].value() >= max_testing[test_axis]) {
+        //             controller_output[test_axis + 2] = 0;
+        //             test_state = Test_state::DONE;
+        //         }
+        //     }
         //
-        // HAL_Delay(1);
-
-
-        // if (HAL_GetTick() - last_send_time >= 50) { //TODO: tx packet should be moved to outer
-        // scope
-        //     last_send_time = HAL_GetTick();
-        //     // load_tx(&tx_pkt);
-        //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&tx_pkt), sizeof(TxPacket));
+        //     if (test_state == Test_state::DONE && last_received_msg_type == PARAMETERS_MESSAGE) {
+        //         if (param_msg.pid_type) // angle pid
+        //             controller[test_axis].set_angle_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
+        //         else // rate pid
+        //             controller[test_axis].set_rate_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
+        //
+        //         test_state = Test_state::OFF;
+        //     }
         // }
-
-        fetch_sensor_data(sensor_data);
-        if (test_state == Test_state::OFF) // Normal mode
-        {
-            const unsigned char control_byte = message.data.command_pkt.control_byte;
-            for (int i = 0; i < 6; i++)
-                data[i] = 4 * message.data.command_pkt.forces[i];
-
-            prev = now;
-            now = HAL_GetTick();
-            float dt = (now - prev) / 1000.0; // convert ms->seconds
-
-
-            for (int i = 0, j = 0; i < 8; i += 2, j++)
-                if (control_byte & 1 << (7 - j)) { // setpoint
-                    if (j > 0) // not depth
-                        controller_output[j + 2] =
-                            controller[j].output(angle_diff(data[j + 2], sensor_data[i].value()),
-                                                 0,
-                                                 dt,
-                                                 sensor_data[i + 1]);
-
-                    else // depth
-                        controller_output[j + 2] = controller[j].output(
-                            data[j + 2], sensor_data[i].value(), dt, sensor_data[i + 1].value());
-                }
-                else {
-                    if (data[j + 2] == 0) // hold position
-                        controller_output[j + 2] = controller[j].output(
-                            hold[j], sensor_data[i].value(), dt, sensor_data[i + 1].value());
-                    else { // pilot command
-                        controller_output[j + 2] = data[j + 2];
-                        hold[j] = sensor_data[i].value();
-                    }
-                }
-
-            // surge
-            controller_output[0] = data[0];
-            // sway
-            controller_output[1] = data[1];
-
-            // TODO: rowan: pneumatics (DCV1 DCV2)
-            HAL_GPIO_WritePin(GPIOB,
-                              GPIO_PIN_14,
-                              message.data.command_pkt.control_byte & (1 << 5) ? GPIO_PIN_SET
-                                                                               : GPIO_PIN_RESET);
-            HAL_GPIO_WritePin(GPIOB,
-                              GPIO_PIN_15,
-                              message.data.command_pkt.control_byte & (1 << 6) ? GPIO_PIN_SET
-                                                                               : GPIO_PIN_RESET);
-        }
-
-        else { // Testing mode
-            if (last_received_msg_type == TUNING_MESSAGE && test_state == Test_state::OFF) {
-                test_axis = tuning_msg.axis;
-                if (test_axis == 3)
-                    start_yaw = sensor_data[test_axis].value();
-                test_state = Test_state::STEPPING;
-            }
-
-            if (test_state == Test_state::STEPPING) {
-                for (float& i : controller_output)
-                    i = 0; // make sure that other axes are off
-                controller_output[test_axis + 2] = 0.4; // any constant value
-
-                if (test_axis == 3) { // yaw
-                    if (angle_diff(sensor_data[test_axis].value(), start_yaw) >=
-                        max_testing[test_axis]) {
-                        controller_output[test_axis + 2] = 0;
-                        test_state = Test_state::DONE;
-                    }
-                }
-                else if (sensor_data[test_axis].value() >= max_testing[test_axis]) {
-                    controller_output[test_axis + 2] = 0;
-                    test_state = Test_state::DONE;
-                }
-            }
-
-            if (test_state == Test_state::DONE && last_received_msg_type == PARAMETERS_MESSAGE) {
-                if (param_msg.pid_type) // angle pid
-                    controller[test_axis].set_angle_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
-                else // rate pid
-                    controller[test_axis].set_rate_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
-
-                test_state = Test_state::OFF;
-            }
-        }
 
 
         // for (int i = 0; i < 6; i++)
