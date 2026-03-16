@@ -23,6 +23,7 @@
 
 /* USER CODE BEGIN INCLUDE */
 #include "usb_comms.h"
+#include "Usb_cdc_wrapper.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
