@@ -14,14 +14,6 @@ set(CMAKE_C_EXTENSIONS ON)
 
 set(CUBE_PROGRAMMER "C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe")
 
-add_custom_target(flash
-    COMMAND ${CUBE_PROGRAMMER}
-        -c port=USB1
-        -d B:/AUR/ROV26/src/firmware/build/Debug/firmware.elf
-        -v
-    DEPENDS ${PROJECT_NAME}
-    COMMENT "Flashing via USB..."
-)
 
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -101,4 +93,21 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
 target_link_options(${PROJECT_NAME} PRIVATE
         -u _printf_float
+)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+  COMMAND ${CMAKE_OBJCOPY} -O binary
+    $<TARGET_FILE:${PROJECT_NAME}>
+    ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.bin
+)
+
+add_custom_target(flash
+    DEPENDS ${PROJECT_NAME}
+    COMMAND "${CUBE_PROGRAMMER}"
+        -c port=USB1
+        -d $<TARGET_FILE:${PROJECT_NAME}>
+        -v
+        --go
+    COMMENT "Flashing via USB DFU..."
+    VERBATIM
 )
