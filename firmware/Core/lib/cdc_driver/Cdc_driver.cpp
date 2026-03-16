@@ -7,6 +7,11 @@ extern "C" void on_cdc_isr(uint8_t* buf, uint32_t len) {
         g_cdc_driver->on_data_receive(buf, len);
  }
 
+void Cdc_driver::setup() {
+    if (g_cdc_driver == nullptr)
+        g_cdc_driver = this;
+}
+
 bool Cdc_driver::available() {
     // if both are equal (0,0) -> empty buffer
     return m_read_index != m_write_index;
