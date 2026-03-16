@@ -10,7 +10,7 @@ Rectangle {
     property real depth: rov.depth
     property real maxDepth: rov.max_depth
 
-    width: 50
+    width: 42
     height: 300
     color: palette.window
 
@@ -19,7 +19,7 @@ Rectangle {
 
         anchors.centerIn: parent
         height: parent.height
-        width: Math.min(50, parent.width)
+        width: Math.min(42, parent.width)
         radius: 10
         antialiasing: true
         color: "#62c1e5"
