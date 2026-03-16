@@ -1,14 +1,18 @@
-#include "Usb_cdc_wrapper.h"
+#include "Cdc_driver.h"
+#include "usbd_cdc_if.h"
 
+Cdc_driver* g_cdc_driver = nullptr;
+extern "C" void on_cdc_isr(uint8_t* buf, uint32_t len) {
+    if (g_cdc_driver != nullptr)
+        g_cdc_driver->on_data_receive(buf, len);
+ }
 
-extern "C" void on_cdc_isr(uint8_t* buf, uint32_t len) { usb_cdc.onDataReceived(buf, len); }
-
-bool Usb_cdc_wrapper::available() {
+bool Cdc_driver::available() {
     // if both are equal (0,0) -> empty buffer
     return m_read_index != m_write_index;
 }
 
-bool Usb_cdc_wrapper::parse(uint8_t* buf, uint32_t len, GenericMessage& out) {
+bool Cdc_driver::parse(uint8_t* buf, uint32_t len, GenericMessage& out) {
     if (len < 2 || buf[0] != 0xFF)
         return false;
 
@@ -67,7 +71,7 @@ bool Usb_cdc_wrapper::parse(uint8_t* buf, uint32_t len, GenericMessage& out) {
     return true;
 }
 
-void Usb_cdc_wrapper::onDataReceived(uint8_t* buf, uint32_t len) {
+void Cdc_driver::on_data_receive(uint8_t* buf, uint32_t len) {
     // writes in the next slot and advances the write index
     GenericMessage& slot = m_slots[m_write_index];
 
@@ -75,7 +79,7 @@ void Usb_cdc_wrapper::onDataReceived(uint8_t* buf, uint32_t len) {
         m_write_index = (m_write_index + 1) % BUFFER_SIZE;
 }
 
-GenericMessage Usb_cdc_wrapper::read_msg() {
+GenericMessage Cdc_driver::read_msg() {
     if (!available())
         return GenericMessage{};
 
@@ -84,7 +88,7 @@ GenericMessage Usb_cdc_wrapper::read_msg() {
     return msg;
 }
 
-bool Usb_cdc_wrapper::write_msg(TxPacket* tx) {
+bool Cdc_driver::write_msg(TxPacket* tx) {
     auto result = CDC_Transmit_FS(reinterpret_cast<uint8_t*>(tx), sizeof(TxPacket));
     return result == USBD_OK;
 }

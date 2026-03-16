@@ -63,7 +63,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/kinematics/Kinematics.cpp
         Core/lib/i2c_wrapper/i2c_wrapper.cpp
         Core/lib/pwm_wrapper/pwm.cpp
-        Core/lib/usb_cdc_wrapper/Usb_cdc_wrapper.cpp
+        Core/lib/cdc_driver/Cdc_driver.cpp
         # Add user sources here
 )
 
@@ -79,7 +79,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/i2c_wrapper
         Core/lib/pwm_wrapper
         Core/Inc
-        Core/lib/usb_cdc_wrapper
+        Core/lib/cdc_driver
         # Add user defined include paths
 )
 
