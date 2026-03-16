@@ -264,15 +264,13 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length) {
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t* Len) {
     /* USER CODE BEGIN 6 */
 
-    // call function
-    data_received_flag = 1;
-    last_receive_time = HAL_GetTick();
-    // DFU trigger check
     if (Buf[0] == 0xFF /*start byte*/ && Buf[1] == 0x07 /*msg type*/) {
         dfu_flag = MAGIC_DFU;
         NVIC_SystemReset();
     }
 
+    data_received_flag = 1;
+    last_receive_time = HAL_GetTick();
     on_cdc_isr(Buf, *Len);
     
     USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);

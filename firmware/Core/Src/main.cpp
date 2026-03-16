@@ -525,6 +525,9 @@ int main() {
     // __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 999);
 
     HAL_Delay(1000);
+    Cdc_driver usb_cdc(30);
+    usb_cdc.setup();
+
     while (true) {
 
         GenericMessage message = usb_cdc.read_msg();

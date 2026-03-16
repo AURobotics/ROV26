@@ -40,6 +40,7 @@ class Cdc_driver {
 
 public:
     explicit constexpr Cdc_driver(uint32_t m_timeout) : m_timeout_ms(m_timeout) {}
+    void setup();
     bool available();
     bool write_msg(TxPacket* tx);
     GenericMessage read_msg();
