@@ -74,7 +74,7 @@ Item {
         anchors.fill: parent
         ShapePath {
             strokeWidth: 2
-            strokeColor: "#555555"
+            strokeColor: (root.palette.window.hsvValue > 0.5) ? "#555555" : "#808080"
             fillColor: "transparent"
             startX: root.width / 2
             startY: 0

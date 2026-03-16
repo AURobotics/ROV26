@@ -5,11 +5,12 @@ import QtQuick.Particles
 
 pragma ComponentBehavior: Bound
 
-Item {
-    id: rootWidget
+Rectangle {
+    id: root
     width: 300
     height: 300
     antialiasing: true
+    color: palette.window
 
     HorizontalThruster {
         id: horizontalThruster1
