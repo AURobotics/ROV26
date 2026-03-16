@@ -693,7 +693,7 @@ vec_3 MPU9250::getEulerAngles() {
 vec_3 MPU9250::getBodyRates() {
     int16_t gyroCount[3];
     readGyroData(gyroCount);
-    vec_3 rates;
+    vec_3 rates{};
     rates.x() = (float)gyroCount[0] * gRes - gyroBias[0];
     rates.y() = (float)gyroCount[1] * gRes - gyroBias[1];
     rates.z() = (float)gyroCount[2] * gRes - gyroBias[2];
