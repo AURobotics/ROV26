@@ -22,7 +22,8 @@ typedef enum {
     OPERATION_MESSAGE = 3, // received from gui to change operation mode
     SENSOR_MESSAGE = 4, // sent from stm, contains the actuator's state and sensors' data
     TUNING_MESSAGE = 5,
-    CONTROLLER_RESPONSE = 6
+    CONTROLLER_RESPONSE = 6,
+    DFU_mode = 7
 } Message_Type;
 
 
@@ -58,7 +59,7 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
     uint8_t sync_byte;
     uint8_t type;
-} Ready_Msg;
+} Ready_msg;
 
 typedef struct __attribute__((packed)) {
     uint8_t sync_byte;
@@ -80,7 +81,7 @@ typedef struct __attribute__((packed)) {
 } TxPacket;
 
 extern volatile uint32_t last_receive_time;
-extern volatile Command_msg command_msg;
+extern volatile Command_msg command_pkt;
 extern volatile uint8_t data_received_flag;
 extern volatile Operation_Mode_Msg operation_mode_msg;
 extern volatile Parameter_Msg param_msg;
