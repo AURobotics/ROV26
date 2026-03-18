@@ -98,3 +98,9 @@ class CameraDisplay(QWidget):
 
         image = QImage(frame.data, frame.shape[1], frame.shape[0], frame.strides[0], QImage.Format.Format_BGR888)
         self._frame_view.setPixmap(QPixmap.fromImage(image))
+
+    def heightForWidth(self, width: int) -> int:
+        return int(width *3/4)
+    
+    def hasHeightForWidth(self) -> bool:
+        return True
