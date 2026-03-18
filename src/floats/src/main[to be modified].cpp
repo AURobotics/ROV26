@@ -4,6 +4,11 @@
 
 #define R_SENSE 0.11f //to be changed
 #define SERIAL Serial1
+#define K_P 0.086
+#define K_I 0.00879
+#define K_D 0.187
+#define MAX_MOTOR_VEL 10
+#define MAX_DISTANCE 10
 
 class PID{
     public:
@@ -58,7 +63,7 @@ class PID{
 };
 
 TMC2208Stepper driver = TMC2208Stepper(&SERIAL, R_SENSE);
-PID pid = PID(0,0,0,0); //to be added: PID parameters + max motor output
+PID pid = PID(K_P,K_I,K_D,MAX_MOTOR_VEL); //to be added: PID parameters + max motor output
 float time;
 bool hold_position = false;
 void setup() {
@@ -75,6 +80,7 @@ void setup() {
   pid.set_point = -2.5; //initial set point
   time = millis(); //start time
 }
+
 
 void loop() {
   // put your main code here, to run repeatedly:
