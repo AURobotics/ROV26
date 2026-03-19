@@ -1,4 +1,7 @@
+#include "store_data.h"
 #include <LittleFS.h>
+
+const char *LOG_FILE = "/log.csv";
 
 void startSequence();
 // Target sequence
@@ -14,14 +17,16 @@ void store_data_setup()
 
   startSequence();
   // Initialize filesystem
-  if (!LittleFS.begin(true)){
+  if (!LittleFS.begin(true))
+  {
     Serial.println("FS failed!");
     return;
   }
 
   // Create file with headers
-  File file = LittleFS.open("/log.csv", FILE_WRITE);
-  if (file){
+  File file = LittleFS.open(LOG_FILE, FILE_WRITE);
+  if (file)
+  {
     file.println("time_ms,depth_cm");
     file.close();
     Serial.println("Log file created");
@@ -30,39 +35,47 @@ void store_data_setup()
 
 void store_data_loop()
 {
-  if (isRunning){
+  if (isRunning)
+  {
     // Log 3 times every second
-    if (millis() - lastLogTime >= 333){
+    if (millis() - lastLogTime >= 333)
+    {
       lastLogTime = millis();
 
       // Log current reading
-      File file = LittleFS.open("/log.csv", FILE_APPEND);
-      if (file){
+      File file = LittleFS.open(LOG_FILE, FILE_APPEND);
+      if (file)
+      {
         file.printf("%lu,%.1f\n", millis(), currentDepth);
         file.close();
       }
     }
 
     // Check if we reached the target
-    if (abs(currentDepth - targets[currentTarget]) <= 0.05){
+    if (abs(currentDepth - targets[currentTarget]) <= 0.05)
+    {
 
       // If timer is 0, this is the first time reaching this target
-      if (holdTimer == 0){
+      if (holdTimer == 0)
+      {
         holdTimer = millis();
       }
 
       // If 30 seconds have passed
-      if (millis() - holdTimer >= 30000){
+      if (millis() - holdTimer >= 30000)
+      {
         currentTarget++;
         holdTimer = 0; // Reset timer for next target
 
-        if (currentTarget >= 5){
+        if (currentTarget >= 5)
+        {
           isRunning = false;
           Serial.println("Sequence complete!");
         }
       }
     }
-    else{
+    else
+    {
       // Not at target, reset timer
       holdTimer = 0;
     }
@@ -100,9 +113,10 @@ float getCurrentTarget()
 // Call this to clear data
 void clearLog()
 {
-  LittleFS.remove("/log.csv");
-  File file = LittleFS.open("/log.csv", FILE_WRITE);
-  if (file){
+  LittleFS.remove(LOG_FILE);
+  File file = LittleFS.open(LOG_FILE, FILE_WRITE);
+  if (file)
+  {
     file.println("time_ms,depth_cm");
     file.close();
   }
