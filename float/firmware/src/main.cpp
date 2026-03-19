@@ -23,7 +23,9 @@ void initAccessPoint(const char *ssid, const char *password);
 
 MQTTManager mqttManager;
 
-// ArduinoOTAClass ArduinoOTA;
+// depths values for testing
+float testDepth = 0.0;
+float depthIncrement = 0.1;
 
 void setup()
 {
@@ -50,19 +52,23 @@ void loop()
     // To store depth per time
     store_data_loop();
 
-    if(isComplete()){
-      Serial.println("sending data to mqtt");
+    if (isComplete())
+    {
+        Serial.println("sending data to mqtt");
 
-      // Ensure WiFi is still connected before checking MQTT state
-      if (WiFi.status() != WL_CONNECTED)
-      {
-          Serial.println("WiFi connection lost. Reconnecting...");
-          WiFi.reconnect();
-          delay(500);
-      }
+        // Ensure WiFi is still connected before checking MQTT state
+        if (WiFi.status() != WL_CONNECTED)
+        {
+            Serial.println("WiFi connection lost. Reconnecting...");
+            WiFi.reconnect();
+            delay(500);
+        }
 
-      mqttManager.publish("float/data", LOG_FILE, false);
+        mqttManager.publish("float/data", LOG_FILE, false);
     }
+
+    // For testing without sensor, simulating depth changes
+    testDepth += depthIncrement;
 }
 
 void connectToWiFi(const char *ssid, const char *password, bool asAccessPoint)
