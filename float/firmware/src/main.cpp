@@ -2,6 +2,7 @@
 #include <ESPMQTTClient.h>
 #include "ota_manager.h"
 #include <WiFi.h>
+#include "store_data.h"
 
 void connectToWiFi(const char *ssid, const char *password, bool asAccessPoint);
 void initAccessPoint(const char *ssid, const char *password);
@@ -42,6 +43,8 @@ void setup()
 
     // Subscribe to topics
     mqttClient.subscribe("to/esp");
+
+    store_data_setup();
 }
 
 void loop()
@@ -51,6 +54,9 @@ void loop()
 
     // Handle MQTT communication
     mqttClient.loop();
+
+    // To store depth per time
+    store_data_loop();
 
     // Ensure WiFi is still connected before checking MQTT state
     if (WiFi.status() != WL_CONNECTED)
