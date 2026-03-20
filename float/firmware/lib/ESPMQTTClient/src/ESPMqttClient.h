@@ -26,7 +26,7 @@ public:
 
     // Public methods
     void begin();
-    void loop();
+    void loop(bool pollMqttConnection = true);
     bool publish(const char *topic = "test", const char *payload = "publishing to \"test\"", bool retained = false);
     bool subscribe(const char *topic = "test");
     bool unsubscribe(const char *topic);
@@ -58,7 +58,7 @@ private:
     std::function<void(char *, uint8_t *, unsigned int)> _callback;
 
     // Private methods
-    void connectToMQTT();
+    void connectToMQTT(bool poll = true);
 };
 
 // for future extension if needed instead of using the setCallback
