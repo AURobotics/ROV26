@@ -23,11 +23,11 @@ void MQTTManager::setup(const char *mqtt_broker, int mqtt_port,
     _mqttClient->subscribe("to/esp");
 }
 
-void MQTTManager::loop()
+void MQTTManager::loop(bool pollMqttConnection)
 {
     if (_mqttClient != nullptr)
     {
-        _mqttClient->loop();
+        _mqttClient->loop(pollMqttConnection);
     }
 }
 

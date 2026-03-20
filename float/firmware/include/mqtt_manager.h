@@ -11,7 +11,7 @@ public:
     MQTTManager();
     void setup(const char *mqtt_broker, int mqtt_port,
                const char *mqtt_username, const char *mqtt_password);
-    void loop();
+    void loop(bool pollMqttConnection = true);
     bool publish(const char *topic, const char *payload, bool retained = false);
     bool sendFileChunked(const char *topic, const char *filename);
 
