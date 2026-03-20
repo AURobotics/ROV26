@@ -64,7 +64,7 @@ void loop()
             delay(500);
         }
 
-        mqttManager.publish("float/data", LOG_FILE, false);
+        mqttManager.sendFileChunked("float/data", "/data.csv");
     }
 
     // For testing without sensor, simulating depth changes

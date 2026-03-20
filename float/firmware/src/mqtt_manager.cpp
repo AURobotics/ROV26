@@ -54,3 +54,12 @@ void MQTTManager::messageCallback(char *topic, uint8_t *payload, unsigned int le
     message[length] = '\0';
     Serial.println(message);
 }
+
+bool MQTTManager::sendFileChunked(const char *topic, const char *filename)
+{
+    if (_mqttClient != nullptr)
+    {
+        return _mqttClient->sendFileChunked(topic, filename);
+    }
+    return false;
+}

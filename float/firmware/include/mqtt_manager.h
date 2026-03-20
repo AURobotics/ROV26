@@ -13,6 +13,7 @@ public:
                const char *mqtt_username, const char *mqtt_password);
     void loop();
     bool publish(const char *topic, const char *payload, bool retained = false);
+    bool sendFileChunked(const char *topic, const char *filename);
 
 private:
     ESPMqttClient *_mqttClient;

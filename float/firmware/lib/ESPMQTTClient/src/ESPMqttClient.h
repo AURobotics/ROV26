@@ -33,6 +33,7 @@ public:
     bool isConnected();
     void disconnect();
     void setCallback(std::function<void(char *, uint8_t *, unsigned int)> callback);
+    bool sendFileChunked(const char *topic, const char *filename);
 
 private:
     // WiFi

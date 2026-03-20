@@ -1,6 +1,12 @@
 
 #include "ESPMqttClient.h"
 
+// libraries used for method sending in chunks
+#include <FS.h> // For file system operations
+#include <SPIFFS.h>
+#include <ArduinoJson.h>
+#include <Base64.h> // For encoding binary data to base64
+
 ESPMqttClient::ESPMqttClient(
     const char *mqtt_server,
     int mqtt_port,
@@ -194,6 +200,148 @@ void ESPMqttClient::disconnect()
 void ESPMqttClient::setCallback(std::function<void(char *, uint8_t *, unsigned int)> callback)
 {
     _callback = callback;
+}
+
+
+/**
+ * send file in chunks over MQTT.
+ *
+ * This is necessary because MQTT has a maximum payload size (256-512 bytes ).
+ * sending the file in smaller chunks -> ensure that we don't exceed this limit
+ *
+ * This is the main function for sending files. It:
+ * 1. Opens the file and gets its size
+ * 2. Calculates number of chunks needed
+ * 3. Sends metadata (file info) first
+ * 4. Sends the file data in chunks
+ *
+ * Chunks are base64 encoded to ensure binary data can be sent over MQTT's text-based protocol.
+ *
+ * Chuncks are sent in diffrenet subtopics (format: "base_topic/chunk/chunk_number")
+ * (e.g. "base_topic/chunk/0", "base_topic/chunk/1", etc.) to allow receiver to reconstruct the file in order.
+ *
+ * @param topic Base MQTT topic for the file transfer
+ * @param filename Path to the file to send
+ * @return true if file sent successfully, false otherwise
+ */
+bool ESPMqttClient::sendFileChunked(const char *topic, const char *filename)
+{
+    base64 base64_encoder = base64();
+    File file = SPIFFS.open(filename, "r");
+    if (!file)
+    {
+        Serial.print("Failed to open file: ");
+        Serial.println(filename);
+        return false;
+    }
+
+    Serial.print("Opening file: ");
+    Serial.print(filename);
+    Serial.print(" | Size: ");
+    Serial.print(file.size());
+    Serial.println(" bytes");
+
+    // Calculate chunks
+    const int CHUNK_SIZE = 512; // 512 bytes to work with mqtt limits
+    size_t fileSize = file.size();
+    int totalChunks = (fileSize + CHUNK_SIZE - 1) / CHUNK_SIZE; // ceiling division
+
+    Serial.print(totalChunks);
+    Serial.println(" chunks");
+
+    // Send file metadata first
+    // - filename: name of file
+    // - size: total bytes
+    // - chunks: number of chunks
+    // - encoding: how the data is encoded (base64 in this case)
+
+    char metaTopic[128];
+    snprintf(metaTopic, sizeof(metaTopic), "%s/meta", topic);
+
+    StaticJsonDocument<256> metaDoc;
+    metaDoc["filename"] = filename;
+    metaDoc["size"] = fileSize;
+    metaDoc["chunks"] = totalChunks;
+    metaDoc["encoding"] = "base64"; // Tell receiver we're using base64
+
+    String metadata;
+    serializeJson(metaDoc, metadata);
+
+    Serial.print("Sending metadata: ");
+    Serial.println(metadata);
+
+    if (!publish(metaTopic, metadata.c_str(), false))
+    {
+        Serial.println("Failed to send metadata");
+        file.close();
+        return false;
+    }
+
+    delay(50); // Small delay to let receiver process metadata
+
+    // buffer for reading file
+    uint8_t buffer[CHUNK_SIZE]; // Raw file data buffer
+    int bytesRead;
+    bool success = true;
+
+    // Send each chunk
+    for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++)
+    {
+        // Read a chunk from the file
+        bytesRead = file.read(buffer, CHUNK_SIZE);
+
+        if (bytesRead <= 0)
+        {
+            Serial.print("Unexpected end of file at chunk ");
+            Serial.println(chunkIndex);
+            success = false;
+            break;
+        }
+
+        // calculate base64 encoded size: ((bytesRead + 2) / 3) * 4
+        int encodedLen = ((bytesRead + 2) / 3) * 4;
+        String encodedData;
+
+        // encode the binary chunk to base64
+        encodedData = base64_encoder.encode((const uint8_t *)buffer, bytesRead);
+
+        // chunk-specific topic
+        // format: base_topic/chunk/chunk_number
+        // e.g. "float/data/chunk/0", "float/data/chunk/1", etc.
+        char chunkTopic[128];
+        snprintf(chunkTopic, sizeof(chunkTopic), "%s/chunk/%d", topic, chunkIndex);
+
+        // Send the chunk
+        // Each chunk contains base64 encoded data
+        if (!publish(chunkTopic, encodedData.c_str(), false))
+        {
+            Serial.print("Failed to send chunk ");
+            Serial.println(chunkIndex);
+            success = false;
+            break;
+        }
+
+        // Print progress
+        Serial.print("Sent chunk ");
+        Serial.print(chunkIndex + 1);
+        Serial.print("/");
+        Serial.print(totalChunks);
+        Serial.print(" (");
+        Serial.print(bytesRead);
+        Serial.println(" bytes)");
+
+        // Small delay between chunks to avoid flooding MQTT broker
+        delay(10);
+    }
+
+    file.close();
+
+    if (success)
+        Serial.println("File transfer completed successfully!");
+    else
+        Serial.println("File transfer failed!");
+
+    return success;
 }
 
 // =#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#
