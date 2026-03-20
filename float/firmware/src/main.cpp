@@ -35,9 +35,6 @@ void setup()
     // OTA
     // setupOTA();
 
-    // MQTT setup
-    mqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
-
     store_data_setup();
 }
 
@@ -46,25 +43,33 @@ void loop()
     // Handle OTA updates
     // otaupdate();
 
-    // Handle MQTT communication
-    mqttManager.loop();
-
     // To store depth per time
     store_data_loop();
 
     if (isComplete())
     {
-        Serial.println("sending data to mqtt");
+        // MQTT setup
+        Serial.println("Connecting to MQTT broker...");
+        mqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
 
-        // Ensure WiFi is still connected before checking MQTT state
-        if (WiFi.status() != WL_CONNECTED)
-        {
-            Serial.println("WiFi connection lost. Reconnecting...");
-            WiFi.reconnect();
-            delay(500);
+        // keep sending data to MQTT broker every 5 seconds till shutdown
+        while(1){
+            // Handle MQTT communication
+            mqttManager.loop();
+
+            Serial.println("sending data to mqtt");
+
+            // Ensure WiFi is still connected before checking MQTT state
+            if (WiFi.status() != WL_CONNECTED)
+            {
+                Serial.println("WiFi connection lost. Reconnecting...");
+                WiFi.reconnect();
+                delay(500);
+            }
+
+            mqttManager.sendFileChunked("float/data", "/data.csv");
+            delay(5000); // Send data every 5 seconds
         }
-
-        mqttManager.sendFileChunked("float/data", "/data.csv");
     }
 
     // For testing without sensor, simulating depth changes
