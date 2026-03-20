@@ -24,12 +24,10 @@ ESPMqttClient::~ESPMqttClient()
     disconnect();
 }
 
-// =============================================================================
-// begin()
-// Must be called once in the Arduino setup() function.
-// Initializes Serial, connects to WiFi, configures the MQTT broker address,
-// and registers the internal message callback dispatcher.
-// =============================================================================
+/**
+ * called in setup() to initialize the MQTT client and connect to the broker.
+ * Sets up the MQTT server address and registers a lambda as the internal callback
+ */
 void ESPMqttClient::begin()
 {
     _mqttClient.setServer(_mqtt_broker, _mqtt_port);
@@ -45,18 +43,17 @@ void ESPMqttClient::begin()
     connectToMQTT();
 }
 
-// =============================================================================
-// loop()
-// Must be called repeatedly inside the Arduino loop() function.
-// Checks the MQTT connection state and reconnects if necessary, then
-// hands control to PubSubClient to process incoming/outgoing messages.
-// =============================================================================
-void ESPMqttClient::loop()
+/**
+ * This method should be called repeatedly in the main loop() function.
+ * It checks if the MQTT connection is still alive, and if not, it attempts to reconnect.
+ * Then it calls the loop() method of the underlying PubSubClient to handle incoming messages,
+ */
+void ESPMqttClient::loop(bool pollMqttConnection)
 {
     // If MQTT connection has dropped, attempt to reconnect
     if (!_mqttClient.connected())
     {
-        connectToMQTT();
+        connectToMQTT(pollMqttConnection);
     }
 
     // Allow PubSubClient to process network traffic (keep-alive pings,
@@ -64,7 +61,7 @@ void ESPMqttClient::loop()
     _mqttClient.loop();
 }
 
-void ESPMqttClient::connectToMQTT()
+void ESPMqttClient::connectToMQTT(bool poll)
 {
     while (!_mqttClient.connected())
     {
@@ -105,35 +102,33 @@ void ESPMqttClient::connectToMQTT()
         {
             Serial.print("failed with state ");
             Serial.println(_mqttClient.state());
+            if (!poll)
+            {
+                Serial.println("Not polling for MQTT connection. Exiting connect loop.");
+                return;
+            }
             delay(2000);
         }
     }
 }
 
-// =============================================================================
-// publish()
-// Publishes a message payload to the specified MQTT topic.
-//
-// Parameters:
-//   topic    - The MQTT topic string to publish to
-//   payload  - The message content (null-terminated string)
-//   retained - If true, the broker stores the last message and delivers it
-//              to future subscribers immediately upon subscription
-//
-// Returns true on success, false if not connected or the message was too large.
-// =============================================================================
+/**
+ * @param topic The MQTT topic to publish to (e.g. "sensors/temperature")
+ * @param payload The message content to send (null-terminated string)
+ * @param retained If true, the broker will store this message and deliver it
+ *                 to future subscribers immediately upon subscription
+ * @returns true on success, false if not connected or message too large
+ */
 bool ESPMqttClient::publish(const char *topic, const char *payload, bool retained)
 {
     return _mqttClient.publish(topic, payload, retained);
 }
 
-// =============================================================================
-// subscribe()
-// Subscribes to an MQTT topic to receive messages published to it.
-// The registered callback (setCallback) will be invoked for each incoming message.
-//
-// Returns true on success, false if not connected or subscription failed.
-// =============================================================================
+/**
+ * Subscribes to an MQTT topic to receive messages published to it.
+ * The registered callback (setCallback) will be invoked for each incoming message.
+ * @returns true on success, false if not connected or subscription failed.
+ */
 bool ESPMqttClient::subscribe(const char *topic)
 {
     std::string t(topic);
@@ -145,12 +140,10 @@ bool ESPMqttClient::subscribe(const char *topic)
     return _mqttClient.subscribe(topic);
 }
 
-// =============================================================================
-// unsubscribe()
-// Cancels an existing subscription to the specified MQTT topic.
-//
-// Returns true on success, false if not connected or unsubscription failed.
-// =============================================================================
+/**
+ * Unsubscribes from an MQTT topic.
+ * @returns true on success, false if not connected or unsubscription failed.
+ */
 bool ESPMqttClient::unsubscribe(const char *topic)
 {
     if (!_mqttClient.connected())
@@ -162,20 +155,18 @@ bool ESPMqttClient::unsubscribe(const char *topic)
     return _mqttClient.unsubscribe(topic);
 }
 
-// =============================================================================
-// isConnected()
-// Returns true if the client currently has an active MQTT broker connection.
-// =============================================================================
+/** 
+ * @returns true if the client currently has an active MQTT broker connection.
+ */
 bool ESPMqttClient::isConnected()
 {
     return _mqttClient.connected();
 }
 
-// =============================================================================
-// disconnect()
-// Gracefully disconnects from the MQTT broker and then from WiFi.
-// Called automatically by the destructor.
-// =============================================================================
+/**
+ * Gracefully disconnects from the MQTT broker and then from WiFi.
+ * Called automatically by the destructor.
+ */
 void ESPMqttClient::disconnect()
 {
     // Clear the list of subscribed topics since we're disconnecting
@@ -185,18 +176,16 @@ void ESPMqttClient::disconnect()
     WiFi.disconnect();
 }
 
-// =============================================================================
-// setCallback()
-// Registers a user-defined function to handle incoming MQTT messages.
-// Must be called before any subscriptions are made.
-//
-// The callback signature must be:
-//   void myCallback(char* topic, uint8_t* payload, unsigned int length)
-//
-//   topic   - Null-terminated topic string the message arrived on
-//   payload - Raw message bytes (NOT null-terminated; use 'length' to read it)
-//   length  - Number of bytes in the payload
-// =============================================================================
+/**
+ * Registers a user-defined callback function to handle incoming MQTT messages.
+ *
+ * @param callback A function with signature:
+ *                 void callback(char* topic, uint8_t* payload, unsigned int length)
+ *                 that will be called whenever a message is received on a subscribed topic.
+ *                 @param topic Null-terminated string of the topic the message was received on.
+ *                 @param payload Raw message bytes (not null-terminated).
+ *                 @param length Number of bytes in the payload.
+ */
 void ESPMqttClient::setCallback(std::function<void(char *, uint8_t *, unsigned int)> callback)
 {
     _callback = callback;
