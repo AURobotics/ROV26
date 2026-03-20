@@ -1,0 +1,18 @@
+#!/bin/sh
+
+if [ "$EUID" -ne 0 ]; then
+    echo "Starting the script with administrator privileges.."
+    exec sudo "$0" "$@"
+    echo "Failed to start with administrator privileges, exiting.."
+    exit 1
+fi
+
+if [ -f "/opt/gstreamer/settings/no-camera-autostart" ]; then
+    echo "Toggling the service ON"
+    rm /opt/gstreamer/settings/no-camera-autostart
+    udevadm trigger --subsystem-match=video4linux --action=change
+else
+    echo "Toggling the service OFF"
+    touch /opt/gstreamer/settings/no-camera-autostart
+    systemctl stop "gst-stream@*" 2>/dev/null
+fi
