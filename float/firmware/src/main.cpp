@@ -27,6 +27,9 @@ MQTTManager mqttManager;
 float testDepth = 0.0;
 float depthIncrement = 0.1;
 
+// Flag to ensure MQTT setup is done only once
+bool MqttSetupDone = false;
+
 void setup()
 {
     Serial.begin(115200);
@@ -50,10 +53,16 @@ void loop()
     {
         // MQTT setup
         Serial.println("Connecting to MQTT broker...");
-        mqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+
+        if (!MqttSetupDone)
+        {
+            mqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+            MqttSetupDone = true;
+        }
 
         // keep sending data to MQTT broker every 5 seconds till shutdown
-        while(1){
+        while (1)
+        {
             // Handle MQTT communication
             mqttManager.loop();
 
