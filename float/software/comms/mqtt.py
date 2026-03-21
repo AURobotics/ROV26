@@ -131,6 +131,15 @@ class topic():
         """Register a handler for this topic via the shared mqtt connection."""
         self.mqtt.register_handler(self.topic, message_handler)
 
+    def unsubscribe(self, message_handler: mqtt_message):
+        """Unregister a handler for this topic."""
+        handlers = self.mqtt._topic_handlers.get(self.topic, [])
+        if message_handler in handlers:
+            handlers.remove(message_handler)
+            print(f"Unsubscribed handler from {self.topic}")
+        else:
+            print(f"Handler not found for {self.topic}")
+
 class mqtt_message(ABC):
     def __init__(self):
         self.args: Dict[str, Any] = {}
@@ -302,78 +311,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nExiting test...")
         mqtt_connection.disconnect()
-
-    ##############################################################################
-
-    # testing esp
-    # class sensor_data_message(mqtt_message):
-    #     def __init__(self):
-    #         super().__init__()
-    #         # Initialize default values
-    #         self.add_variable("temperature", 0.0)
-    #         self.add_variable("humidity", 0.0)
-            
-    #     def update_values(self, temp: float, humidity: float):
-    #         """Helper method to update all sensor values at once"""
-    #         self.set_variable("temperature", temp)
-    #         self.set_variable("humidity", humidity)
-            
-    #     def __str__(self):
-    #         return f"SensorData: temp={self.args['temperature']}°C, humidity={self.args['humidity']}%"
-
-    # class DeviceLed(mqtt_message):
-    #     def __init__(self):
-    #         super().__init__()
-    #         self.message = "OFF"
-
-    #     def set_variable(self, name: str, value):
-    #         self.message = str(value)
-
-    #     def encode(self):
-    #         return self.message
-            
-    #     def decode(self, payload:str):
-    #         self.message = payload
-
-    #     def __str__(self):
-    #         return f"esp led: {self.message}"
-
-    # # Create mQTT connection
-    # mqtt_connection = mqtt(address='localhost', port=1883)
-
-    # # Create topics
-    # # mqtt_connection.pub.publish("from/esp", "", retain=True)
-    # sensor_topic = topic("from/esp", mqtt_connection)
-    # to_esp = topic("to/esp", mqtt_connection)
-
-    # # Create message handlers
-    # sensor_handler = sensor_data_message()
-    # to_esp_handler = DeviceLed()
-    # to_esp_test_handler = DeviceLed()
-
-    # # Subscribe to topics
-    # print("\nSubscribing to topics...")
-    # sensor_topic.subscribe(sensor_handler)
-    # # to_esp.subscribe(to_esp_test_handler)
-    # # Give time for subscriptions to establish
-    # time.sleep(1)
-
-    # # Test publishing sensor data
-    # print("\nPublishing sensor data...")
-
-    
-    # try:
-    #     while True:
-    #         print("publishing OFF")
-    #         to_esp_handler.set_variable("", "OFF")
-    #         to_esp.publish(to_esp_handler.encode())
-    #         time.sleep(1)
-    #         print("publishing ON")
-    #         to_esp_handler.set_variable("", "ON")
-    #         to_esp.publish(to_esp_handler.encode())
-    #         sensor_handler.update_values(temp=randint(20, 30), humidity=randint(40, 60))
-    #         to_esp.publish(sensor_handler.encode())
-    #         print(f"from sensor: {sensor_handler}")
-    #         time.sleep(1)
-    # except KeyboardInterrupt:
-    #     print("\nExiting test...")
