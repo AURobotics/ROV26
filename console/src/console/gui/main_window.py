@@ -1,8 +1,9 @@
 from PySide6.QtWidgets import QMainWindow
-# from console.core.vision.camera import VideoStream
+from console.core.vision.camera import VideoStream
+from console.core.vision.gstreamer import Gst
 from console.gui.menubar import MenuBar
 from console.core.active_joystick import ActiveJoystick
-# from console.gui.pilot_tab_new import PilotTab2
+from console.gui.pilot_tab_new import PilotTab2
 
 
 class MainWindow(QMainWindow):
@@ -22,11 +23,11 @@ class MainWindow(QMainWindow):
             "videoconvert ! "
             "appsink"
         )
-        # cam1 = VideoStream(pipeline)
-        # cam2 = VideoStream(pipeline)
-        # cam3 = VideoStream(pipeline)
+        cam1 = Gst(pipeline)
+        cam2 = Gst(pipeline)
+        cam3 = Gst(pipeline)
 
         
-        # self.pilot_tab = PilotTab2(cam1, cam2, cam3, comms)
+        self.pilot_tab = PilotTab2(cam1, cam2, cam3, comms)
 
-        # self.setCentralWidget(self.pilot_tab)
+        self.setCentralWidget(self.pilot_tab)

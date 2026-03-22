@@ -16,37 +16,28 @@ import os
 
 # os.environ["QT_QPA_PLATFORM"] = "xcb"
 # os.environ["QT_QUICK_BACKEND"] = "software"
-current_file = Path(__file__).resolve()
 
-if getattr(sys, "frozen", False):
-    # BUNDLE: /dist/ROV-Console/_internal/ (onedir) or /tmp/_MEIxxx (onefile)
-    root = Path(sys._MEIPASS)
-    lib_folder = root / "bin"
+if getattr(sys, 'frozen', False):
+    # PyInstaller extracts everything to a temp folder stored in _MEIPASS
+    base_dir = Path(sys._MEIPASS)
+    bin_dir = base_dir / "bin" / "linux_x64"
 else:
-    # DEV: Assuming structure is project/src/console/__main__.py
-    # and bin is at project/bin/linux_x64
-    # We go up from __main__.py (1) -> console (2) -> src (3) -> project_root
-    root = current_file.parent.parent.parent
-    lib_folder = root / "bin" / "linux_x64"
+    # Normal development mode
+    base_dir = Path(__file__).resolve().parent.parent.parent
+    bin_dir = base_dir / "bin" / "linux_x64"
 
-# CRITICAL: Verification
-if not lib_folder.exists():
-    print(f"DEBUG: Path fail! Search dir {lib_folder} does not exist.")
-    # Fallback to current working directory if parent logic fails
-    lib_folder = Path(os.getcwd()) / "bin" / "linux_x64"
+if bin_dir.exists():
+    os.environ["LD_LIBRARY_PATH"] = f"{bin_dir}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 
-lib_path = str(lib_folder.absolute())
+    # 2. GStreamer Environment
+    os.environ["GST_PLUGIN_PATH"] = str(bin_dir / "gstreamer-1.0")
+    os.environ["GST_PLUGIN_SCANNER"] = str(bin_dir / "helpers" / "gst-plugin-scanner")
 
-# Set Environment
-os.environ["LD_LIBRARY_PATH"] = f"{lib_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
-os.environ["GST_PLUGIN_PATH"] = str(lib_folder / "gstreamer-1.0")
-os.environ["GST_PLUGIN_SCANNER"] = str(lib_folder / "helpers" / "gst-plugin-scanner")
-
-# Fix: Move registry to a writable temp location to avoid permission errors
-os.environ["GST_REGISTRY"] = f"/tmp/gst_registry_{os.getpid()}.bin"
-
-# If dev still fails, comment this out to let it use system plugins as a backup
-os.environ["GST_PLUGIN_SYSTEM_PATH"] = ""
+# Put the registry in the user's config folder so it's persistent/writable
+# (The bundle folder itself is read-only)
+user_data = Path(os.path.expanduser("~/.local/share/ROV26"))
+user_data.mkdir(parents=True, exist_ok=True)
+os.environ["GST_REGISTRY"] = str(user_data / "registry.bin")
 
 
 class ConsoleApplication(QApplication):
@@ -74,7 +65,7 @@ class ConsoleApplication(QApplication):
         self._splash_screen.update_progress("Initializing serial system", 40)
         self._serial_device = STM32(115200)
         self._splash_screen.update_progress("Initializing communication system", 60)
-        self._comms_manager = CommunicationManager(self._serial_device, self._active_joystick)
+        # self._comms_manager = CommunicationManager(self._serial_device, self._active_joystick)
         self._splash_screen.update_progress("Starting GUI", 80)
         self._main_window = MainWindow(
             self._serial_device, self._active_joystick, self._comms_manager

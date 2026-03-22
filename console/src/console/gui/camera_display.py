@@ -4,10 +4,13 @@ from PySide6.QtGui import QImage, QPixmap, QResizeEvent
 from console.core.vision.camera import VideoStream
 import cv2
 
+from console.core.vision.gstreamer import Gst
+
 class CameraDisplay(QWidget):
-    def __init__(self, camera_device: VideoStream, parent: QWidget | None = None):
+    def __init__(self, camera_device: VideoStream, gst: Gst, parent: QWidget | None = None):
         super().__init__(parent)
         
+        self._gst = gst
         self._camera_device = camera_device
         self._rotation_angle = 0
         self._is_flipped_h = False
@@ -51,6 +54,7 @@ class CameraDisplay(QWidget):
         self.rotate_r.clicked.connect(self.toggle_rotate_r)
         self.flipH.clicked.connect(self.toggle_flipH)
         self.flipV.clicked.connect(self.toggle_flipV)
+        self.destroyed.connect(self._cleanup)
 
 
     def toggle_rotate_l(self):
@@ -81,8 +85,10 @@ class CameraDisplay(QWidget):
         return
 
     def update_view(self):
-        frame = self._camera_device.frame
-
+        frame = self._gst.frame
+        if frame is None:
+            return
+        frame = frame.copy()
         if self._is_flipped_h:
             frame = cv2.flip(frame, 1)
         if self._is_flipped_v:
@@ -104,3 +110,6 @@ class CameraDisplay(QWidget):
     
     def hasHeightForWidth(self) -> bool:
         return True
+
+    def _cleanup(self):
+        self._camera_timer.stop()
