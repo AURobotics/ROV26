@@ -233,9 +233,9 @@ bool ESPMqttClient::sendFileChunkedOverTopics(const char *topic, const char *fil
     Serial.println(" bytes");
 
     // Calculate chunks
-    const int CHUNK_SIZE = 512; // 512 bytes to work with mqtt limits
+    const int RAW_CHUNK_SIZE = 180; // 180 bytes before encoding ~250 after encoding to work with mqtt limits
     size_t fileSize = file.size();
-    int totalChunks = (fileSize + CHUNK_SIZE - 1) / CHUNK_SIZE; // ceiling division
+    int totalChunks = (fileSize + RAW_CHUNK_SIZE - 1) / RAW_CHUNK_SIZE; // ceiling division
 
     Serial.print(totalChunks);
     Serial.println(" chunks");
@@ -271,7 +271,7 @@ bool ESPMqttClient::sendFileChunkedOverTopics(const char *topic, const char *fil
     delay(50); // Small delay to let receiver process metadata
 
     // buffer for reading file
-    uint8_t buffer[CHUNK_SIZE]; // Raw file data buffer
+    uint8_t buffer[RAW_CHUNK_SIZE]; // Raw file data buffer
     int bytesRead;
     bool success = true;
 
@@ -279,7 +279,7 @@ bool ESPMqttClient::sendFileChunkedOverTopics(const char *topic, const char *fil
     for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++)
     {
         // Read a chunk from the file
-        bytesRead = file.read(buffer, CHUNK_SIZE);
+        bytesRead = file.read(buffer, RAW_CHUNK_SIZE);
 
         if (bytesRead <= 0)
         {
@@ -290,7 +290,6 @@ bool ESPMqttClient::sendFileChunkedOverTopics(const char *topic, const char *fil
         }
 
         // calculate base64 encoded size: ((bytesRead + 2) / 3) * 4
-        int encodedLen = ((bytesRead + 2) / 3) * 4;
         String encodedData;
 
         // encode the binary chunk to base64

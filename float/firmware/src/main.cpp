@@ -6,8 +6,8 @@
 #include "mqtt_manager.h"
 
 // WiFi credentials
-const char *WIFI_SSID = "Vodafone_VDSL_3BE7";
-const char *WIFI_PASSWORD = "Ee0123608241@";
+const char *WIFI_SSID = "";
+const char *WIFI_PASSWORD = "@";
 
 // MQTT broker settings
 const char *MQTT_BROKER = "192.168.1.9";
@@ -82,14 +82,28 @@ void loop()
         }
     }
 
-    if (testDepth < getCurrentTarget())
+    if (abs(testDepth - getCurrentTarget()) < 0.05)
+    {
+        Serial.println("At target depth, holding...");
+        setDepth(testDepth);
+        delay(500); // Wait for 30 seconds
+        setDepth(testDepth);
+        delay(500);
+        setDepth(testDepth);
+    }
+    else if (testDepth > getCurrentTarget())
+    {
+        testDepth -= depthIncrement; // Move slightly below target
+    }
+    else
     {
         testDepth += depthIncrement;
-    } else {
-        testDepth -= depthIncrement;
     }
 
     setDepth(testDepth);
+    Serial.print("Current Target: ");
+    Serial.println(getCurrentTarget());
+    Serial.print("Current Depth: ");
     Serial.println(testDepth);
     delay(500);
 }
@@ -114,6 +128,7 @@ void connectToNetwork()
 bool connectToWiFi(const char *ssid, const char *password)
 {
     Serial.print("Connecting to WiFi");
+
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
 
@@ -123,7 +138,7 @@ bool connectToWiFi(const char *ssid, const char *password)
     while (retryCount < maxRetries)
     {
         int attempts = 0;
-        int maxAttempts = 40; // 20 seconds
+        int maxAttempts = 60; // 30 seconds
 
         while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts)
         {
@@ -140,13 +155,17 @@ bool connectToWiFi(const char *ssid, const char *password)
             return true;
         }
 
+        Serial.println("status: " + String(WiFi.status()));
         retryCount++;
-        if (retryCount < maxRetries)
-        {
-            Serial.printf("\nConnection failed. Retry %d of %d...\n", retryCount, maxRetries);
-            WiFi.disconnect();
-            delay(2000);
-        }
+        Serial.printf("\nConnection failed. Retry %d of %d...\n", retryCount, maxRetries);
+
+        WiFi.disconnect();
+        delay(1000);
+        WiFi.mode(WIFI_OFF);
+        delay(500);
+        WiFi.mode(WIFI_STA);
+        delay(500);
+        WiFi.begin(ssid, password); // restart for next retry
     }
 
     Serial.println("\nWiFi connection failed after all retries!");
