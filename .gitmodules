@@ -1,0 +1,3 @@
+[submodule "console/vendored/opencv-python"]
+	path = console/vendored/opencv-python
+	url = https://github.com/opencv/opencv-python.git
