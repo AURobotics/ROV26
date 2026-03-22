@@ -25,7 +25,7 @@ public:
     ~ESPMqttClient();
 
     // Public methods
-    void begin();
+    bool begin();
     void loop(bool pollMqttConnection = true);
     bool publish(const char *topic = "test", const char *payload = "publishing to \"test\"", bool retained = false);
     bool subscribe(const char *topic = "test");
@@ -33,7 +33,8 @@ public:
     bool isConnected();
     void disconnect();
     void setCallback(std::function<void(char *, uint8_t *, unsigned int)> callback);
-    bool sendFileChunked(const char *topic, const char *filename);
+    bool sendFileChunkedOverTopics(const char *topic, const char *filename);
+    bool sendFileChunkedWithFeedback(const char *topic, const char *filename);
 
 private:
     // WiFi
@@ -58,7 +59,7 @@ private:
     std::function<void(char *, uint8_t *, unsigned int)> _callback;
 
     // Private methods
-    void connectToMQTT(bool poll = true);
+    bool connectToMQTT(bool poll = true);
 };
 
 // for future extension if needed instead of using the setCallback
