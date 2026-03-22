@@ -4,13 +4,14 @@
 #include "Controller.h"
 #include "Motor.h"
 #include "adc.h"
-#include "bno055.h"
+#include "mpu9250.h"
 #include "gpio.h"
 #include "i2c_wrapper.h"
 #include "ms5611.h"
 #include "tim.h"
 #include "usb_device.h"
 #include "usbd_cdc.h"
+#include "Cdc_driver.h"
 extern "C" {
 #include "i2c.h"
 }
@@ -39,20 +40,27 @@ MPU9250 mpu9250(&hi2c3);
 MS5611 ms5611(&hi2c3);
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
-// void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
-//     data[0] = ms5611.getDepth();
-//     data[1] = std::nullopt;
-//
-//     vec_3 angles = bno.get_euler_angles();
-//     vec_3 rates = bno.get_body_rates();
-//
-//     data[2] = angles.x(); // roll
-//     data[3] = rates.x();
-//     data[4] = angles.y(); // pitch
-//     data[5] = rates.y();
-//     data[6] = angles.z(); // yaw
-//     data[7] = rates.z();
-// }
+void fetch_sensor_data(std::array<std::optional<float>, 8>& data) { 
+    if(HAL_GetTick() - ms5611.last_read_time > 0.5)
+    {
+        data[0] = ms5611.getDepth();
+        data[1] = std::nullopt;
+    }
+    
+    if(HAL_GetTick() - mpu9250.last_read_time > 125 ){
+        mpu9250.update();
+        vec_3 angles = mpu9250.getEulerAngles();
+        vec_3 rates = mpu9250.getBodyRates();
+
+        data[2] = angles.x(); // roll
+        data[3] = rates.x();
+        data[4] = angles.y(); // pitch
+        data[5] = rates.y();
+        data[6] = angles.z(); // yaw
+        data[7] = rates.z();
+    }
+    
+}
 
 double normalize_angle(double angle) {
     angle = fmod(angle, 360.0);
@@ -136,13 +144,13 @@ static void checkWaterLeakage() {
 enum class Test_state { OFF, STEPPING, DONE };
 
 void leakageCommsHandler(uint8_t cmd) { // TODO: change switch case
-    switch (cmd) {
-    case COMS_LEAKAGE_SAFETY_ENABLE :
+    switch ((cmd >> 10) & 1) {
+    case 1 :
         leakage_safety_enabled = true;
         leak_detected = false;
         HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
         break;
-    case COMS_LEAKAGE_SAFETY_DISABLE :
+    case 0 :
         leakage_safety_enabled = false;
         leak_detected = false;
         HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
@@ -332,6 +340,7 @@ int main() {
     MX_USB_DEVICE_Init();
 
     HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
+
     Test_state test_state = Test_state::OFF; // normal mode
     float start_yaw = 0;
     float max_testing[4] = {0.1, 30, 30, 90}; // need to set these
@@ -413,10 +422,41 @@ int main() {
     uint32_t now = HAL_GetTick();
 
     std::array<std::optional<float>, 8> sensor_data;
+    TxPacket tx_pkt;
+    tx_pkt.type = SENSOR_MESSAGE; 
+    GenericMessage msg{};
+    float clamped_motors[8] = {};
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
-        // TxPacket tx_pkt; // TODO: should be moved to outer scope
-        //
+        
+        Message_Type msg_type = read_msg(&msg);
+        if(msg_type == OPERATION_MESSAGE)
+            test_state = msg.data.operation_msg?TEST_STATE::STEPPING : TEST_STATE::OFF;
+
+        if(test_state == TEST_STATE::OFF)
+        {
+            if(msg_type == COMMAND_MESSAGE)
+            {
+                for(int i=0;i<6;i++)
+                    controller_output[i] = msg.data.command_pkt.forces[i]*4;
+
+                apply_pseudo_inverse(controller_output, clamped_motors);
+                Motor::move_motor(motors, clamped_motors);
+            }
+        }
+
+        fetch_sensor_data(sensor_data);
+        tx_pkt.depth = sensor_data[0];
+        tx_pkt.roll = sensor_data[2];
+        tx_pkt.pitch = sensor_data[4];
+        tx_pkt.yaw = sensor_data[6];
+        memcpy(tx_pkt.motor_speeds,clamped_motors,8*sizeof(float)); 
+       
+         if (HAL_GetTick() - last_send_time >= 50) { 
+            last_send_time = HAL_GetTick();
+            write_msg(tx_pkt);
+        }
+        
         // if (data_received_flag) {
         //     data_received_flag = 0;
         //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
@@ -434,80 +474,54 @@ int main() {
         // }
         // else
         //     // CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&ready_msg), sizeof(Ready_Msg));
-        //
-        //     // float forces[6];
-        //     float buff[8]{};
-        // // for (int i = 0; i < 6; i ++) {
-        // //     forces[i] = command_msg.forces[i];
-        // }
-
-        // apply_pseudo_inverse(forces, buff);
-        // normalize_thrusters(buff);
-        // float buff[8] = {};
-        // for (int i = 0; i < 255; i++) {
-        //     for (float& j : buff) {
-        //         j = (float)i / 255.0;
-        //     }
-        // }
-        //
-        // Motor::move_motor(motors, buff);
-        // HAL_Delay(100);
-
-
-
-
-
-
-        // if (HAL_GetTick() - last_send_time >= 50) { //TODO: tx packet should be moved to outer
-        // scope
-        //     last_send_time = HAL_GetTick();
-        //     // load_tx(&tx_pkt);
-        //     CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&tx_pkt), sizeof(TxPacket));
-        // }
-        // fetch_sensor_data(sensor_data);
-        //
-        // if (operation_mode_msg.operation_mode == 0) // Normal mode
+        
+        
+        // if (test_state == TEST_STATE::OFF) // Normal mode
         // {
-        //     const unsigned char control_byte = command_msg.control_byte;
-        //     for (int i = 0; i < 6; i++)
-        //         data[i] = command_msg.forces[i];
-        //
-        //     prev = now;
-        //     now = HAL_GetTick();
-        //     float dt = (now - prev) / 1000.0; // convert ms->seconds
-        //
-        //
-        //     for (int i = 0, j = 0; i < 8; i += 2, j++)
-        //         if (control_byte & 1 << (7 - j)) { // setpoint
-        //             if (j > 0) // not depth
-        //                 controller_output[j + 2] =
-        //                     controller[j].output(angle_diff(data[j + 2], sensor_data[i].value()),
-        //                                          0,
-        //                                          dt,
-        //                                          sensor_data[i + 1]);
-        //
-        //             else // depth
-        //                 controller_output[j + 2] = controller[j].output(
-        //                     data[j + 2], sensor_data[i].value(), dt, sensor_data[i + 1].value());
-        //         }
-        //         else {
-        //             if (data[j + 2] == 0) // hold position
-        //                 controller_output[j + 2] = controller[j].output(
-        //                     hold[j], sensor_data[i].value(), dt, sensor_data[i + 1].value());
-        //             else { // pilot command
-        //                 controller_output[j + 2] = data[j + 2];
-        //                 hold[j] = sensor_data[i].value();
+        //     if(msg_type == COMMAND_MESSAGE)
+        //     {
+        //         const unsigned char control_byte = msg.control_byte;
+        //         for (int i = 0; i < 6; i++)
+        //             data[i] = msg.forces[i]*4;
+                
+        //         prev = now;
+        //         now = HAL_GetTick();
+        //         float dt = (now - prev) / 1000.0; // convert ms->seconds
+                                
+        //         for (int i = 0, j = 0; i < 8; i += 2, j++)
+        //             if (control_byte & 1 << (7 - j)) { // setpoint
+        //                 if (j > 0) // not depth
+        //                     controller_output[j + 2] =
+        //                         controller[j].output(angle_diff(data[j + 2], sensor_data[i].value()),
+        //                                              0,
+        //                                              dt,
+        //                                              sensor_data[i + 1]);
+                    
+        //                 else // depth
+        //                     controller_output[j + 2] = controller[j].output(
+        //                         data[j + 2], sensor_data[i].value(), dt, sensor_data[i + 1].value());
         //             }
-        //         }
-        //
-        //     // surge
-        //     controller_output[0] = data[0];
-        //     // sway
-        //     controller_output[1] = data[1];
-        //
+        //             else {
+        //                 if (data[j + 2] == 0) // hold position
+        //                     controller_output[j + 2] = controller[j].output(
+        //                         hold[j], sensor_data[i].value(), dt, sensor_data[i + 1].value());
+        //                 else { // pilot command
+        //                     controller_output[j + 2] = data[j + 2];
+        //                     hold[j] = sensor_data[i].value();
+        //                 }
+        //             }
+                
+        //         // surge
+        //         controller_output[0] = data[0]*4;
+        //         // sway
+        //         controller_output[1] = data[1]*4;
+        //     }
+            
         //     //TODO: rowan: pneumatics (DCV1 DCV2)
+        HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14,command_pkt.control_byte&(1<<5)?GPIO_PIN_SET:GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOB,GPIO_PIN_15,command_pkt.control_byte&(1<<6)?GPIO_PIN_SET:GPIO_PIN_RESET);
         // }
-        //
+        
         // else { // Testing mode
         //     if (last_received_msg_type == TUNING_MESSAGE && test_state == Test_state::OFF) {
         //         test_axis = tuning_msg.axis;

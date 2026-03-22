@@ -410,7 +410,7 @@ void MPU9250::saveCalibration(CalibrationData &data) {
 
     // write struct word by word
     uint32_t *ptr = (uint32_t*)&data;
-    for (int i = 0; i < sizeof(CalibrationData) / 4; i++) {
+    for (unsigned int i = 0; i < sizeof(CalibrationData) / 4; i++) {
         if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, flash_address + i * 4, ptr[i]) != HAL_OK) {
             HAL_FLASH_Lock();
             return;

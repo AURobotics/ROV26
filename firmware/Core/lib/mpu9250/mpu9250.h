@@ -228,6 +228,7 @@ public:
     float aRes = 0.0f;
     float gRes = 0.0f;
     float mRes = 0.0f;
+    uint32_t last_read_time;
 
     explicit MPU9250(I2C_HandleTypeDef* hi2c);
     HAL_StatusTypeDef writeByte(uint8_t address, uint8_t subAddress, uint8_t data);

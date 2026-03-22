@@ -13,7 +13,6 @@ public:
     float getDepth();
 
 private:
-    uint32_t last_read_time;
     I2C_HandleTypeDef* _hi2c{};
     uint16_t C1{}, C2{}, C3{}, C4{}, C5{}, C6{};
     float surfacePressure{};

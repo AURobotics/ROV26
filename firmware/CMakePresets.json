@@ -59,6 +59,18 @@
                 "CMAKE_CXX_COMPILER": "C:/ProgramData/chocolatey/bin/arm-none-eabi-g++.exe",
                 "CMAKE_BUILD_TYPE": "Debug"
             }
+        },
+        {
+            "name": "GCC 10.3.1 arm-none-eabi",
+            "displayName": "GCC 10.3.1 arm-none-eabi",
+            "description": "Using compilers: C = C:\\ProgramData\\chocolatey\\bin\\arm-none-eabi-gcc.exe, CXX = C:\\ProgramData\\chocolatey\\bin\\arm-none-eabi-g++.exe",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "C:/ProgramData/chocolatey/bin/arm-none-eabi-gcc.exe",
+                "CMAKE_CXX_COMPILER": "C:/ProgramData/chocolatey/bin/arm-none-eabi-g++.exe",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
         }
     ],
     "buildPresets": [
