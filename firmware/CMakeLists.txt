@@ -45,28 +45,28 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-        Core/lib/pid/PID.cpp
-        Core/lib/bno055/bno055.cpp
-        Core/lib/ms5611/ms5611.cpp
-        Core/lib/motor/Motor.cpp
+        Core/lib/cdc_driver/Cdc_driver.cpp
         Core/lib/controller/Controller.cpp
-        Core/lib/kinematics/Kinematics.cpp
         Core/lib/i2c_wrapper/i2c_wrapper.cpp
-        Core/lib/PWM_wrapper/pwm.cpp
-        # Add user sources here
+        Core/lib/kinematics/Kinematics.cpp
+        Core/lib/motor/Motor.cpp
+        Core/lib/mpu9250/mpu9250.cpp
+        Core/lib/ms5611/ms5611.cpp
+        Core/lib/pid/PID.cpp
+        Core/lib/pwm_wrapper/pwm.cpp
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-        Core/lib/pid
-        Core/lib/bno055
-        Core/lib/ms5611
-        Core/lib/motor
+        Core/lib/cdc_driver
         Core/lib/controller
-        Core/lib/kinematics
-        Core/lib/usb_comms
         Core/lib/i2c_wrapper
-        Core/lib/PWM_wrapper
+        Core/lib/kinematics
+        Core/lib/motor
+        Core/lib/mpu9250
+        Core/lib/ms5611
+        Core/lib/pid
+        Core/lib/pwm_wrapper
         Core/Inc
         # Add user defined include paths
 )
