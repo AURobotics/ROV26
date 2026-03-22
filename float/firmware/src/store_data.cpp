@@ -15,7 +15,6 @@ unsigned long holdTimer = 0;
 void store_data_setup()
 {
 
-  startSequence();
   // Initialize filesystem
   if (!LittleFS.begin(true))
   {
@@ -31,6 +30,7 @@ void store_data_setup()
     file.close();
     Serial.println("Log file created");
   }
+  startSequence();
 }
 
 void store_data_loop()
@@ -52,7 +52,7 @@ void store_data_loop()
     }
 
     // Check if we reached the target
-    if (abs(currentDepth - targets[currentTarget]) <= 0.05)
+    if (currentTarget < 5 && abs(currentDepth - targets[currentTarget]) <= 0.05)
     {
 
       // If timer is 0, this is the first time reaching this target
@@ -62,7 +62,7 @@ void store_data_loop()
       }
 
       // If 30 seconds have passed
-      if (millis() - holdTimer >= 30000)
+      if (millis() - holdTimer >= 1000)
       {
         currentTarget++;
         holdTimer = 0; // Reset timer for next target
