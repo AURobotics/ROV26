@@ -27,8 +27,10 @@ ESPMqttClient::~ESPMqttClient()
 /**
  * called in setup() to initialize the MQTT client and connect to the broker.
  * Sets up the MQTT server address and registers a lambda as the internal callback
+ * 
+ * @returns true if connection to MQTT broker is successful, false otherwise
  */
-void ESPMqttClient::begin()
+bool ESPMqttClient::begin()
 {
     _mqttClient.setServer(_mqtt_broker, _mqtt_port);
     // Register a lambda as the internal PubSubClient callback.
@@ -40,7 +42,7 @@ void ESPMqttClient::begin()
         if (_callback) {
             _callback(topic, payload, length);
         } });
-    connectToMQTT();
+    return connectToMQTT();
 }
 
 /**
@@ -61,7 +63,7 @@ void ESPMqttClient::loop(bool pollMqttConnection)
     _mqttClient.loop();
 }
 
-void ESPMqttClient::connectToMQTT(bool poll)
+bool ESPMqttClient::connectToMQTT(bool poll)
 {
     while (!_mqttClient.connected())
     {
@@ -105,11 +107,12 @@ void ESPMqttClient::connectToMQTT(bool poll)
             if (!poll)
             {
                 Serial.println("Not polling for MQTT connection. Exiting connect loop.");
-                return;
+                return false;
             }
             delay(2000);
         }
     }
+    return true;
 }
 
 /**
@@ -155,7 +158,7 @@ bool ESPMqttClient::unsubscribe(const char *topic)
     return _mqttClient.unsubscribe(topic);
 }
 
-/** 
+/**
  * @returns true if the client currently has an active MQTT broker connection.
  */
 bool ESPMqttClient::isConnected()
@@ -191,7 +194,6 @@ void ESPMqttClient::setCallback(std::function<void(char *, uint8_t *, unsigned i
     _callback = callback;
 }
 
-
 /**
  * send file in chunks over MQTT.
  *
@@ -213,7 +215,7 @@ void ESPMqttClient::setCallback(std::function<void(char *, uint8_t *, unsigned i
  * @param filename Path to the file to send
  * @return true if file sent successfully, false otherwise
  */
-bool ESPMqttClient::sendFileChunked(const char *topic, const char *filename)
+bool ESPMqttClient::sendFileChunkedOverTopics(const char *topic, const char *filename)
 {
     base64 base64_encoder = base64();
     File file = SPIFFS.open(filename, "r");
@@ -331,6 +333,31 @@ bool ESPMqttClient::sendFileChunked(const char *topic, const char *filename)
         Serial.println("File transfer failed!");
 
     return success;
+}
+
+/**
+ * send file in chunks over MQTT.
+ *
+ * This is necessary because MQTT has a maximum payload size (256-512 bytes ).
+ * sending the file in smaller chunks -> ensure that we don't exceed this limit
+ *
+ * This is the main function for sending files. It:
+ * 1. Opens the file and gets its size
+ * 2. Calculates number of chunks needed
+ * 3. Sends metadata (file info) first
+ * 4. Sends the file data in chunks
+ *
+ * Chunks are base64 encoded to ensure binary data can be sent over MQTT's text-based protocol.
+ *
+ * after sending each chunk it waits for a feedback message from the receiver (on topic "base_topic/feedback") before sending the next chunk.
+ *
+ * @param topic Base MQTT topic for the file transfer
+ * @param filename Path to the file to send
+ * @return true if file sent successfully, false otherwise
+ */
+bool ESPMqttClient::sendFileChunkedWithFeedback(const char *topic, const char *filename)
+{
+    return false;
 }
 
 // =#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#

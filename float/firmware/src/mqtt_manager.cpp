@@ -1,10 +1,18 @@
 #include "mqtt_manager.h"
 #include <ESPMqttClient.h>
 
+char *startingIP = "192.168.4.2"; // in case of access point mode, this will be the starting IP of the AP
+char *IP2 = "192.168.4.3";
+char *IP3 = "192.168.4.4";
+char *IP4 = "192.168.4.5";
+char *IP5 = "192.168.4.6";
+
+char *IPs[] = {startingIP, IP2, IP3, IP4, IP5};
+
 MQTTManager::MQTTManager() : _mqttClient(nullptr) {}
 
 void MQTTManager::setup(const char *mqtt_broker, int mqtt_port,
-                        const char *mqtt_username, const char *mqtt_password)
+                        const char *mqtt_username, const char *mqtt_password, bool asAccessPoint)
 {
     // Delete old client if exists
     if (_mqttClient != nullptr)
@@ -19,8 +27,22 @@ void MQTTManager::setup(const char *mqtt_broker, int mqtt_port,
     _mqttClient->setCallback(messageCallback);
 
     // Initialize
-    _mqttClient->begin();
-    _mqttClient->subscribe("to/esp");
+    bool res = _mqttClient->begin();
+
+    if (!res && asAccessPoint)
+    {
+        Serial.println("Running in Access Point mode. Connect to the AP and use the following IPs:");
+        for (const char *ip : IPs)
+        {
+            if (!res)
+            {
+                delete _mqttClient;
+                _mqttClient = new ESPMqttClient(ip, mqtt_port, mqtt_username, mqtt_password);
+                _mqttClient->setCallback(messageCallback);
+                res = _mqttClient->begin();
+            }
+        }
+    }
 }
 
 void MQTTManager::loop(bool pollMqttConnection)
@@ -55,11 +77,20 @@ void MQTTManager::messageCallback(char *topic, uint8_t *payload, unsigned int le
     Serial.println(message);
 }
 
-bool MQTTManager::sendFileChunked(const char *topic, const char *filename)
+bool MQTTManager::sendFileChunkedOverTopics(const char *topic, const char *filename)
 {
     if (_mqttClient != nullptr)
     {
-        return _mqttClient->sendFileChunked(topic, filename);
+        return _mqttClient->sendFileChunkedOverTopics(topic, filename);
+    }
+    return false;
+}
+
+bool MQTTManager::sendFileChunkedWithFeedback(const char *topic, const char *filename)
+{
+    if (_mqttClient != nullptr)
+    {
+        return _mqttClient->sendFileChunkedWithFeedback(topic, filename);
     }
     return false;
 }
