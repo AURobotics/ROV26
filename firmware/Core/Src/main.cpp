@@ -43,7 +43,7 @@ void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
         data[1] = std::nullopt;
     }
 
-    if (HAL_GetTick() - mpu9250.last_read_time > 125) {
+    if (HAL_GetTick() - mpu9250.last_read_time > 5) {
         mpu9250.update();
         vec_3 angles = mpu9250.getEulerAngles();
         vec_3 rates = mpu9250.getBodyRates();
@@ -102,6 +102,10 @@ static uint8_t loadStatus() {
     uint8_t statusByte = 0;
     GPIO_PinState ledState = HAL_GPIO_ReadPin(LED_FLASHER_GPIO_Port, LED_FLASHER_Pin);
 
+   uint16_t leakage_adc1 = (uint16_t)read_adc(LEAKAGE_ADC_CHANNEL_1);
+    uint16_t leakage_adc2 = (uint16_t)read_adc(LEAKAGE_ADC_CHANNEL_2);
+    bool leak_detected = leakage_adc1>LEAKAGE_THRESHOLD || leakage_adc2>LEAKAGE_THRESHOLD;
+
 
     if (ledState == GPIO_PIN_SET)
         statusByte |= (1 << 2);
@@ -109,11 +113,11 @@ static uint8_t loadStatus() {
     if (leak_detected)
         statusByte |= (1 << 3);
 
-    if (gripper_safety_enabled)
-        statusByte |= (1 << 4);
-
-    if (leakage_safety_enabled)
-        statusByte |= (1 << 5);
+    // if (gripper_safety_enabled)
+    //     statusByte |= (1 << 4);
+    //
+    // if (leakage_safety_enabled)
+    //     statusByte |= (1 << 5);
 
     return statusByte;
 }
@@ -125,7 +129,7 @@ static uint8_t loadStatus() {
 volatile uint32_t lastCommsTime = 0;
 
 static void StopMotors(Motor motor_arr[8]) {
-    GripperStop();
+    // GripperStop();
     for (int i = 0; i < 7; i++)
         motor_arr[i].stop();
 }
