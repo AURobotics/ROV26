@@ -1,34 +1,29 @@
 #include "main.h"
-#include "usb_comms.h"
-#include "PID.h"
-#include "pwm.h"
 #include "Cdc_driver.h"
 #include "Controller.h"
 #include "Motor.h"
+#include "PID.h"
 #include "adc.h"
 #include "gpio.h"
 #include "i2c_wrapper.h"
 #include "mpu9250.h"
 #include "ms5611.h"
+#include "pwm.h"
 #include "tim.h"
+#include "usb_comms.h"
 #include "usb_device.h"
-#include "usbd_cdc.h"
 extern "C" {
 #include "i2c.h"
 }
-#include "usbd_cdc_if.h"
-
 #include <cmath>
-#include <cstdio>
 #include <optional>
-
 #include "Kinematics.h"
 #include "array"
-#include "mpu9250.h"
+#include "main.h"
 #include "usbd_cdc_if.h"
 
-
 static constexpr int16_t LEAKAGE_THRESHOLD = 0;
+enum class Test_state { OFF, STEPPING, DONE };
 
 #define WR_ALL_REGS(_regs_, _data_)                                                                \
     do                                                                                             \
@@ -77,20 +72,6 @@ double angle_diff(double setpoint, double current) {
     return normalize_angle(diff);
 }
 
-
-TxPacket dummy = {
-    .sync_byte = 0xFF,
-    .status = 0x01,
-    .depth = 10.5f,
-    .yaw = 45.0f,
-    .pitch = -15.0f,
-    .roll = 5.0f,
-    .motor_speeds = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
-};
-
-// water leakage
-// #define LEAKAGE_THRESHOLD 2000U // need to be adjusted based on testing //TODO: test this
-// function
 static uint32_t read_adc(uint32_t channel) {
     ADC_ChannelConfTypeDef sConfig = {};
     sConfig.Channel = channel;
@@ -108,65 +89,6 @@ static uint32_t read_adc(uint32_t channel) {
     return value;
 }
 
-
-volatile bool leakage_safety_enabled = true;
-
-// Latched leak flag --> once a leak is detected the relay stays off
-volatile bool leak_detected = false;
-
-static void checkWaterLeakage() {
-    if (!leakage_safety_enabled) {
-        // Safety disabled, ensure relay is energised
-        HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
-        return;
-    }
-
-    if (leak_detected) {
-        // Leak already detected, ensure relay is tripped
-        HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_RESET);
-        return;
-    }
-
-    uint32_t sensor1 = read_adc(LEAKAGE_ADC_CHANNEL_1);
-    uint32_t sensor2 = read_adc(LEAKAGE_ADC_CHANNEL_2);
-
-    if (sensor1 > LEAKAGE_THRESHOLD || sensor2 > LEAKAGE_THRESHOLD) {
-        leak_detected = true;
-        // Leak detected --> trip the relay
-        HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_RESET);
-    }
-    else {
-        // No leak detected --> ensure relay is energized if not already tripped
-        HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
-    }
-}
-
-enum class Test_state { OFF, STEPPING, DONE };
-
-void leakageCommsHandler(uint8_t cmd) { // TODO: change switch case
-    switch ((cmd >> 10) & 1) {
-    case 1 :
-        leakage_safety_enabled = true;
-        leak_detected = false;
-        HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
-        break;
-    case 0 :
-        leakage_safety_enabled = false;
-        leak_detected = false;
-        HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
-        break;
-    default :
-        break;
-    }
-}
-// End of water leakage code
-
-// gripper limit switch
-volatile bool gripper_safety_enabled = true; // TODO nafs el funciton el fo2
-static void GripperStop() {
-    HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_RESET);
-}
 static void GripperOpen() {
     HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_RESET);
@@ -176,80 +98,10 @@ static void GripperClose() {
     HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_SET);
 }
 
-static void checkGripperLimitSwitches() {
-    if (!gripper_safety_enabled) {
-        return;
-    }
-    GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
-    GPIO_PinState closedState =
-        HAL_GPIO_ReadPin(LIMIT_SWITCH_CLOSED_GPIO_Port, LIMIT_SWITCH_CLOSED_Pin);
-
-    GPIO_PinState gripperAState = HAL_GPIO_ReadPin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin);
-    GPIO_PinState gripperBState = HAL_GPIO_ReadPin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin);
-
-    bool isOpening = (gripperAState == GPIO_PIN_SET && gripperBState == GPIO_PIN_RESET);
-    bool isClosing = (gripperAState == GPIO_PIN_RESET && gripperBState == GPIO_PIN_SET);
-
-    if (isOpening && openState == GPIO_PIN_SET)
-        GripperStop();
-    else if (isClosing && closedState == GPIO_PIN_SET) {
-        GripperStop();
-    }
-}
-
-
-void gripperCommsHandler(uint8_t cmd) {
-    GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
-    GPIO_PinState closedState =
-        HAL_GPIO_ReadPin(LIMIT_SWITCH_CLOSED_GPIO_Port, LIMIT_SWITCH_CLOSED_Pin);
-    switch (cmd) {
-    case COMS_GRIPPER_OPEN :
-        if (gripper_safety_enabled &&
-            openState == GPIO_PIN_SET) { // Only open if not already at open limit
-            GripperStop();
-        }
-        else {
-            GripperOpen();
-        }
-        break;
-    case COMS_GRIPPER_CLOSE :
-        if (gripper_safety_enabled &&
-            closedState == GPIO_PIN_SET) { // Only close if not already at closed limit
-            GripperStop();
-        }
-        else {
-            GripperClose();
-        }
-        break;
-    case COMS_GRIPPER_STOP :
-        GripperStop();
-        break;
-    case COMS_GRIPPER_SAFETY_ENABLE :
-        gripper_safety_enabled = true;
-        break;
-    case COMS_GRIPPER_SAFETY_DISABLE :
-        gripper_safety_enabled = false;
-        break;
-    default :
-        break;
-    }
-}
-
 static uint8_t loadStatus() {
     uint8_t statusByte = 0;
-
-    GPIO_PinState openState = HAL_GPIO_ReadPin(LIMIT_SWITCH_OPEN_GPIO_Port, LIMIT_SWITCH_OPEN_Pin);
-
-    GPIO_PinState closedState =
-        HAL_GPIO_ReadPin(LIMIT_SWITCH_CLOSED_GPIO_Port, LIMIT_SWITCH_CLOSED_Pin);
-
     GPIO_PinState ledState = HAL_GPIO_ReadPin(LED_FLASHER_GPIO_Port, LED_FLASHER_Pin);
 
-    if (closedState == GPIO_PIN_SET)
-        statusByte |= (1 << 0);
-
-    if (openState == GPIO_PIN_SET)
-        statusByte |= (1 << 1);
 
     if (ledState == GPIO_PIN_SET)
         statusByte |= (1 << 2);
@@ -427,10 +279,15 @@ int main() {
     tx_pkt.type = SENSOR_MESSAGE;
     GenericMessage msg{};
     float clamped_motors[8] = {};
+
+
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
+        static Message_Type msg_type;
+        if (cdc.available()) {
+            msg_type = cdc.read_msg(msg);
 
-        Message_Type msg_type = cdc.read_msg(msg);
+        }
         if (msg_type == OPERATION_MESSAGE)
             test_state =
                 msg.data.operation_msg.operation_mode ? Test_state::STEPPING : Test_state::OFF;
@@ -438,8 +295,7 @@ int main() {
         if (test_state == Test_state::OFF) {
             if (msg_type == COMMAND_MESSAGE) {
                 for (int i = 0; i < 6; i++)
-                    controller_output[i] = msg.data.command_pkt.forces[i] * 4;
-
+                    controller_output[i] = msg.data.command_msg.forces[i] * 4;
                 apply_pseudo_inverse(controller_output, clamped_motors);
                 Motor::move_motor(motors, clamped_motors);
             }
@@ -508,14 +364,12 @@ int main() {
         //         // sway
         //         controller_output[1] = data[1]*4;
         //     }
-
-        //     //TODO: rowan: pneumatics (DCV1 DCV2)
-        HAL_GPIO_WritePin(GPIOB,
-                          GPIO_PIN_14,
-                          command_pkt.control_byte & (1 << 5) ? GPIO_PIN_SET : GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOB,
-                          GPIO_PIN_15,
-                          command_pkt.control_byte & (1 << 6) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(DCV_1_GPIO_Port,
+                          DCV_1_Pin,
+                          static_cast<GPIO_PinState>(command_pkt.control_byte & 1 << 5));
+        HAL_GPIO_WritePin(DCV_2_GPIO_Port,
+                          DCV_2_Pin,
+                          static_cast<GPIO_PinState>(command_pkt.control_byte & 1 << 6));
         // }
 
         // else { // Testing mode
@@ -577,24 +431,9 @@ int main() {
             for (int i = 0; i < 8; i++) {
                 feedback_pkt.motor_speeds[i] = clamped_motors[i] * 255.0f;
             }
-
             cdc.write_msg(&feedback_pkt);
         }
     }
-    // HAL_GPIO_WritePin(
-    //     POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET); // power relay on by default
-    // GripperStop(); // ensure gripper is stopped by default
-    // lastCommsTime = HAL_GetTick(); // initialize comms timer
-    // uint32_t lastTelemetrySend = 0;
-    // while (1) {
-    //     checkCommsTimeout();
-    //     checkWaterLeakage();
-    //     checkGripperLimitSwitches();
-    //     uint32_t now = HAL_GetTick();
-    //     if (now - lastTelemetrySend >= 20u) { // Send gripper status every 20ms
-    //         // sendGripperStatus();
-    //         lastTelemetrySend = now;
-    //     }
 }
 
 

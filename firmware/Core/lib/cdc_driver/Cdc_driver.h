@@ -18,7 +18,7 @@ typedef struct {
     uint16_t size;
     union {
         Ready_msg ready_msg;
-        Command_msg command_pkt;
+        Command_msg command_msg;
         Operation_Mode_Msg operation_msg;
         Parameter_Msg param_msg;
         Tuning_Msg tuning_msg;

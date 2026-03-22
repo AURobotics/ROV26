@@ -37,7 +37,7 @@ bool Cdc_driver::parse(uint8_t* buf, uint32_t len, GenericMessage& out) {
         if (len < sizeof(Command_msg))
             return false;
 
-        out.data.command_pkt = *reinterpret_cast<const Command_msg*>(buf);
+        out.data.command_msg = *reinterpret_cast<const Command_msg*>(buf);
         out.type = COMMAND_MESSAGE;
         out.size = sizeof(Command_msg);
         break;
