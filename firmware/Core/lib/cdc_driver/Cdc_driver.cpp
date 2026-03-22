@@ -84,13 +84,10 @@ void Cdc_driver::on_data_receive(uint8_t* buf, uint32_t len) {
         m_write_index = (m_write_index + 1) % BUFFER_SIZE;
 }
 
-GenericMessage Cdc_driver::read_msg() {
-    if (!available())
-        return GenericMessage{};
-
-    GenericMessage msg = m_slots[m_read_index];
+Message_Type Cdc_driver::read_msg(GenericMessage &msg) {
+    msg = m_slots[m_read_index];
     m_read_index = (m_read_index + 1) % BUFFER_SIZE; // advance the read slot
-    return msg;
+    return msg.type;
 }
 
 bool Cdc_driver::write_msg(TxPacket* tx) {

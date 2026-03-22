@@ -12,8 +12,16 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
-set(CUBE_PROGRAMMER "C:/PROGRA~1/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe")
+set(CUBE_PROGRAMMER "C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe")
 
+add_custom_target(flash
+    COMMAND ${CUBE_PROGRAMMER}
+        -c port=USB1
+        -d B:/AUR/ROV26/src/firmware/build/Debug/firmware.elf
+        -v
+    DEPENDS ${PROJECT_NAME}
+    COMMENT "Flashing via USB..."
+)
 
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -48,7 +56,6 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/pid/PID.cpp
-        Core/lib/mpu9250/mpu9250.cpp
         Core/lib/ms5611/ms5611.cpp
         Core/lib/motor/Motor.cpp
         Core/lib/controller/Controller.cpp
@@ -56,22 +63,23 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/i2c_wrapper/i2c_wrapper.cpp
         Core/lib/pwm_wrapper/pwm.cpp
         Core/lib/cdc_driver/Cdc_driver.cpp
+        Core/lib/mpu9250/mpu9250.cpp
         # Add user sources here
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-        Core/lib/pid
+        Core/lib/cdc_driver
+        Core/lib/controller
+        Core/lib/i2c_wrapper
+        Core/lib/kinematics
+        Core/lib/motor
         Core/lib/mpu9250
         Core/lib/ms5611
-        Core/lib/motor
-        Core/lib/controller
-        Core/lib/kinematics
+        Core/lib/pid
         Core/lib/usb_comms
-        Core/lib/i2c_wrapper
         Core/lib/pwm_wrapper
         Core/Inc
-        Core/lib/cdc_driver
         # Add user defined include paths
 )
 
@@ -93,21 +101,4 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
 target_link_options(${PROJECT_NAME} PRIVATE
         -u _printf_float
-)
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-  COMMAND ${CMAKE_OBJCOPY} -O binary
-    $<TARGET_FILE:${PROJECT_NAME}>
-    ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.bin
-)
-
-add_custom_target(flash
-    DEPENDS ${PROJECT_NAME}
-    COMMAND "${CUBE_PROGRAMMER}"
-        -c port=USB1
-        -d $<TARGET_FILE:${PROJECT_NAME}>
-        -v
-        --go
-    COMMENT "Flashing via USB DFU..."
-    VERBATIM
 )

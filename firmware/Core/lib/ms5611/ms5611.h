@@ -4,6 +4,7 @@
 #define i2cAddr (0x77 << 1)
 class MS5611 {
 public:
+    uint32_t last_read_time;
     explicit MS5611(I2C_HandleTypeDef* hi2c);
     MS5611() = default;
     bool begin();
@@ -13,7 +14,6 @@ public:
     float getDepth();
 
 private:
-    uint32_t last_read_time;
     I2C_HandleTypeDef* _hi2c{};
     uint16_t C1{}, C2{}, C3{}, C4{}, C5{}, C6{};
     float surfacePressure{};

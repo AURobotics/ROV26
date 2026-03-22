@@ -1,11 +1,17 @@
 {
-    "cmake.allowUnsupportedPresetsVersions": true,
-    "cmake.buildTask": true,
-    "cmake.cmakePath": "c:/Users/rowan/.vscode/extensions/stmicroelectronics.stm32cube-ide-build-cmake-1.44.0-win32-x64/resources/cube-cmake/win32/x86_64/cube-cmake.exe",
-    "cmake.environment": {
-        "PATH": "c:/Users/rowan/.vscode/extensions/stmicroelectronics.stm32cube-ide-build-cmake-1.44.0-win32-x64/resources/cube-cmake/win32/x86_64;c:\\Users\\rowan\\.vscode\\extensions\\stmicroelectronics.stm32cube-ide-core-1.2.0-win32-x64\\resources\\binaries\\win32\\x86_64;${env:PATH}"
-    },
-    "terminal.integrated.env.windows": {
-        "PATH": "c:/Users/rowan/.vscode/extensions/stmicroelectronics.stm32cube-ide-build-cmake-1.44.0-win32-x64/resources/cube-cmake/win32/x86_64;c:\\Users\\rowan\\.vscode\\extensions\\stmicroelectronics.stm32cube-ide-core-1.2.0-win32-x64\\resources\\binaries\\win32\\x86_64;${env:PATH}"
-    }
+    "git.openRepositoryInParentFolders": "always",
+    "cmake.cmakePath": "C:/Program Files/CMake/bin/cmake.exe",
+    "cmake.configureArgs": [
+        "-DCMAKE_COMMAND=cube-cmake"
+    ],
+    "cmake.preferredGenerators": [
+        "Ninja"
+    ],
+    "stm32cube-ide-clangd.path": "cube",
+    "stm32cube-ide-clangd.arguments": [
+        "starm-clangd",
+        "--query-driver=${env:CUBE_BUNDLE_PATH}/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-gcc",
+        "--query-driver=${env:CUBE_BUNDLE_PATH}/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-g++"
+    ],
+    "stm32cube-ide-core.enableOfflineMode": true
 }

@@ -43,7 +43,7 @@ public:
     void setup();
     bool available();
     bool write_msg(TxPacket* tx);
-    GenericMessage read_msg();
+    Message_Type read_msg(GenericMessage& msg);
     void on_data_receive(uint8_t* buf, uint32_t len);
     bool parse(uint8_t* buf, uint32_t len, GenericMessage& out);
 };
