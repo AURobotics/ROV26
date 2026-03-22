@@ -5,7 +5,6 @@ from time import sleep
 from typing import Dict, TypedDict, Annotated
 from console.core.active_joystick import ActiveJoystick
 from console.core.comms.stm32 import STM32
-from console.core.gamepad import Controller
 from lib.device.joystick import GamepadButton, GamepadStick, GamepadTrigger, Joystick
 
 
