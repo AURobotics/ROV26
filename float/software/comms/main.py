@@ -9,7 +9,7 @@ from comms.mqtt import mqtt, topic, mqtt_message
 MAIN_TOPIC_NAME = "float/data"
 
 class meta_data_message(mqtt_message):
-    def __init__(self, file_receiver_instance: file_receiver):
+    def __init__(self, file_receiver_instance: "file_receiver"):
             super().__init__()
             self.add_variable("filename", "")
             self.add_variable("size", 0.0)
@@ -45,7 +45,7 @@ class meta_data_message(mqtt_message):
         return f"meta_data(filename={self.args['filename']}, size={self.args['size']}, chunks={self.args['chunks']}, encoding={self.args['encoding']})"
 
 class data_chunk_message(mqtt_message):
-    def __init__(self, file_receiver_instance: file_receiver):
+    def __init__(self, file_receiver_instance: "file_receiver"):
             super().__init__()
             self.add_variable("chunk_index", 0)
             self.add_variable("data", "")
@@ -90,21 +90,27 @@ class file_receiver:
         self.file = None
 
         self.meta_msg = meta_data_message(self)
-        self.chunk_msg = data_chunk_message(self)
+        self.chunk_msg: list[data_chunk_message] = []
 
         self.meta_topic = topic(f"{topic_name}/meta", mqtt_client)
-        self.chunk_topic = topic(f"{topic_name}/chunk/#", mqtt_client)
+        self.topic = topic_name
+        self.client = mqtt_client
+        self.chunk_topic: list[topic] = []
 
         self.meta_topic.subscribe(self.meta_msg)
-        self.chunk_topic.subscribe(self.chunk_msg)
 
         self.is_file_received = False
 
+    def _sub_to_chunk_topics(self):
+        """Subscribe to the chunk topics based on the number of chunks specified in the meta data"""    
+        for i in range(self.meta_data.chunks): # type: ignore
+            self.chunk_topic.append(topic(f"{self.topic}/chunk/{i}", self.client))
+            self.chunk_msg.append(data_chunk_message(self))
+            self.chunk_topic[-1].subscribe(self.chunk_msg[-1])
+
     def add_meta_data(self, meta_data: meta_data_message):
         self.meta_data = meta_data
-        # just in case we receive the meta data after some chunks, check if we can assemble the file now
-        if self.data_chunks and len(self.data_chunks) == self.meta_data.chunks:
-            self._assemble_file()
+        self._sub_to_chunk_topics()
 
     def add_data_chunk(self, chunk: data_chunk_message):
         with self._lock:
@@ -114,6 +120,10 @@ class file_receiver:
    
     def _assemble_file(self):
         """Assemble the file from the received data chunks and save it to disk"""
+        # If somehow add_data_chunk is triggered twice for the last chunk (e.g. MQTT QoS retry), _assemble_file runs again while is_file_received is still False
+        if self.is_file_received:
+            return
+    
         if not self.meta_data:
             raise ValueError("Meta data must be set before assembling file")
         
@@ -128,9 +138,10 @@ class file_receiver:
         self.on_complete()
 
     def on_complete(self):
-        print(f"Received file: {file_receiver_instance.filename}")
+        print(f"Received file: {self.meta_data.filename}") # type: ignore
         self.meta_topic.unsubscribe(self.meta_msg)
-        self.chunk_topic.unsubscribe(self.chunk_msg)
+        for i in range(self.meta_data.chunks): # type: ignore
+            self.chunk_topic[i].unsubscribe(self.chunk_msg[i])
         self.is_file_received = True
 
     @property
@@ -150,7 +161,7 @@ class file_receiver:
 #         self.meta_topic = topic(f"{topic_name}/meta", mqtt_client)
 #         self.chunk_topic = topic(f"{topic_name}/chunk", mqtt_client)
 
-if __name__ == "__main__":
+def main():
     mqtt_client = mqtt("localhost", 1883)
     
     file_receiver_instance = file_receiver(mqtt_client, f"{MAIN_TOPIC_NAME}")
