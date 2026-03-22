@@ -26,14 +26,19 @@ typedef struct {
 
 } GenericMessage;
 
+typedef struct {
+    uint8_t data[sizeof(GenericMessage)];
+    uint32_t len;
+}RawData;
+
 class Cdc_driver {
     static constexpr uint8_t BUFFER_SIZE = 2;
-
+    
     uint32_t m_timeout_ms{};
     bool data_received = false;
     uint8_t m_rx_buffer[256]{};
     uint16_t rx_len{};
-    GenericMessage
+    RawData
         m_slots[BUFFER_SIZE]{}; // actual address that messages are written to and read from
     volatile uint8_t m_write_index{0};
     volatile uint8_t m_read_index{0};

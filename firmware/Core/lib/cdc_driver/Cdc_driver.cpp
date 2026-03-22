@@ -78,15 +78,16 @@ bool Cdc_driver::parse(uint8_t* buf, uint32_t len, GenericMessage& out) {
 
 void Cdc_driver::on_data_receive(uint8_t* buf, uint32_t len) {
     // writes in the next slot and advances the write index
-    GenericMessage& slot = m_slots[m_write_index];
-
-    if (parse(buf, len, slot))
-        m_write_index = (m_write_index + 1) % BUFFER_SIZE;
+    RawData& slot = m_slots[m_write_index];
+    memcpy(slot.data, buf, len);
+    slot.len = len;
+    m_write_index = (m_write_index + 1) % BUFFER_SIZE;
 }
 
-Message_Type Cdc_driver::read_msg(GenericMessage &msg) {
-    msg = m_slots[m_read_index];
-    m_read_index = (m_read_index + 1) % BUFFER_SIZE; // advance the read slot
+Message_Type Cdc_driver::read_msg(GenericMessage& msg) {
+    RawData& slot = m_slots[m_read_index];
+    parse(slot.data, slot.len, msg);      
+    m_read_index = (m_read_index + 1) % BUFFER_SIZE;
     return msg.type;
 }
 
