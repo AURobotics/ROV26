@@ -47,7 +47,6 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/cdc_driver/Cdc_driver.cpp
         Core/lib/controller/Controller.cpp
-        Core/lib/i2c_wrapper/i2c_wrapper.cpp
         Core/lib/kinematics/Kinematics.cpp
         Core/lib/motor/Motor.cpp
         Core/lib/mpu9250/mpu9250.cpp
@@ -60,7 +59,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/cdc_driver
         Core/lib/controller
-        Core/lib/i2c_wrapper
         Core/lib/kinematics
         Core/lib/motor
         Core/lib/mpu9250

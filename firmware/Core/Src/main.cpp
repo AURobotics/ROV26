@@ -195,8 +195,6 @@ int main() {
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
 
-    HAL_GPIO_WritePin(POWER_RELAY_GPIO_Port, POWER_RELAY_Pin, GPIO_PIN_SET);
-
     Test_state test_state = Test_state::OFF; // normal mode
     //////Testing Mode////////
     float start_yaw = 0;
