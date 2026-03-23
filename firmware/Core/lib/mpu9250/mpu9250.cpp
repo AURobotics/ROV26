@@ -36,12 +36,12 @@ MPU9250::MPU9250(I2C_HandleTypeDef *hi2c) : hi2c(hi2c) {}
 
 HAL_StatusTypeDef MPU9250::writeByte(uint8_t devAddr, uint8_t regAddr, uint8_t data) {
     return HAL_I2C_Mem_Write(
-        hi2c, devAddr, regAddr, I2C_MEMADD_SIZE_8BIT, &data, 1, HAL_MAX_DELAY);
+        hi2c, devAddr, regAddr, I2C_MEMADD_SIZE_8BIT, &data, 1, 10);
 }
 
 uint8_t MPU9250::readByte(uint8_t devAddr, uint8_t regAddr) {
     uint8_t data = 0;
-    HAL_I2C_Mem_Read(hi2c, devAddr, regAddr, I2C_MEMADD_SIZE_8BIT,&data,1,HAL_MAX_DELAY);
+    HAL_I2C_Mem_Read(hi2c, devAddr, regAddr, I2C_MEMADD_SIZE_8BIT,&data,1,10);
     return data;
 }
 
@@ -52,7 +52,7 @@ HAL_StatusTypeDef MPU9250::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t c
                             I2C_MEMADD_SIZE_8BIT,
                             dest,
                             count,
-                            HAL_MAX_DELAY);
+                            10);
 }
 
 void MPU9250::init() {

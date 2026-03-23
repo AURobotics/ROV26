@@ -5,7 +5,6 @@
 #include "PID.h"
 #include "adc.h"
 #include "gpio.h"
-#include "i2c_wrapper.h"
 #include "mpu9250.h"
 #include "ms5611.h"
 #include "pwm.h"
@@ -31,17 +30,21 @@ enum class Test_state { OFF, STEPPING, DONE };
             (_regs_)[addr] = (_data_);                                                             \
     while (0)
 
-I2C i2c_wrapper(&hi2c3);
 MPU9250 mpu9250(&hi2c3);
-MS5611 ms5611(&hi2c3);
+//MS5611 ms5611(&hi2c3);
 Cdc_driver cdc(20); /*need to set timeout*/
+
+extern "C" int _write(int file, char *ptr, int len){
+CDC_Transmit_FS((uint8_t*)ptr, len);
+return len;
+}
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
 void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
-    if (HAL_GetTick() - ms5611.last_read_time > 0.5) {
-        data[0] = ms5611.getDepth();
-        data[1] = std::nullopt;
-    }
+    //if (HAL_GetTick() - ms5611.last_read_time > 0.5) {
+      //  data[0] = ms5611.getDepth();
+      //  data[1] = std::nullopt;
+    //}
 
     if (HAL_GetTick() - mpu9250.last_read_time > 5) {
         mpu9250.update();
@@ -49,11 +52,11 @@ void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
         vec_3 rates = mpu9250.getBodyRates();
 
         data[2] = angles.x(); // roll
-        data[3] = rates.x();
+        data[3] = 0 ;//rates.x();
         data[4] = angles.y(); // pitch
-        data[5] = rates.y();
+        data[5] = 0; //rates.y();
         data[6] = angles.z(); // yaw
-        data[7] = rates.z();
+        data[7] = 0; //rates.z();
     }
 }
 
@@ -215,10 +218,10 @@ int main() {
     float hold[4]; // depth roll pitch yaw
 
     /*Initialize all controllers: depth roll pitch yaw*/
-    Controller controller[4] = {Controller(PID(0, 0, 0)),
-                                Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
-                                Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
-                                Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
+    //Controller controller[4] = {Controller(PID(0, 0, 0)),
+    //                            Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
+    //                            Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
+    //                            Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
 
     /*Intialize pwms  and motors*/
     // Create PWM wrappers
@@ -282,28 +285,49 @@ int main() {
     GenericMessage msg{};
     float clamped_motors[8] = {};
 
+    //__HAL_TIM_SET_COMPARE(&htim1,2,0);
+
+    mpu9250.init();
+    //ms5611.begin();
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         static Message_Type msg_type;
-        if (cdc.available()) {
-            msg_type = cdc.read_msg(msg);
+      //  if (cdc.available()) {
+      //      msg_type = cdc.read_msg(msg);
 
-        }
-        if (msg_type == OPERATION_MESSAGE)
-            test_state =
-                msg.data.operation_msg.operation_mode ? Test_state::STEPPING : Test_state::OFF;
+      //  }
+      //  if (msg_type == OPERATION_MESSAGE)
+      //      test_state =
+      //          msg.data.operation_msg.operation_mode ? Test_state::STEPPING : Test_state::OFF;
 
-        if (test_state == Test_state::OFF) {
-            if (msg_type == COMMAND_MESSAGE) {
-                for (int i = 0; i < 6; i++)
-                    controller_output[i] = msg.data.command_msg.forces[i] * 4;
-                apply_pseudo_inverse(controller_output, clamped_motors);
-                Motor::move_motor(motors, clamped_motors);
-            }
-        }
+      //  if (test_state == Test_state::OFF) {
+      //      if (msg_type == COMMAND_MESSAGE) {
+      //          for (int i = 0; i < 6; i++)
+      //              controller_output[i] = msg.data.command_msg.forces[i] * 4;
+               // apply_pseudo_inverse(controller_output, clamped_motors);
+               // Motor::move_motor(motors, clamped_motors);
+      //      }
+      //  }fetch
+//    int num = 6;
+//    float arr[8] = {0.6, 0,0,0,0,0,0,0};
+//    float v[num] = {1,0,0,0,0,0};
+ //   apply_pseudo_inverse(v,arr);
+
+	// Motor::move_motor(motors,arr);
+	// motors[2].move(-0.75);
+
+//	for (int i = 0; i < 8; i ++) {
+//		motors[i].move(0.75);
+//		HAL_Delay(2500);
+//		motors[i].move(-0.75);
+//		HAL_Delay(2500);
+//		motors[i].move(0);
+//HAL_Delay(2500);
+	//}
 
         fetch_sensor_data(sensor_data);
+
 
         // if (data_received_flag) {
         //     data_received_flag = 0;
@@ -366,12 +390,16 @@ int main() {
         //         // sway
         //         controller_output[1] = data[1]*4;
         //     }
-        HAL_GPIO_WritePin(DCV_1_GPIO_Port,
-                          DCV_1_Pin,
-                          static_cast<GPIO_PinState>(command_pkt.control_byte & 1 << 5));
-        HAL_GPIO_WritePin(DCV_2_GPIO_Port,
-                          DCV_2_Pin,
-                          static_cast<GPIO_PinState>(command_pkt.control_byte & 1 << 6));
+     //   HAL_GPIO_WritePin(DCV_1_GPIO_Port,
+     //                     DCV_1_Pin,
+     //                     GPIO_PIN_RESET);
+
+
+
+     //   HAL_GPIO_WritePin(DCV_2_GPIO_Port,
+     //                     DCV_2_Pin,
+     //                     GPIO_PIN_RESET);
+
         // }
 
         // else { // Testing mode
@@ -430,10 +458,14 @@ int main() {
             feedback_pkt.yaw = sensor_data[6].value_or(0.0f);
 
             // motor telemetry
-            for (int i = 0; i < 8; i++) {
-                feedback_pkt.motor_speeds[i] = clamped_motors[i] * 255.0f;
-            }
-            cdc.write_msg(&feedback_pkt);
+        //    for (int i = 0; i < 8; i++) {
+        //        feedback_pkt.motor_speeds[i] = clamped_motors[i] * 255.0f;
+        //    }
+
+        //cdc.write_msg(&feedback_pkt);
+
+            printf("\n\ryaw = %d, pitch = %d, roll = %d",(uint32_t)feedback_pkt.yaw,(uint32_t)feedback_pkt.pitch,(uint32_t)feedback_pkt.roll);
+
         }
     }
 }
