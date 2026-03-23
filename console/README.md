@@ -1,1 +1,1 @@
-git submodule update --init --recursive --depth 1
+To get the opencv builds, run any of the [scripts](./scripts/) that correspond to your system. Try to run this only once in your development cycle to avoid using up the git LFS download quota.
