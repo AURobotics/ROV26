@@ -1,4 +1,5 @@
 import json
+import os
 import threading
 from time import sleep
 from typing import Any
@@ -110,11 +111,13 @@ class file_receiver:
 
     def add_meta_data(self, meta_data: meta_data_message):
         self.meta_data = meta_data
+        print(f"Received meta data: {self.meta_data}") ###########################################
         self._sub_to_chunk_topics()
 
     def add_data_chunk(self, chunk: data_chunk_message):
         with self._lock:
             self.data_chunks[chunk.chunk_index] = chunk.data_bytes
+            print(f"Received chunk {chunk.chunk_index}: {len(chunk.data_bytes)} bytes") ###########################################
             if self.meta_data and len(self.data_chunks) == self.meta_data.chunks:
                 self._assemble_file()
    
@@ -130,9 +133,21 @@ class file_receiver:
         ordered_chunks = [self.data_chunks[i] for i in range(self.meta_data.chunks)]
         file_data = b"".join(ordered_chunks)
 
+        # DEBUG: Print where file will be saved
+        abs_path = os.path.abspath(self.meta_data.filename)
+        print(f"DEBUG: Attempting to save file to: {abs_path}")
+        print(f"DEBUG: Current working directory: {os.getcwd()}")
+        
         # Save the assembled file to disk
         with open(self.meta_data.filename, "wb") as f:
             f.write(file_data)
+        
+        # DEBUG: Verify file was created
+        if os.path.exists(abs_path):
+            print(f"DEBUG: File successfully created at {abs_path}, size: {os.path.getsize(abs_path)} bytes")
+        else:
+            print(f"DEBUG: ERROR - File was not created at {abs_path}")
+            
         self.file = self.meta_data.filename
         print(f"File '{self.meta_data.filename}' assembled and saved successfully.")
         self.on_complete()
@@ -168,5 +183,4 @@ def main():
 
     while not file_receiver_instance.is_complete:
         print("Waiting for file...")
-        sleep(2)
-    print(f"Received file: {file_receiver_instance.filename}")
+        sleep(5)

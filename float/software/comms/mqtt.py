@@ -53,7 +53,7 @@ class mqtt():
 
     def _on_message(self, client, userdata, message: MQTTMessage):
         """Dispatch incoming messages to all handlers registered for the topic."""
-        print(f'Received on {message.topic}: {message.payload.decode()}')
+        print(f'Received data on {message.topic}')
         handlers = self._topic_handlers.get(message.topic, [])
         for handler in handlers:
             try:
