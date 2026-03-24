@@ -6,11 +6,11 @@
 #include "mqtt_manager.h"
 
 // WiFi credentials
-const char *WIFI_SSID = "";
-const char *WIFI_PASSWORD = "@";
+const char *WIFI_SSID = "aurobotics-ap";
+const char *WIFI_PASSWORD = "12345678";
 
 // MQTT broker settings
-const char *MQTT_BROKER = "192.168.1.9";
+const char *MQTT_BROKER = "192.168.1.100";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optional
@@ -77,7 +77,7 @@ void loop()
                 delay(500);
             }
 
-            mqttManager.sendFileChunkedOverTopics("float/data", "/data.csv");
+            mqttManager.sendFileChunkedOverTopics("float/data", "/log.csv");
             delay(5000); // Send data every 5 seconds
         }
     }

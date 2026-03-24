@@ -1,13 +1,14 @@
 #include "mqtt_manager.h"
 #include <ESPMqttClient.h>
+#include <LittleFS.h>
 
-char *startingIP = "192.168.4.2"; // in case of access point mode, this will be the starting IP of the AP
-char *IP2 = "192.168.4.3";
-char *IP3 = "192.168.4.4";
-char *IP4 = "192.168.4.5";
-char *IP5 = "192.168.4.6";
+const char *startingIP = "192.168.4.2"; // in case of access point mode, this will be the starting IP of the AP
+const char *IP2 = "192.168.4.3";
+const char *IP3 = "192.168.4.4";
+const char *IP4 = "192.168.4.5";
+const char *IP5 = "192.168.4.6";
 
-char *IPs[] = {startingIP, IP2, IP3, IP4, IP5};
+const char *IPs[] = {startingIP, IP2, IP3, IP4, IP5};
 
 MQTTManager::MQTTManager() : _mqttClient(nullptr) {}
 
@@ -81,7 +82,7 @@ bool MQTTManager::sendFileChunkedOverTopics(const char *topic, const char *filen
 {
     if (_mqttClient != nullptr)
     {
-        return _mqttClient->sendFileChunkedOverTopics(topic, filename);
+        return _mqttClient->sendFileChunkedOverTopics((FS&)LittleFS, topic, filename);
     }
     return false;
 }
@@ -90,7 +91,7 @@ bool MQTTManager::sendFileChunkedWithFeedback(const char *topic, const char *fil
 {
     if (_mqttClient != nullptr)
     {
-        return _mqttClient->sendFileChunkedWithFeedback(topic, filename);
+        return _mqttClient->sendFileChunkedWithFeedback((FS&)LittleFS, topic, filename);
     }
     return false;
 }

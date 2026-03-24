@@ -2,8 +2,6 @@
 #include "ESPMqttClient.h"
 
 // libraries used for method sending in chunks
-#include <FS.h> // For file system operations
-#include <SPIFFS.h>
 #include <ArduinoJson.h>
 #include <Base64.h> // For encoding binary data to base64
 
@@ -27,7 +25,7 @@ ESPMqttClient::~ESPMqttClient()
 /**
  * called in setup() to initialize the MQTT client and connect to the broker.
  * Sets up the MQTT server address and registers a lambda as the internal callback
- * 
+ *
  * @returns true if connection to MQTT broker is successful, false otherwise
  */
 bool ESPMqttClient::begin()
@@ -215,10 +213,11 @@ void ESPMqttClient::setCallback(std::function<void(char *, uint8_t *, unsigned i
  * @param filename Path to the file to send
  * @return true if file sent successfully, false otherwise
  */
-bool ESPMqttClient::sendFileChunkedOverTopics(const char *topic, const char *filename)
+bool ESPMqttClient::sendFileChunkedOverTopics(FS &fileSystem, const char *topic, const char *filename)
 {
     base64 base64_encoder = base64();
-    File file = SPIFFS.open(filename, "r");
+
+    File file = fileSystem.open(filename, "r");
     if (!file)
     {
         Serial.print("Failed to open file: ");
@@ -233,7 +232,8 @@ bool ESPMqttClient::sendFileChunkedOverTopics(const char *topic, const char *fil
     Serial.println(" bytes");
 
     // Calculate chunks
-    const int RAW_CHUNK_SIZE = 180; // 180 bytes before encoding ~250 after encoding to work with mqtt limits
+    // originally 180 bytes -> 240 bytes in base64; but that failed
+    const int RAW_CHUNK_SIZE = 150;
     size_t fileSize = file.size();
     int totalChunks = (fileSize + RAW_CHUNK_SIZE - 1) / RAW_CHUNK_SIZE; // ceiling division
 
@@ -307,6 +307,8 @@ bool ESPMqttClient::sendFileChunkedOverTopics(const char *topic, const char *fil
         {
             Serial.print("Failed to send chunk ");
             Serial.println(chunkIndex);
+            Serial.print("chunk size (encoded): ");
+            Serial.println(encodedData.length());
             success = false;
             break;
         }
@@ -354,7 +356,7 @@ bool ESPMqttClient::sendFileChunkedOverTopics(const char *topic, const char *fil
  * @param filename Path to the file to send
  * @return true if file sent successfully, false otherwise
  */
-bool ESPMqttClient::sendFileChunkedWithFeedback(const char *topic, const char *filename)
+bool ESPMqttClient::sendFileChunkedWithFeedback(FS &fileSystem, const char *topic, const char *filename)
 {
     return false;
 }

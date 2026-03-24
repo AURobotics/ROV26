@@ -62,7 +62,7 @@ void store_data_loop()
       }
 
       // If 30 seconds have passed
-      if (millis() - holdTimer >= 1000)
+      if (millis() - holdTimer >= 30000)
       {
         currentTarget++;
         holdTimer = 0; // Reset timer for next target
