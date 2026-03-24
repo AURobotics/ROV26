@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <FS.h>
+
 // #include <ArduinoJson.h>
 // #include <map>
 // #include <string>
@@ -33,8 +35,8 @@ public:
     bool isConnected();
     void disconnect();
     void setCallback(std::function<void(char *, uint8_t *, unsigned int)> callback);
-    bool sendFileChunkedOverTopics(const char *topic, const char *filename);
-    bool sendFileChunkedWithFeedback(const char *topic, const char *filename);
+    bool sendFileChunkedOverTopics(FS &fileSystem, const char *topic, const char *filename);
+    bool sendFileChunkedWithFeedback(FS &fileSystem, const char *topic, const char *filename);
 
 private:
     // WiFi
