@@ -1,7 +1,7 @@
 #pragma once
 
-#include "pwm.h"
-
+#include "cstdint"
+#include "stm32f4xx_hal.h"
 
 class Motor {
     enum class HandlerType : uint8_t { FUNCTION, PWM } handler_type;
