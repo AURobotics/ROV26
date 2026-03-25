@@ -1,16 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-import cv2
-import os
-from pathlib import Path
-cv2_path = Path(cv2.__file__).parent
 
 a = Analysis(
     ['src/console/__main__.py'],
     pathex=[],
     binaries=[],
-    datas=[('src/console/assets', 'console/assets'),
-    (str(cv2_path / "bin/linux"), "cv2/bin/linux")],
+    datas=[('src/console/assets', 'console/assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
