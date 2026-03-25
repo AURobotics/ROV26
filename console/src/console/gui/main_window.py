@@ -23,9 +23,9 @@ class MainWindow(QMainWindow):
             "videoconvert ! "
             "appsink"
         )
-        cam1 = Gst(pipeline)
-        cam2 = Gst(pipeline)
-        cam3 = Gst(pipeline)
+        cam1 = VideoStream(pipeline)
+        cam2 = VideoStream(pipeline)
+        cam3 = VideoStream(pipeline)
 
         
         self.pilot_tab = PilotTab2(cam1, cam2, cam3, comms)

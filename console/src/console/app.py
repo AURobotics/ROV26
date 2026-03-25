@@ -14,31 +14,6 @@ import sys
 from pathlib import Path
 import os
 
-# os.environ["QT_QPA_PLATFORM"] = "xcb"
-# os.environ["QT_QUICK_BACKEND"] = "software"
-
-if getattr(sys, 'frozen', False):
-    # PyInstaller extracts everything to a temp folder stored in _MEIPASS
-    base_dir = Path(sys._MEIPASS)
-    bin_dir = base_dir / "bin" / "linux_x64"
-else:
-    # Normal development mode
-    base_dir = Path(__file__).resolve().parent.parent.parent
-    bin_dir = base_dir / "bin" / "linux_x64"
-
-if bin_dir.exists():
-    os.environ["LD_LIBRARY_PATH"] = f"{bin_dir}:{os.environ.get('LD_LIBRARY_PATH', '')}"
-
-    # 2. GStreamer Environment
-    os.environ["GST_PLUGIN_PATH"] = str(bin_dir / "gstreamer-1.0")
-    os.environ["GST_PLUGIN_SCANNER"] = str(bin_dir / "helpers" / "gst-plugin-scanner")
-
-# Put the registry in the user's config folder so it's persistent/writable
-# (The bundle folder itself is read-only)
-user_data = Path(os.path.expanduser("~/.local/share/ROV26"))
-user_data.mkdir(parents=True, exist_ok=True)
-os.environ["GST_REGISTRY"] = str(user_data / "registry.bin")
-
 
 class ConsoleApplication(QApplication):
     startup_progress = Signal(str, int)
