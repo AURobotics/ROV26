@@ -1,10 +1,6 @@
 
 #include "ESPMqttClient.h"
 
-// libraries used for method sending in chunks
-#include <ArduinoJson.h>
-#include <Base64.h> // For encoding binary data to base64
-
 ESPMqttClient::ESPMqttClient(
     const char *mqtt_server,
     int mqtt_port,
@@ -67,7 +63,7 @@ bool ESPMqttClient::connectToMQTT(bool poll)
     {
         String client_id = "esp32-client-";
         client_id += String(WiFi.macAddress()); // to ensure unique id
-        Serial.printf("The client %s connects to the MQTT broker\n", client_id.c_str());
+        // Serial.printf("The client %s connects to the MQTT broker\n", client_id.c_str());
         bool isConnected = false;
         if (_mqtt_username && _mqtt_password)
         {
@@ -80,7 +76,7 @@ bool ESPMqttClient::connectToMQTT(bool poll)
 
         if (isConnected)
         {
-            Serial.println("broker connected");
+            // Serial.println("broker connected");
 
             // Re-subscribe to all previously subscribed topics after reconnecting
             if (!_subscribed_topics.empty())
@@ -89,22 +85,22 @@ bool ESPMqttClient::connectToMQTT(bool poll)
                 {
                     if (_mqttClient.subscribe(topic.c_str()))
                     {
-                        Serial.printf("Subscribed to topic: %s\n", topic.c_str());
+                        // Serial.printf("Subscribed to topic: %s\n", topic.c_str());
                     }
                     else
                     {
-                        Serial.printf("Failed to subscribe to topic: %s\n", topic.c_str());
+                        // Serial.printf("Failed to subscribe to topic: %s\n", topic.c_str());
                     }
                 }
             }
         }
         else
         {
-            Serial.print("failed with state ");
-            Serial.println(_mqttClient.state());
+            // Serial.print("failed with state ");
+            // Serial.println(_mqttClient.state());
             if (!poll)
             {
-                Serial.println("Not polling for MQTT connection. Exiting connect loop.");
+                // Serial.println("Not polling for MQTT connection. Exiting connect loop.");
                 return false;
             }
             delay(2000);
@@ -149,7 +145,7 @@ bool ESPMqttClient::unsubscribe(const char *topic)
 {
     if (!_mqttClient.connected())
     {
-        Serial.println("Cannot unsubscribe, MQTT client not connected");
+        // Serial.println("Cannot unsubscribe, MQTT client not connected");
         return false;
     }
     _subscribed_topics.erase(std::remove(_subscribed_topics.begin(), _subscribed_topics.end(), std::string(topic)), _subscribed_topics.end());
@@ -209,36 +205,48 @@ void ESPMqttClient::setCallback(std::function<void(char *, uint8_t *, unsigned i
  * Chuncks are sent in diffrenet subtopics (format: "base_topic/chunk/chunk_number")
  * (e.g. "base_topic/chunk/0", "base_topic/chunk/1", etc.) to allow receiver to reconstruct the file in order.
  *
+ * if crcCalculator is provided, it will be used to calculate CRC32 checksums metadata and each chunk
+ * crc value is appended to the end of the base64 encoded string in hex format.
+ * receiver must account that the last 8 characters of the encoded chunk are the CRC32 checksum (if crcCalculator is used)
+ *
+ * @param fileSystem Reference to the filesystem (e.g. SPIFFS) where the file is located
  * @param topic Base MQTT topic for the file transfer
  * @param filename Path to the file to send
+ * @param crcCalculator Optional function pointer to calculate CRC32 checksums. If provided, CRC32 of the entire file will be included in metadata, and each chunk will have its own CRC32 appended to the end of the encoded data.
+ *
  * @return true if file sent successfully, false otherwise
  */
-bool ESPMqttClient::sendFileChunkedOverTopics(FS &fileSystem, const char *topic, const char *filename)
+bool ESPMqttClient::sendFileChunkedOverTopics(FS &fileSystem, const char *topic, const char *filename, CRC32Function crcCalculator)
 {
     base64 base64_encoder = base64();
+    uint32_t calculatedCRC = 0;
 
     File file = fileSystem.open(filename, "r");
     if (!file)
     {
-        Serial.print("Failed to open file: ");
-        Serial.println(filename);
+        // Serial.print("Failed to open file: ");
+        // Serial.println(filename);
         return false;
     }
 
-    Serial.print("Opening file: ");
-    Serial.print(filename);
-    Serial.print(" | Size: ");
-    Serial.print(file.size());
-    Serial.println(" bytes");
+    // Serial.print("Opening file: ");
+    // Serial.print(filename);
+    // Serial.print(" | Size: ");
+    // Serial.print(file.size());
+    // Serial.println(" bytes");
 
     // Calculate chunks
     // originally 180 bytes -> 240 bytes in base64; but that failed
-    const int RAW_CHUNK_SIZE = 150;
+    int RAW_CHUNK_SIZE;
+    if (crcCalculator)
+        RAW_CHUNK_SIZE = 150 - 6; // leave room for CRC32
+    else
+        RAW_CHUNK_SIZE = 150;
     size_t fileSize = file.size();
     int totalChunks = (fileSize + RAW_CHUNK_SIZE - 1) / RAW_CHUNK_SIZE; // ceiling division
 
-    Serial.print(totalChunks);
-    Serial.println(" chunks");
+    // Serial.print(totalChunks);
+    // Serial.println(" chunks");
 
     // Send file metadata first
     // - filename: name of file
@@ -251,19 +259,34 @@ bool ESPMqttClient::sendFileChunkedOverTopics(FS &fileSystem, const char *topic,
 
     StaticJsonDocument<256> metaDoc;
     metaDoc["filename"] = filename;
-    metaDoc["size"] = fileSize;
+    if (crcCalculator)
+        metaDoc["size"] = fileSize + 8 * (totalChunks + 1); // account for CRC32 checksums (8 hex chars) in metadata and each chunk
+    else
+        metaDoc["size"] = fileSize;
     metaDoc["chunks"] = totalChunks;
     metaDoc["encoding"] = "base64"; // Tell receiver we're using base64
 
     String metadata;
     serializeJson(metaDoc, metadata);
 
-    Serial.print("Sending metadata: ");
-    Serial.println(metadata);
+    // if crc, calculate CRC32 of the file and include it in metadata
+    if (crcCalculator)
+    {
+        calculatedCRC = crcCalculator((const uint8_t *)metadata.c_str(), metadata.length());
+        // Serial.print("Calculated CRC32 for metadata: ");
+        // Serial.println(calculatedCRC, HEX);
+
+        char crcHex[9];                         // 8 hex chars + null terminator
+        snprintf(crcHex, sizeof(crcHex), "%08X", calculatedCRC);
+        metadata += crcHex;
+    }
+
+    // Serial.print("Sending metadata: ");
+    // Serial.println(metadata);
 
     if (!publish(metaTopic, metadata.c_str(), false))
     {
-        Serial.println("Failed to send metadata");
+        // Serial.println("Failed to send metadata");
         file.close();
         return false;
     }
@@ -283,8 +306,8 @@ bool ESPMqttClient::sendFileChunkedOverTopics(FS &fileSystem, const char *topic,
 
         if (bytesRead <= 0)
         {
-            Serial.print("Unexpected end of file at chunk ");
-            Serial.println(chunkIndex);
+            // Serial.print("Unexpected end of file at chunk ");
+            // Serial.println(chunkIndex);
             success = false;
             break;
         }
@@ -301,37 +324,46 @@ bool ESPMqttClient::sendFileChunkedOverTopics(FS &fileSystem, const char *topic,
         char chunkTopic[128];
         snprintf(chunkTopic, sizeof(chunkTopic), "%s/chunk/%d", topic, chunkIndex);
 
+        if (crcCalculator)
+        {
+            // If CRC is enabled, append the CRC32 of this chunk to the end of the encoded data
+            uint32_t chunkCRC = crcCalculator(buffer, bytesRead);
+            // Serial.print("Calculated CRC32 for chunk ");
+            // Serial.print(chunkIndex);
+            // Serial.print(": ");
+            // Serial.println(chunkCRC, HEX);
+            
+            char crcHex[9]; // 8 hex chars + null terminator
+            snprintf(crcHex, sizeof(crcHex), "%08X", chunkCRC);
+            encodedData += crcHex;
+        }
+
         // Send the chunk
         // Each chunk contains base64 encoded data
         if (!publish(chunkTopic, encodedData.c_str(), false))
         {
-            Serial.print("Failed to send chunk ");
-            Serial.println(chunkIndex);
-            Serial.print("chunk size (encoded): ");
-            Serial.println(encodedData.length());
+            // Serial.print("Failed to send chunk ");
+            // Serial.println(chunkIndex);
+            // Serial.print("chunk size (encoded): ");
+            // Serial.println(encodedData.length());
             success = false;
             break;
         }
 
         // Print progress
-        Serial.print("Sent chunk ");
-        Serial.print(chunkIndex + 1);
-        Serial.print("/");
-        Serial.print(totalChunks);
-        Serial.print(" (");
-        Serial.print(bytesRead);
-        Serial.println(" bytes)");
+        // Serial.print("Sent chunk ");
+        // Serial.print(chunkIndex + 1);
+        // Serial.print("/");
+        // Serial.print(totalChunks);
+        // Serial.print(" (");
+        // Serial.print(bytesRead);
+        // Serial.println(" bytes)");
 
         // Small delay between chunks to avoid flooding MQTT broker
         delay(10);
     }
 
     file.close();
-
-    if (success)
-        Serial.println("File transfer completed successfully!");
-    else
-        Serial.println("File transfer failed!");
 
     return success;
 }
@@ -352,11 +384,18 @@ bool ESPMqttClient::sendFileChunkedOverTopics(FS &fileSystem, const char *topic,
  *
  * after sending each chunk it waits for a feedback message from the receiver (on topic "base_topic/feedback") before sending the next chunk.
  *
+ * if crcCalculator is provided, it will be used to calculate CRC32 checksums metadata and each chunk
+ * crc value is appended to the end of the base64 encoded string in hex format.
+ * receiver must account that the last 8 characters of the encoded chunk are the CRC32 checksum (if crcCalculator is used)
+ *
+ * @param fileSystem Reference to the filesystem (e.g. SPIFFS) where the file is located
  * @param topic Base MQTT topic for the file transfer
  * @param filename Path to the file to send
+ * @param crcCalculator Optional function pointer to calculate CRC32 checksums. If provided, CRC32 of the entire file will be included in metadata, and each chunk will have its own CRC32 appended to the end of the encoded data.
+ *
  * @return true if file sent successfully, false otherwise
  */
-bool ESPMqttClient::sendFileChunkedWithFeedback(FS &fileSystem, const char *topic, const char *filename)
+bool ESPMqttClient::sendFileChunkedWithFeedback(FS &fileSystem, const char *topic, const char *filename, CRC32Function crcCalculator)
 {
     return false;
 }
