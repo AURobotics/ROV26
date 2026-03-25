@@ -20,4 +20,5 @@ dist/
 # Binaries & vendored leftovers
 bin/
 vendored/
-wheelhouse
+wheelhouse/
+.tmp/
