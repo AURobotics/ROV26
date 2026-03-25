@@ -213,8 +213,9 @@ static constexpr float Kp = 2.0f * 5.0f;
 static constexpr float Ki = 0.005f;
 
 class MPU9250 {
-private:
     I2C_HandleTypeDef* hi2c{};
+    uint32_t m_timeout = 500;
+
 
 public:
     //===================================================================================================================
@@ -229,6 +230,7 @@ public:
     float gRes = 0.0f;
     float mRes = 0.0f;
     uint32_t last_read_time;
+
 
     explicit MPU9250(I2C_HandleTypeDef* hi2c);
     HAL_StatusTypeDef writeByte(uint8_t address, uint8_t subAddress, uint8_t data);

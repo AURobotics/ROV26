@@ -1,5 +1,6 @@
 #include "Motor.h"
 #include <cmath>
+#include "stm32f4xx_hal.h"
 
 
 float constrain(const float x, const float a, const float b) { return x > b ? b : x < a ? a : x; }
@@ -13,9 +14,8 @@ void Motor::setup() const {
     case HandlerType::FUNCTION :
         return;
     case HandlerType::PWM :
-        Handler.pwm_handler.p1->start();
-        Handler.pwm_handler.p2->start();
-        break;
+        HAL_TIM_PWM_Start(pwm_1.htim, pwm_1.channel);
+        HAL_TIM_PWM_Start(pwm_2.htim, pwm_2.channel);
     }
 }
 
@@ -23,37 +23,24 @@ void Motor::move(float speed) const {
     speed = constrain(speed, -1, 1);
     switch (this->handler_type) {
     case HandlerType::FUNCTION :
-        Handler.handler_function(speed);
+        handler_function(speed);
         return;
-    case HandlerType::PWM :
-        const auto pwm1 = this->Handler.pwm_handler.p1;
-        const auto pwm2 = this->Handler.pwm_handler.p2;
+    case HandlerType::PWM :;
         speed = constrain(speed, -1, 1);
         const auto duty = static_cast<uint16_t>(std::fabs(speed) * 999);
         if (speed > 0) {
-            pwm1->set_duty(duty);
-            pwm2->set_duty(0);
+            __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, duty);
+            __HAL_TIM_SET_COMPARE(pwm_2.htim, pwm_2.channel, 0);
         }
         else if (speed <= 0) {
-            pwm1->set_duty(0);
-            pwm2->set_duty(duty);
+            __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, 0);
+            __HAL_TIM_SET_COMPARE(pwm_2.htim, pwm_2.channel, duty);
         }
     }
 }
 
 
-void Motor::stop() const {
-    switch (this->handler_type) {
-    case HandlerType::FUNCTION :
-        move(0);
-        return;
-    case HandlerType::PWM :
-        const auto pwm1 = this->Handler.pwm_handler.p1;
-        const auto pwm2 = this->Handler.pwm_handler.p2;
-        pwm1->set_duty(999);
-        pwm2->set_duty(999);
-    }
-}
+void Motor::stop() const { move(0); }
 
 void Motor::move_motor(Motor motors[8], float speeds[8]) {
     for (int i = 0; i < 8; i++)

@@ -14,9 +14,9 @@ set(CMAKE_C_EXTENSIONS ON)
 
 
 # Define the build type
-if(NOT CMAKE_BUILD_TYPE)
+if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
-endif()
+endif ()
 
 # Set the project name
 set(CMAKE_PROJECT_NAME firmware)
@@ -52,7 +52,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/mpu9250/mpu9250.cpp
         Core/lib/ms5611/ms5611.cpp
         Core/lib/pid/PID.cpp
-        Core/lib/pwm_wrapper/pwm.cpp
 )
 
 # Add include paths
@@ -64,7 +63,6 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/mpu9250
         Core/lib/ms5611
         Core/lib/pid
-        Core/lib/pwm_wrapper
         Core/Inc
         # Add user defined include paths
 )
@@ -83,4 +81,8 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         stm32cubemx
 
         # Add user defined libraries
+)
+
+target_link_options(${PROJECT_NAME} PRIVATE
+        -u _printf_float
 )

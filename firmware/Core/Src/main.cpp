@@ -7,7 +7,6 @@
 #include "gpio.h"
 #include "mpu9250.h"
 #include "ms5611.h"
-#include "pwm.h"
 #include "tim.h"
 #include "usb_comms.h"
 #include "usb_device.h"
@@ -31,32 +30,32 @@ enum class Test_state { OFF, STEPPING, DONE };
     while (0)
 
 MPU9250 mpu9250(&hi2c3);
-//MS5611 ms5611(&hi2c3);
+MS5611 ms5611(&hi2c3);
 Cdc_driver cdc(20); /*need to set timeout*/
 
-extern "C" int _write(int file, char *ptr, int len){
-CDC_Transmit_FS((uint8_t*)ptr, len);
-return len;
+extern "C" int _write(int file, char* ptr, int len) {
+    CDC_Transmit_FS((uint8_t*)ptr, len);
+    return len;
 }
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
 void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
-    //if (HAL_GetTick() - ms5611.last_read_time > 0.5) {
-      //  data[0] = ms5611.getDepth();
-      //  data[1] = std::nullopt;
-    //}
+    if (HAL_GetTick() - ms5611.last_read_time > 50) {
+        data[0] = ms5611.getPressure();
+        data[1] = std::nullopt;
+    }
 
-    if (HAL_GetTick() - mpu9250.last_read_time > 5) {
+    if (HAL_GetTick() - mpu9250.last_read_time > 50) {
         mpu9250.update();
         vec_3 angles = mpu9250.getEulerAngles();
         vec_3 rates = mpu9250.getBodyRates();
 
         data[2] = angles.x(); // roll
-        data[3] = 0 ;//rates.x();
+        data[3] = 0; // rates.x();
         data[4] = angles.y(); // pitch
-        data[5] = 0; //rates.y();
+        data[5] = 0; // rates.y();
         data[6] = angles.z(); // yaw
-        data[7] = 0; //rates.z();
+        data[7] = 0; // rates.z();
     }
 }
 
@@ -76,17 +75,21 @@ double angle_diff(double setpoint, double current) {
 }
 
 static uint32_t read_adc(uint32_t channel) {
+    HAL_ADC_Stop(&hadc1);
+
     ADC_ChannelConfTypeDef sConfig = {};
     sConfig.Channel = channel;
     sConfig.Rank = 1;
-    sConfig.SamplingTime =
-        ADC_SAMPLETIME_84CYCLES; // sampling time is 84 cycles, which is 84/84MHz = 1us
-    if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-        return 0u;
+    sConfig.SamplingTime = ADC_SAMPLETIME_84CYCLES;
 
-    HAL_ADC_Start(&hadc1);
-    if (HAL_ADC_PollForConversion(&hadc1, 10) != HAL_OK)
-        return 0u;
+    if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+        return 0;
+    if (HAL_ADC_Start(&hadc1) != HAL_OK)
+        return 0;
+    if (HAL_ADC_PollForConversion(&hadc1, 10) != HAL_OK) {
+        HAL_ADC_Stop(&hadc1);
+        return 0;
+    }
     uint32_t value = HAL_ADC_GetValue(&hadc1);
     HAL_ADC_Stop(&hadc1);
     return value;
@@ -103,11 +106,11 @@ static void GripperClose() {
 
 static uint8_t loadStatus() {
     uint8_t statusByte = 0;
-    GPIO_PinState ledState = HAL_GPIO_ReadPin(LED_FLASHER_GPIO_Port, LED_FLASHER_Pin);
+    const GPIO_PinState ledState = HAL_GPIO_ReadPin(LED_FLASHER_GPIO_Port, LED_FLASHER_Pin);
 
-   uint16_t leakage_adc1 = (uint16_t)read_adc(LEAKAGE_ADC_CHANNEL_1);
-    uint16_t leakage_adc2 = (uint16_t)read_adc(LEAKAGE_ADC_CHANNEL_2);
-    bool leak_detected = leakage_adc1>LEAKAGE_THRESHOLD || leakage_adc2>LEAKAGE_THRESHOLD;
+    const auto leakage_adc1 = read_adc(LEAKAGE_ADC_CHANNEL_1);
+    const auto leakage_adc2 = read_adc(LEAKAGE_ADC_CHANNEL_2);
+    const bool leak_detected = leakage_adc1 > LEAKAGE_THRESHOLD || leakage_adc2 > LEAKAGE_THRESHOLD;
 
 
     if (ledState == GPIO_PIN_SET)
@@ -198,6 +201,9 @@ int main() {
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
 
+    HAL_Delay(2000);
+    printf("code started\n");
+
     Test_state test_state = Test_state::OFF; // normal mode
     //////Testing Mode////////
     float start_yaw = 0;
@@ -218,49 +224,24 @@ int main() {
     float hold[4]; // depth roll pitch yaw
 
     /*Initialize all controllers: depth roll pitch yaw*/
-    //Controller controller[4] = {Controller(PID(0, 0, 0)),
-    //                            Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
-    //                            Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
-    //                            Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
+    // Controller controller[4] = {Controller(PID(0, 0, 0)),
+    //                             Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
+    //                             Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
+    //                             Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
 
-    /*Intialize pwms  and motors*/
-    // Create PWM wrappers
-    PWM pwm1A(&htim1, TIM_CHANNEL_2);
-    PWM pwm1B(&htim1, TIM_CHANNEL_3);
-
-    PWM pwm2A(&htim3, TIM_CHANNEL_4);
-    PWM pwm2B(&htim2, TIM_CHANNEL_3);
-
-    PWM pwm3A(&htim3, TIM_CHANNEL_3);
-    PWM pwm3B(&htim3, TIM_CHANNEL_2);
-
-    PWM pwm4A(&htim3, TIM_CHANNEL_1);
-    PWM pwm4B(&htim2, TIM_CHANNEL_1);
-
-    PWM pwm5A(&htim5, TIM_CHANNEL_3);
-    PWM pwm5B(&htim5, TIM_CHANNEL_2);
-
-    PWM pwm6A(&htim4, TIM_CHANNEL_4);
-    PWM pwm6B(&htim4, TIM_CHANNEL_3);
-
-    PWM pwm7A(&htim4, TIM_CHANNEL_1);
-    PWM pwm7B(&htim4, TIM_CHANNEL_2);
-
-    PWM pwm8A(&htim5, TIM_CHANNEL_4);
-    PWM pwm8B(&htim2, TIM_CHANNEL_2);
+    Motor motors[] = {Motor({&htim1, TIM_CHANNEL_2}, {&htim1, TIM_CHANNEL_3}),
+                      Motor({&htim3, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_3}),
+                      Motor({&htim3, TIM_CHANNEL_3}, {&htim3, TIM_CHANNEL_2}),
+                      Motor({&htim3, TIM_CHANNEL_1}, {&htim2, TIM_CHANNEL_1}),
+                      Motor({&htim5, TIM_CHANNEL_3}, {&htim5, TIM_CHANNEL_2}),
+                      Motor({&htim4, TIM_CHANNEL_4}, {&htim4, TIM_CHANNEL_3}),
+                      Motor({&htim4, TIM_CHANNEL_1}, {&htim4, TIM_CHANNEL_2}),
+                      Motor({&htim5, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_2})};
 
 
-    Motor motors[] = {Motor(&pwm1A, &pwm1B),
-                      Motor(&pwm2A, &pwm2B),
-                      Motor(&pwm3A, &pwm3B),
-                      Motor(&pwm4A, &pwm4B),
-                      Motor(&pwm5A, &pwm5B),
-                      Motor(&pwm6A, &pwm6B),
-                      Motor(&pwm7A, &pwm7B),
-                      Motor(&pwm8A, &pwm8B)};
-
-    for (const auto& motor : motors)
+    for (const auto& motor : motors) {
         motor.setup();
+    }
 
     Motor gripper( // TODO: use this variable
         [](float speed)
@@ -279,6 +260,11 @@ int main() {
             }
         });
 
+    gripper.move(1);
+    motors[4].move(1);
+    motors[5].move(1);
+
+
     std::array<std::optional<float>, 8> sensor_data;
     TxPacket tx_pkt;
     tx_pkt.type = SENSOR_MESSAGE;
@@ -288,43 +274,44 @@ int main() {
     //__HAL_TIM_SET_COMPARE(&htim1,2,0);
 
     mpu9250.init();
-    //ms5611.begin();
+    ms5611.begin();
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         static Message_Type msg_type;
-      //  if (cdc.available()) {
-      //      msg_type = cdc.read_msg(msg);
+        //  if (cdc.available()) {
+        //      msg_type = cdc.read_msg(msg);
 
-      //  }
-      //  if (msg_type == OPERATION_MESSAGE)
-      //      test_state =
-      //          msg.data.operation_msg.operation_mode ? Test_state::STEPPING : Test_state::OFF;
+        //  }
+        //  if (msg_type == OPERATION_MESSAGE)
+        //      test_state =
+        //          msg.data.operation_msg.operation_mode ? Test_state::STEPPING : Test_state::OFF;
 
-      //  if (test_state == Test_state::OFF) {
-      //      if (msg_type == COMMAND_MESSAGE) {
-      //          for (int i = 0; i < 6; i++)
-      //              controller_output[i] = msg.data.command_msg.forces[i] * 4;
-               // apply_pseudo_inverse(controller_output, clamped_motors);
-               // Motor::move_motor(motors, clamped_motors);
-      //      }
-      //  }fetch
-//    int num = 6;
-//    float arr[8] = {0.6, 0,0,0,0,0,0,0};
-//    float v[num] = {1,0,0,0,0,0};
- //   apply_pseudo_inverse(v,arr);
+        //  if (test_state == Test_state::OFF) {
+        //      if (msg_type == COMMAND_MESSAGE) {
+        //          for (int i = 0; i < 6; i++)
+        //              controller_output[i] = msg.data.command_msg.forces[i] * 4;
+        // apply_pseudo_inverse(controller_output, clamped_motors);
+        // Motor::move_motor(motors, clamped_motors);
+        //      }
+        //  }fetch
+        //    int num = 6;
+        //    float arr[8] = {0.6, 0,0,0,0,0,0,0};
+        //    float v[num] = {1,0,0,0,0,0};
+        //   apply_pseudo_inverse(v,arr);
 
-	// Motor::move_motor(motors,arr);
-	// motors[2].move(-0.75);
+        // Motor::move_motor(motors,arr);
+        // motors[2].move(-0.75);
 
-//	for (int i = 0; i < 8; i ++) {
-//		motors[i].move(0.75);
-//		HAL_Delay(2500);
-//		motors[i].move(-0.75);
-//		HAL_Delay(2500);
-//		motors[i].move(0);
-//HAL_Delay(2500);
-	//}
+        //	for (int i = 0; i < 8; i ++) {
+        //		motors[i].move(0.75);
+        //		HAL_Delay(2500);
+        //		motors[i].move(-0.75);
+        //		HAL_Delay(2500);
+        //		motors[i].move(0);
+        // HAL_Delay(2500);
+        //}
+
 
         fetch_sensor_data(sensor_data);
 
@@ -390,15 +377,14 @@ int main() {
         //         // sway
         //         controller_output[1] = data[1]*4;
         //     }
-     //   HAL_GPIO_WritePin(DCV_1_GPIO_Port,
-     //                     DCV_1_Pin,
-     //                     GPIO_PIN_RESET);
+        //   HAL_GPIO_WritePin(DCV_1_GPIO_Port,
+        //                     DCV_1_Pin,
+        //                     GPIO_PIN_RESET);
 
 
-
-     //   HAL_GPIO_WritePin(DCV_2_GPIO_Port,
-     //                     DCV_2_Pin,
-     //                     GPIO_PIN_RESET);
+        //   HAL_GPIO_WritePin(DCV_2_GPIO_Port,
+        //                     DCV_2_Pin,
+        //                     GPIO_PIN_RESET);
 
         // }
 
@@ -442,14 +428,15 @@ int main() {
         //
 
         ///////////////////send data to GUI/////////////////////
-        static TxPacket feedback_pkt;
+        static TxPacket feedback_pkt{};
 
         if (HAL_GetTick() - last_send_time >= 50) {
+            fetch_sensor_data(sensor_data);
             last_send_time = HAL_GetTick();
 
             feedback_pkt.sync_byte = 0xFF;
             feedback_pkt.type = 0x01;
-            feedback_pkt.status = loadStatus();
+            // feedback_pkt.status = loadStatus();
 
             // sensor telemetry
             feedback_pkt.depth = sensor_data[0].value_or(0.0f);
@@ -458,14 +445,17 @@ int main() {
             feedback_pkt.yaw = sensor_data[6].value_or(0.0f);
 
             // motor telemetry
-        //    for (int i = 0; i < 8; i++) {
-        //        feedback_pkt.motor_speeds[i] = clamped_motors[i] * 255.0f;
-        //    }
+            //    for (int i = 0; i < 8; i++) {
+            //        feedback_pkt.motor_speeds[i] = clamped_motors[i] * 255.0f;
+            //    }
 
-        //cdc.write_msg(&feedback_pkt);
+            // cdc.write_msg(&feedback_pkt);
 
-            printf("\n\ryaw = %d, pitch = %d, roll = %d",(uint32_t)feedback_pkt.yaw,(uint32_t)feedback_pkt.pitch,(uint32_t)feedback_pkt.roll);
-
+            printf("\n\rdepth = %d yaw = %d, pitch = %d, roll = %d\n",
+                   (int)feedback_pkt.depth,
+                   (int)feedback_pkt.yaw,
+                   (int)feedback_pkt.pitch,
+                   (int)feedback_pkt.roll);
         }
     }
 }
@@ -528,6 +518,7 @@ void SystemClock_Config(void) {
 void Error_Handler(void) {
     /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
+    printf("inside error handling");
     __disable_irq();
     while (1) {
     }
