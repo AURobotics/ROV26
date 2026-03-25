@@ -3,44 +3,46 @@ import shutil
 import subprocess
 from packaging.tags import sys_tags
 from packaging.utils import parse_wheel_filename
+import json
+import hashlib
 
-BRANCH = "opencv-build"
+REPO = "AURobotics/ROV26"
+RELEASE_TAG = "opencv-build"
 
 project_root = Path(__file__).parent.parent.resolve()
-repo_root = project_root.parent.resolve()
 wheels_dir = (project_root / "wheels").resolve()
-tmp_dir = (project_root / ".tmp").resolve()
-wheels_src = "console/wheels/"
 
 if not wheels_dir.exists():
     wheels_dir.mkdir()
 
-if not tmp_dir.exists():
-    tmp_dir.mkdir()
-
-if shutil.which("git") is None:
-    print("Git is not installed")
+if shutil.which("gh") is None:
+    print("Github CLI is not installed")
     exit(1)
 
-git_lfs_exists = subprocess.run(["git", "lfs", "--version"]).returncode == 0
+releases_response: list = json.loads(
+    subprocess.run(
+        ["gh", "api", f"repos/{REPO}/releases"], check=True, capture_output=True
+    ).stdout
+)
+releases: list[dict] = []
+for release in releases_response:
+    release: dict
+    tag_name: str = release["tag_name"]
+    if tag_name.startswith(RELEASE_TAG):
+        releases.append(release)
 
-if not git_lfs_exists:
-    print("Git lfs is not installed")
+
+if len(releases) == 0:
+    print("Could not find any releases.")
     exit(1)
 
-subprocess.run(["git", "fetch", "origin", f"{BRANCH}:{BRANCH}"], check=True)
-wheels = [
-    wheel.split(" - ")[1].split("/")[-1]
-    for wheel in subprocess.check_output(
-        ["git", "lfs", "ls-files", f"origin/{BRANCH}", "-I", f"{wheels_src}"],
-        text=True,
-    ).splitlines()
-    if wheel.endswith(".whl")
-]
+
+release = sorted(releases, key=lambda x: x["published_at"], reverse=True)[0]
+wheels: dict[str, str] = {asset["name"]: asset["digest"].split(":")[1] for asset in release["assets"]}
 
 supported_tags = set(sys_tags())
 compatible_wheel = None
-for wheel in wheels:
+for wheel in wheels.keys():
     file_tags = parse_wheel_filename(wheel)[3]
     if any(tag in supported_tags for tag in file_tags):
         compatible_wheel = wheel
@@ -51,40 +53,34 @@ if compatible_wheel is None:
     print("No opencv wheel was found for your system.")
     exit(1)
 
+hash = wheels[compatible_wheel]
+existing_wheel = (wheels_dir / compatible_wheel).resolve()
+to_remove_existing = False
+if existing_wheel.exists():
+    hasher = hashlib.sha256()
+    file_bytes = existing_wheel.read_bytes()
+    digest = hashlib.sha256(file_bytes).hexdigest()
+    if digest == wheels[compatible_wheel]:
+        print("The most up-to-date wheel already exists.")
+        exit(0)
+    else:
+        to_remove_existing = True
+
 subprocess.run(
     [
-        "git",
-        "lfs",
-        "fetch",
-        "origin",
-        BRANCH,
-        f'--include="console/wheels/{compatible_wheel}"',
-        '--exclude="*"',
-    ],
-    check=True,
-)
-subprocess.run(
-    [
-        "git",
-        "archive",
-        BRANCH,
-        f"console/wheels/{compatible_wheel}",
-        "-o",
-        f"{project_root}/.tmp/opencv.tar",
-    ],
-    check=True,
-    cwd=repo_root,
-)
-subprocess.run(
-    [
-        "tar",
-        "-xf",
-        f"{project_root / '.tmp' / 'opencv.tar'}",
-        "-C",
+        "gh",
+        "release",
+        "download",
+        f"{release['tag_name']}",
+        "--repo",
+        f"{REPO}",
+        "--pattern",
+        f"{compatible_wheel}",
+        "--dir",
         f"{wheels_dir}",
-        "--strip-components=2",
     ],
     check=True,
 )
-shutil.rmtree(tmp_dir)
-wheel = (wheels_dir / compatible_wheel).resolve()
+
+if to_remove_existing:
+    existing_wheel.unlink()

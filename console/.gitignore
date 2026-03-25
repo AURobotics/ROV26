@@ -17,7 +17,7 @@ __pycache__/
 build/
 dist/
 
-# Binaries & vendored leftovers
+# opencv-build branch leftovers
 bin/
 vendored/
 wheelhouse/
