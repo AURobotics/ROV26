@@ -38,7 +38,9 @@ if len(releases) == 0:
 
 
 release = sorted(releases, key=lambda x: x["published_at"], reverse=True)[0]
-wheels: dict[str, str] = {asset["name"]: asset["digest"].split(":")[1] for asset in release["assets"]}
+wheels: dict[str, str] = {
+    asset["name"]: asset["digest"].split(":")[1] for asset in release["assets"]
+}
 
 supported_tags = set(sys_tags())
 compatible_wheel = None
@@ -84,3 +86,4 @@ subprocess.run(
 
 if to_remove_existing:
     existing_wheel.unlink()
+    subprocess.run(["uv", "clean", "opencv-python"])
