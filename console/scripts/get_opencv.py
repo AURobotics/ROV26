@@ -20,13 +20,13 @@ if not tmp_dir.exists():
 
 if shutil.which("git") is None:
     print("Git is not installed")
-    raise RuntimeError()
+    exit(1)
 
 git_lfs_exists = subprocess.run(["git", "lfs", "--version"]).returncode == 0
 
 if not git_lfs_exists:
     print("Git lfs is not installed")
-    raise RuntimeError()
+    exit(1)
 
 subprocess.run(["git", "fetch", "origin", f"{BRANCH}:{BRANCH}"], check=True)
 wheels = [
@@ -44,11 +44,12 @@ for wheel in wheels:
     file_tags = parse_wheel_filename(wheel)[3]
     if any(tag in supported_tags for tag in file_tags):
         compatible_wheel = wheel
+        break
 
 
 if compatible_wheel is None:
     print("No opencv wheel was found for your system.")
-    raise RuntimeError()
+    exit(1)
 
 subprocess.run(
     [
