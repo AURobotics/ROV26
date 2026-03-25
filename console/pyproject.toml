@@ -27,8 +27,6 @@ dependencies = [
     "gstreamer-plugins-restricted>=1.28.1 ; sys_platform != 'linux'",
 ]
 
-[dependency-groups]
-setup = []
 
 [build-system]
 requires = ["uv_build>=0.10.2,<0.11.0"]
