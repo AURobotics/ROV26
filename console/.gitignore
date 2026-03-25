@@ -20,4 +20,4 @@ dist/
 # Binaries & vendored leftovers
 bin/
 vendored/
-wheels/
+wheels/*
