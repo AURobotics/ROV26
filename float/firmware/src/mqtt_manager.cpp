@@ -1,10 +1,20 @@
 #include "mqtt_manager.h"
 #include <ESPMqttClient.h>
+#include <LittleFS.h>
+#include <rom/crc.h>
+
+const char *startingIP = "192.168.4.2"; // in case of access point mode, this will be the starting IP of the AP
+const char *IP2 = "192.168.4.3";
+const char *IP3 = "192.168.4.4";
+const char *IP4 = "192.168.4.5";
+const char *IP5 = "192.168.4.6";
+
+const char *IPs[] = {startingIP, IP2, IP3, IP4, IP5};
 
 MQTTManager::MQTTManager() : _mqttClient(nullptr) {}
 
 void MQTTManager::setup(const char *mqtt_broker, int mqtt_port,
-                        const char *mqtt_username, const char *mqtt_password)
+                        const char *mqtt_username, const char *mqtt_password, bool asAccessPoint)
 {
     // Delete old client if exists
     if (_mqttClient != nullptr)
@@ -19,15 +29,29 @@ void MQTTManager::setup(const char *mqtt_broker, int mqtt_port,
     _mqttClient->setCallback(messageCallback);
 
     // Initialize
-    _mqttClient->begin();
-    _mqttClient->subscribe("to/esp");
+    bool res = _mqttClient->begin();
+
+    if (!res && asAccessPoint)
+    {
+        Serial.println("Running in Access Point mode. Connect to the AP and use the following IPs:");
+        for (const char *ip : IPs)
+        {
+            if (!res)
+            {
+                delete _mqttClient;
+                _mqttClient = new ESPMqttClient(ip, mqtt_port, mqtt_username, mqtt_password);
+                _mqttClient->setCallback(messageCallback);
+                res = _mqttClient->begin();
+            }
+        }
+    }
 }
 
-void MQTTManager::loop()
+void MQTTManager::loop(bool pollMqttConnection)
 {
     if (_mqttClient != nullptr)
     {
-        _mqttClient->loop();
+        _mqttClient->loop(pollMqttConnection);
     }
 }
 
@@ -53,4 +77,27 @@ void MQTTManager::messageCallback(char *topic, uint8_t *payload, unsigned int le
     }
     message[length] = '\0';
     Serial.println(message);
+}
+
+uint32_t calculateCRC32(const uint8_t *data, size_t length)
+{
+    return ~crc32_le(~0, data, length);
+}
+
+bool MQTTManager::sendFileChunkedOverTopics(const char *topic, const char *filename)
+{
+    if (_mqttClient != nullptr)
+    {
+        return _mqttClient->sendFileChunkedOverTopics((FS &)LittleFS, topic, filename, calculateCRC32);
+    }
+    return false;
+}
+
+bool MQTTManager::sendFileChunkedWithFeedback(const char *topic, const char *filename)
+{
+    if (_mqttClient != nullptr)
+    {
+        return _mqttClient->sendFileChunkedWithFeedback((FS &)LittleFS, topic, filename, calculateCRC32);
+    }
+    return false;
 }

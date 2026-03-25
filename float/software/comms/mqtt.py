@@ -1,21 +1,18 @@
-import logging
+#import logging -> needs to implemented instead of printing
 from random import randint
 import threading
-
-from base_types import MqttMessage
-
-
+from abc import ABC
 from threading import Thread
 import time
-import typing
+import json
+from typing import Any, Dict
 
 from paho.mqtt import client as mqtt_client
-from paho.mqtt.client import Client as pahoMC # paho_mqtt_client
 from paho.mqtt.enums import CallbackAPIVersion
-
+from paho.mqtt.client import MQTTMessage
 
 # class holding data for connection
-class Mqtt():
+class mqtt():
     def __init__(self, address = 'localhost', port = 1883, client_id = None, username = None, password = None):
         self.address = address
         self.port = port
@@ -24,14 +21,14 @@ class Mqtt():
         self.password = password
         self.unacked_publish = set()
         self._lock = threading.Lock()
-        # Registry mapping topic string -> list of MqttMessage handlers
-        self._topic_handlers: dict[str, list[MqttMessage]] = {} # for subscribed topics
+        # Registry mapping topic string -> list of mqtt_message handlers
+        self._topic_handlers: dict[str, list[mqtt_message]] = {} # for subscribed topics
         self._connect()
 
     def _connect(self):
         def on_connect(client, userdata, flags, rc, *args, **kwargs):
             if rc == 0:
-                print("Connected to MQTT Broker")
+                print("Connected to mQTT Broker")
                 # re-subscribe to all registered topics on (re)connect
                 for topic in self._topic_handlers:
                     client.subscribe(topic)
@@ -49,23 +46,22 @@ class Mqtt():
         self.client.loop_start()
 
     def _on_publish(self, client, userdata, mid, *args, **kwargs):
-        # paho-mqtt (MQTT v5) may pass extra parameters (reason_code, properties).
+        # paho-mqtt (mQTT v5) may pass extra parameters (reason_code, properties).
         # Accept extras defensively so the callback works across versions.
         with self._lock:
             self.unacked_publish.discard(mid)
 
-    def _on_message(self, client, userdata, message):
+    def _on_message(self, client, userdata, message: MQTTMessage):
         """Dispatch incoming messages to all handlers registered for the topic."""
-        payload_str: str = message.payload.decode()
-        print(f'Received on {message.topic}: {payload_str}')
+        print(f'Received data on {message.topic}')
         handlers = self._topic_handlers.get(message.topic, [])
         for handler in handlers:
             try:
-                handler.decode(payload_str)
+                handler.decode(message)
             except Exception as e:
-                logging.error(f"Error in message handler for {message.topic}: {e}")
+                print(f"Error in message handler for {message.topic}: {e}")
 
-    def register_handler(self, topic: str, handler: MqttMessage):
+    def register_handler(self, topic: str, handler: mqtt_message):
         """register a message handler for a topic. subscribes if not already subscribed."""
         if topic not in self._topic_handlers:
             self._topic_handlers[topic] = []
@@ -98,8 +94,8 @@ class Mqtt():
         self.disconnect()
 
 
-class Topic():
-    def __init__(self, topic: str, mqtt_connection: Mqtt):
+class topic():
+    def __init__(self, topic: str, mqtt_connection: mqtt):
         self.topic = topic
         self.mqtt = mqtt_connection
 
@@ -108,7 +104,7 @@ class Topic():
         return self.topic
 
     @property
-    def mqtt_connection(self) -> Mqtt:
+    def mqtt_connection(self) -> mqtt:
         return self.mqtt
 
     def publish(self, message: str):
@@ -131,19 +127,54 @@ class Topic():
 
         msg.wait_for_publish()
 
-    def subscribe(self, message_handler: MqttMessage):
-        """Register a handler for this topic via the shared Mqtt connection."""
+    def subscribe(self, message_handler: mqtt_message):
+        """Register a handler for this topic via the shared mqtt connection."""
         self.mqtt.register_handler(self.topic, message_handler)
+
+    def unsubscribe(self, message_handler: mqtt_message):
+        """Unregister a handler for this topic."""
+        handlers = self.mqtt._topic_handlers.get(self.topic, [])
+        if message_handler in handlers:
+            handlers.remove(message_handler)
+            print(f"Unsubscribed handler from {self.topic}")
+        else:
+            print(f"Handler not found for {self.topic}")
+
+class mqtt_message(ABC):
+    def __init__(self):
+        self.args: Dict[str, Any] = {}
+
+    def add_variable(self, name: str, value: Any):
+        self.args[name] = value
+
+    def set_variable(self, name: str, value: Any):
+        if name in self.args:
+            self.args[name] = value
+        else:
+            raise KeyError(f"Variable '{name}' not found in message arguments.")
+
+    def encode(self):
+        """Encode topic data to a dictionary for MQTT payload"""
+        return json.dumps(self.args)  # SAFE - only encodes JSON serializable data
+    
+    def decode(self, message: MQTTMessage):
+        """Decode MQTT payload to topic data"""
+        # we assume the payload is a string representation of a dictionary because that's how we encode it
+        payload = message.payload.decode()
+        try:
+            self.args = json.loads(payload)  # SAFE - only parses JSON
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON payload: {e}, payload: {payload}")
 
 
 """
     How does this work?
-    1. We create an Mqtt connection object (mqtt_connection).
-    2. We create a concrete implementation of MqttMessage (e.g. SensorDataMessage).
-    3. We create a Topic object with the topic name and the mqtt_connection.
+    1. We create an mqtt connection object (mqtt_connection).
+    2. We create a concrete implementation of mqtt_message (e.g. sensor_data_message).
+    3. We create a topic object with the topic name and the mqtt_connection.
     4. To subscribe to a topic: topic.subscribe(message_handler).
        Multiple handlers can be registered for the same topic, and multiple topics
-       are all handled by a single shared on_message callback on the Mqtt object.
+       are all handled by a single shared on_message callback on the mqtt object.
     5. To publish: topic.publish(message_handler.encode()).
     6. The message handler's decode method is called with the received message,
        and it updates its internal state accordingly.
@@ -151,7 +182,7 @@ class Topic():
 
 
 if __name__ == "__main__":
-    class SensorDataMessage(MqttMessage):
+    class sensor_data_message(mqtt_message):
         def __init__(self):
             super().__init__()
             self.add_variable("temperature", 0.0)
@@ -170,7 +201,7 @@ if __name__ == "__main__":
             return f"SensorData: temp={self.args['temperature']}°C, humidity={self.args['humidity']}%, pressure={self.args['pressure']}hPa"
 
 
-    class DeviceStatusMessage(MqttMessage):
+    class device_status_message(mqtt_message):
         def __init__(self):
             super().__init__()
             self.add_variable("device_id", "")
@@ -186,13 +217,13 @@ if __name__ == "__main__":
     print("Test 1: Sensor Data Publishing")
     print("=" * 50)
 
-    mqtt_connection = Mqtt(address='localhost', port=1883)
+    mqtt_connection = mqtt(address='localhost', port=1883)
 
-    sensor_topic = Topic("home/livingroom/sensor", mqtt_connection)
-    device_topic = Topic("home/devices/status", mqtt_connection)
+    sensor_topic = topic("home/livingroom/sensor", mqtt_connection)
+    device_topic = topic("home/devices/status", mqtt_connection)
 
-    sensor_handler = SensorDataMessage()
-    device_handler = DeviceStatusMessage()
+    sensor_handler = sensor_data_message()
+    device_handler = device_status_message()
 
     print("\nSubscribing to topics...")
     sensor_topic.subscribe(sensor_handler)
@@ -202,8 +233,8 @@ if __name__ == "__main__":
 
     print("\nPublishing sensor data...")
 
-    publisher_sensor = SensorDataMessage()
-    publisher_device = DeviceStatusMessage()
+    publisher_sensor = sensor_data_message()
+    publisher_device = device_status_message()
 
     for i in range(3):
         publisher_sensor.update_values(
@@ -243,23 +274,20 @@ if __name__ == "__main__":
     print("Test 3: Direct Dictionary Access")
     print("=" * 50)
 
-    simple_message = SensorDataMessage()
+    simple_message = sensor_data_message()
     simple_message.args["custom_field"] = "custom_value"
 
     print(f"Message with custom field: {simple_message.args}")
     encoded = simple_message.encode()
     print(f"Encoded: {encoded}")
 
-    simple_message.decode(encoded)
-    print(f"Decoded: {simple_message.args}")
-
     # Test 4: Multiple subscribers on the same topic (now works correctly)
     print("\n" + "=" * 50)
     print("Test 4: Multiple Subscribers")
     print("=" * 50)
 
-    sensor_handler2 = SensorDataMessage()
-    # Subscribe a second handler to the same topic via the same Topic object
+    sensor_handler2 = sensor_data_message()
+    # Subscribe a second handler to the same topic via the same topic object
     sensor_topic.subscribe(sensor_handler2)
 
     time.sleep(1)
@@ -283,78 +311,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nExiting test...")
         mqtt_connection.disconnect()
-
-    ##############################################################################
-
-    # testing esp
-    # class SensorDataMessage(MqttMessage):
-    #     def __init__(self):
-    #         super().__init__()
-    #         # Initialize default values
-    #         self.add_variable("temperature", 0.0)
-    #         self.add_variable("humidity", 0.0)
-            
-    #     def update_values(self, temp: float, humidity: float):
-    #         """Helper method to update all sensor values at once"""
-    #         self.set_variable("temperature", temp)
-    #         self.set_variable("humidity", humidity)
-            
-    #     def __str__(self):
-    #         return f"SensorData: temp={self.args['temperature']}°C, humidity={self.args['humidity']}%"
-
-    # class DeviceLed(MqttMessage):
-    #     def __init__(self):
-    #         super().__init__()
-    #         self.message = "OFF"
-
-    #     def set_variable(self, name: str, value):
-    #         self.message = str(value)
-
-    #     def encode(self):
-    #         return self.message
-            
-    #     def decode(self, payload:str):
-    #         self.message = payload
-
-    #     def __str__(self):
-    #         return f"esp led: {self.message}"
-
-    # # Create MQTT connection
-    # mqtt_connection = Mqtt(address='localhost', port=1883)
-
-    # # Create topics
-    # # mqtt_connection.pub.publish("from/esp", "", retain=True)
-    # sensor_topic = Topic("from/esp", mqtt_connection)
-    # to_esp = Topic("to/esp", mqtt_connection)
-
-    # # Create message handlers
-    # sensor_handler = SensorDataMessage()
-    # to_esp_handler = DeviceLed()
-    # to_esp_test_handler = DeviceLed()
-
-    # # Subscribe to topics
-    # print("\nSubscribing to topics...")
-    # sensor_topic.subscribe(sensor_handler)
-    # # to_esp.subscribe(to_esp_test_handler)
-    # # Give time for subscriptions to establish
-    # time.sleep(1)
-
-    # # Test publishing sensor data
-    # print("\nPublishing sensor data...")
-
-    
-    # try:
-    #     while True:
-    #         print("publishing OFF")
-    #         to_esp_handler.set_variable("", "OFF")
-    #         to_esp.publish(to_esp_handler.encode())
-    #         time.sleep(1)
-    #         print("publishing ON")
-    #         to_esp_handler.set_variable("", "ON")
-    #         to_esp.publish(to_esp_handler.encode())
-    #         sensor_handler.update_values(temp=randint(20, 30), humidity=randint(40, 60))
-    #         to_esp.publish(sensor_handler.encode())
-    #         print(f"from sensor: {sensor_handler}")
-    #         time.sleep(1)
-    # except KeyboardInterrupt:
-    #     print("\nExiting test...")

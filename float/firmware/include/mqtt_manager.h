@@ -10,9 +10,11 @@ class MQTTManager
 public:
     MQTTManager();
     void setup(const char *mqtt_broker, int mqtt_port,
-               const char *mqtt_username, const char *mqtt_password);
-    void loop();
+               const char *mqtt_username, const char *mqtt_password, bool asAccessPoint = false);
+    void loop(bool pollMqttConnection = true);
     bool publish(const char *topic, const char *payload, bool retained = false);
+    bool sendFileChunkedOverTopics(const char *topic, const char *filename);
+    bool sendFileChunkedWithFeedback(const char *topic, const char *filename);
 
 private:
     ESPMqttClient *_mqttClient;

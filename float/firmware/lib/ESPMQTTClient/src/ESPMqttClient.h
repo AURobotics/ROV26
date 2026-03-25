@@ -4,12 +4,18 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <FS.h>
+#include <base64.h>
+#include <ArduinoJson.h>
+
 // #include <ArduinoJson.h>
 // #include <map>
 // #include <string>
 // #include <any>
 // #include <stdexcept>
 // #include <functional>
+
+typedef uint32_t (*CRC32Function)(const uint8_t *data, size_t length);
 
 class ESPMqttClient
 {
@@ -25,14 +31,16 @@ public:
     ~ESPMqttClient();
 
     // Public methods
-    void begin();
-    void loop();
+    bool begin();
+    void loop(bool pollMqttConnection = true);
     bool publish(const char *topic = "test", const char *payload = "publishing to \"test\"", bool retained = false);
     bool subscribe(const char *topic = "test");
     bool unsubscribe(const char *topic);
     bool isConnected();
     void disconnect();
     void setCallback(std::function<void(char *, uint8_t *, unsigned int)> callback);
+    bool sendFileChunkedOverTopics(FS &fileSystem, const char *topic, const char *filename, CRC32Function crcCalculator = nullptr);
+    bool sendFileChunkedWithFeedback(FS &fileSystem, const char *topic, const char *filename, CRC32Function crcCalculator = nullptr);
 
 private:
     // WiFi
@@ -57,7 +65,7 @@ private:
     std::function<void(char *, uint8_t *, unsigned int)> _callback;
 
     // Private methods
-    void connectToMQTT();
+    bool connectToMQTT(bool poll = true);
 };
 
 // for future extension if needed instead of using the setCallback
