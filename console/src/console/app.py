@@ -10,11 +10,6 @@ from console.gui.main_window import MainWindow
 
 from console.gui.splash_screen import LoadingSplash
 
-import sys
-from pathlib import Path
-import os
-
-
 class ConsoleApplication(QApplication):
     startup_progress = Signal(str, int)
 
