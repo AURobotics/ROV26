@@ -1,6 +1,7 @@
 #include "mqtt_manager.h"
 #include <ESPMqttClient.h>
 #include <LittleFS.h>
+#include <rom/crc.h>
 
 const char *startingIP = "192.168.4.2"; // in case of access point mode, this will be the starting IP of the AP
 const char *IP2 = "192.168.4.3";
@@ -78,11 +79,16 @@ void MQTTManager::messageCallback(char *topic, uint8_t *payload, unsigned int le
     Serial.println(message);
 }
 
+uint32_t calculateCRC32(const uint8_t *data, size_t length)
+{
+    return ~crc32_le(~0, data, length);
+}
+
 bool MQTTManager::sendFileChunkedOverTopics(const char *topic, const char *filename)
 {
     if (_mqttClient != nullptr)
     {
-        return _mqttClient->sendFileChunkedOverTopics((FS&)LittleFS, topic, filename);
+        return _mqttClient->sendFileChunkedOverTopics((FS &)LittleFS, topic, filename, calculateCRC32);
     }
     return false;
 }
@@ -91,7 +97,7 @@ bool MQTTManager::sendFileChunkedWithFeedback(const char *topic, const char *fil
 {
     if (_mqttClient != nullptr)
     {
-        return _mqttClient->sendFileChunkedWithFeedback((FS&)LittleFS, topic, filename);
+        return _mqttClient->sendFileChunkedWithFeedback((FS &)LittleFS, topic, filename, calculateCRC32);
     }
     return false;
 }

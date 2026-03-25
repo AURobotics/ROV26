@@ -5,6 +5,8 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <FS.h>
+#include <base64.h>
+#include <ArduinoJson.h>
 
 // #include <ArduinoJson.h>
 // #include <map>
@@ -12,6 +14,8 @@
 // #include <any>
 // #include <stdexcept>
 // #include <functional>
+
+typedef uint32_t (*CRC32Function)(const uint8_t *data, size_t length);
 
 class ESPMqttClient
 {
@@ -35,8 +39,8 @@ public:
     bool isConnected();
     void disconnect();
     void setCallback(std::function<void(char *, uint8_t *, unsigned int)> callback);
-    bool sendFileChunkedOverTopics(FS &fileSystem, const char *topic, const char *filename);
-    bool sendFileChunkedWithFeedback(FS &fileSystem, const char *topic, const char *filename);
+    bool sendFileChunkedOverTopics(FS &fileSystem, const char *topic, const char *filename, CRC32Function crcCalculator = nullptr);
+    bool sendFileChunkedWithFeedback(FS &fileSystem, const char *topic, const char *filename, CRC32Function crcCalculator = nullptr);
 
 private:
     // WiFi
