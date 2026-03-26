@@ -21,7 +21,9 @@ wget -qO- https://astral.sh/uv/install.sh | sh
 
 ### Github CLI
 
-If your platform has supported `opencv-python` wheels released under [releases](https://github.com/AURobotics/ROV26/releases), do not skip this step.
+If your platform has supported `opencv-python` wheels released under [releases](https://github.com/AURobotics/ROV26/releases), this step is necessary for the next section to automatically get the wheels for you.
+
+If you opt to manually download the suitable wheel under [wheels](./wheels/), you can skip this step and peep into your platform's `setup_venv` script under [scripts](./scripts) to remove all lines related to obtaining `opencv-python` wheels.
 
 Windows:
 ```ps1
@@ -30,7 +32,7 @@ winget install --id GitHub.cli
 
 **Make sure to restart your shell or IDE to refresh any PATH updates**
 
-## Python dependencies
+## Python Dependencies
 
 Due to how we handle `opencv-python` and `gstreamer` support, during the initial venv setup, you should follow the steps corresponding to your platform:
 
@@ -72,4 +74,4 @@ After setting up the system, you must run:
 Remember to choose your `.venv`'s interpreter or choose `uv` as the virtual environment manager in your IDE.
 
 ### Visual Studio Code (recommended)
-You will find recommended extensions and settings under loaded into your IDE if [.vscode](./.vscode/) is loaded (automatically by opening this specific project's folder).
+You will find recommended extensions and settings loaded into your IDE if [.vscode](./.vscode/) is loaded (automatically by opening this specific project's folder).
