@@ -3,7 +3,6 @@ from typing import Any
 from PySide6.QtWidgets import QWidget, QLabel, QSizePolicy, QHBoxLayout, QPushButton
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QImage, QPixmap, QResizeEvent
-from cv2.typing import NumPyArrayNumeric
 from numpy import dtype, floating, integer
 from console.core.vision.camera import VideoStream
 import cv2

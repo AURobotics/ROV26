@@ -24,6 +24,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS"] = "1"
 os.environ["SDL_NO_SIGNAL_HANDLERS"] = "1"
+_IS_VIRTUALIZED = os.environ.get("VIRTUALIZED_UDEV")
 
 import pygame
 from pygame._sdl2 import controller as sdl_controller
@@ -620,6 +621,15 @@ class JoystickManager:
         PRUNE_INTERVAL = 30000  # 30 seconds in milliseconds
         clock = pygame.time.Clock()
         while self._running:
+            if (
+                _IS_VIRTUALIZED
+                and os.path.exists("/dev/input/js0")
+                and len(self._joysticks) == 0
+            ):
+                pygame.joystick.quit()
+                sdl_controller.quit()
+                pygame.joystick.init()
+                sdl_controller.init()
             if not pygame.joystick.get_init() or not sdl_controller.get_init():
                 break
 

@@ -3,5 +3,5 @@ Set-Location $PROJECT_ROOT
 
 Remove-Item -Recurse -Force .venv
 Remove-Item uv.lock
-uv run --no-project --with packaging scripts/get_opencv.py
+uv run --no-project --with packaging scripts/get_opencv_wheel.py
 uv sync

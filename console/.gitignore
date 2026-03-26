@@ -4,6 +4,7 @@ env/
 .venv/
 uv.lock
 
+
 # Python cache
 __pycache__/
 *.pyc
@@ -17,8 +18,5 @@ __pycache__/
 build/
 dist/
 
-# opencv-build branch leftovers
-bin/
-vendored/
-wheelhouse/
+# opencv-build leftovers
 .tmp/
