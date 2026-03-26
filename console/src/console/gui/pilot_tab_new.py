@@ -40,21 +40,25 @@ class PilotTab2(QWidget):
         self.camera_container = QWidget()
         self._cam_layout = QHBoxLayout(self.camera_container)
 
-        self.camera1 = CameraDisplay(None, cam1)
-        self.camera2 = CameraDisplay(None, cam2)
-        self.camera3 = CameraDisplay(None, cam3)
+        self.camera1 = CameraDisplay(cam1)
+        self.camera2 = CameraDisplay(cam2)
+        self.camera3 = CameraDisplay(cam3)
 
         for cam in [self.camera1, self.camera2, self.camera3]:
-            cam.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+            cam.setSizePolicy(
+                QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
+            )
             self._cam_layout.addWidget(cam, stretch=1)
 
         self.dock_host.setCentralWidget(self.camera_container)
 
         # 4. Initialize and Position Docks
-        # self._setup_docks()
+        self._setup_docks()
 
     def _setup_docks(self):
-        self.dock_host.setCorner(Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
+        self.dock_host.setCorner(
+            Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea
+        )
 
         # 4.1 Create the actual instances of your widgets
         self.leakage_widget = LeakageDisplay()
@@ -87,11 +91,9 @@ class PilotTab2(QWidget):
             Qt.DockWidgetArea.BottomDockWidgetArea, self.thruster_dock
         )
 
-
         self.dock_host.addDockWidget(
             Qt.DockWidgetArea.RightDockWidgetArea, self.depth_dock
         )
-
 
         self.dock_host.splitDockWidget(
             self.thruster_dock, self.compass_dock, Qt.Orientation.Horizontal

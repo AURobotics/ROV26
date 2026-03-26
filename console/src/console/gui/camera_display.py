@@ -1,16 +1,19 @@
+from typing import Any
+
 from PySide6.QtWidgets import QWidget, QLabel, QSizePolicy, QHBoxLayout, QPushButton
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QImage, QPixmap, QResizeEvent
+from cv2.typing import NumPyArrayNumeric
+from numpy import dtype, floating, integer
 from console.core.vision.camera import VideoStream
 import cv2
 
 from console.core.vision.gstreamer import Gst
 
 class CameraDisplay(QWidget):
-    def __init__(self, camera_device: VideoStream, gst: Gst, parent: QWidget | None = None):
+    def __init__(self, camera_device: VideoStream, parent: QWidget | None = None):
         super().__init__(parent)
         
-        self._gst = gst
         self._camera_device = camera_device
         self._rotation_angle = 0
         self._is_flipped_h = False
@@ -85,7 +88,7 @@ class CameraDisplay(QWidget):
         return
 
     def update_view(self):
-        frame = self._gst.frame
+        frame: cv2.Mat | ndarray[Any, dtype[integer[Any] | floating[Any]]] | None = self._camera_device.frame
         if frame is None:
             return
         frame = frame.copy()

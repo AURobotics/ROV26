@@ -1,4 +1,5 @@
 import math
+from random import randint, random
 from PySide6.QtCore import QTimer, Slot, QObject, Property, Signal
 
 from console.gui.model.sensors import Sensors
@@ -26,7 +27,7 @@ class ThrusterStatus(QObject):
     @Property(float, notify=thrustLevelChanged)
     def thrustLevel1(self):
         return self._thrustLevel1
-    
+
     @Property(float, notify=thrustLevelChanged)
     def thrustLevel2(self):
         return self._thrustLevel2
@@ -38,19 +39,19 @@ class ThrusterStatus(QObject):
     @Property(float, notify=thrustLevelChanged)
     def thrustLevel4(self):
         return self._thrustLevel4
-    
+
     @Property(float, notify=thrustLevelChanged)
     def thrustLevel5(self):
         return self._thrustLevel5
-    
+
     @Property(float, notify=thrustLevelChanged)
     def totalHorizontalThrust(self):
         return self._total_h_thrust
-    
+
     @Property(float, notify=thrustLevelChanged)
     def horizontalAngle(self):
         return self._h_angle
-    
+
     def calc_direction(self):
         x_total = self._thrustLevel1 / math.sqrt(2)
         y_total = self._thrustLevel1 / math.sqrt(2)
@@ -66,11 +67,16 @@ class ThrusterStatus(QObject):
 
     @Slot()
     def update_thrust(self):
-        new_thrust1 = self._model.thruster(1)
-        new_thrust2 = self._model.thruster(2)
-        new_thrust3 = self._model.thruster(3)
-        new_thrust4 = self._model.thruster(4)
-        new_thrust5 = self._model.thruster(5)
+        # new_thrust1 = self._model.thruster(1)
+        # new_thrust2 = self._model.thruster(2)
+        # new_thrust3 = self._model.thruster(3)
+        # new_thrust4 = self._model.thruster(4)
+        # new_thrust5 = self._model.thruster(5)
+        new_thrust1 = 0.5
+        new_thrust2 = 0.5
+        new_thrust3 = 0.5
+        new_thrust4 = 0.5
+        new_thrust5 = 0.25
 
         changed = False
         if self._thrustLevel1 != new_thrust1:

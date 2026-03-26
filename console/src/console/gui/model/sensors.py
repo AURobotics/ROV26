@@ -6,16 +6,20 @@ class Sensors:
         self._comms = comms_manager
 
     def thruster(self, num: int) -> float:
+        return 0
         return self._comms.sensor_cache['thrusters'][num - 1]
 
     @property
     def yaw(self) -> float:
-        return self._comms.sensor_cache["yaw"]
+        return 15
+        # return self._comms.sensor_cache["yaw"]
 
     @property
     def pitch(self) -> float:
+        return 20
         return self._comms.sensor_cache["pitch"]
 
     @property
     def roll(self) -> float:
+        return 0
         return self._comms.sensor_cache["roll"]
