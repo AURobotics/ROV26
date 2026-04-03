@@ -35,6 +35,7 @@
 
 TMC_interfacer::TMC_interfacer(int ms){
     this->ms = ms;
+    // this->ms = 1;
 }
 
 float TMC_interfacer::VACTUAL2SPS(uint32_t VACTUAL){
@@ -84,16 +85,15 @@ void TMC_interfacer::normal_setup(int rms_current, int steps_per_second){
     driver.I_scale_analog(false);
     driver.rms_current(rms_current); 
     driver.mstep_reg_select(true);
-    driver.microsteps(this->ms); 
-    Serial.print("using MS = ");
-    Serial.println(driver.microsteps());
+    driver.microsteps(this->ms);
+    if(this->ms == 0)
+        this->ms += 1;
     Serial.println("starting in 5 seconds: ");
     driver.toff(0); 
     delay(5000);
     Serial.println("started!");
     driver.toff(5); 
     driver.VACTUAL(SPS2VACTUAL(steps_per_second));
-    // driver.VACTUAL(50 * this->ms / this->oscillator_multiplier);
 }
 
 void TMC_interfacer::manual_ramp(){
@@ -101,7 +101,7 @@ void TMC_interfacer::manual_ramp(){
     while(true){
         while(Serial.available() <= 0)
             delay(10);
-        char receivedChar = Serial.read();  // Read a single character
+        char receivedChar = Serial.read();
         if(receivedChar == 'u'){
             velocity += 5;
             Serial.print("velocity before sending: ");
@@ -131,6 +131,63 @@ void TMC_interfacer::manual_ramp(){
     }
 }
 
+void TMC_interfacer::single_step(){
+    char receivedChar;
+    while(true){
+        while(Serial.available() <= 0)
+            delay(10);
+        receivedChar = Serial.read();
+        if(receivedChar == 's'){
+            Serial.println("STEP");
+            digitalWrite(STEP_PIN, HIGH);
+            delayMicroseconds(160); 
+            digitalWrite(STEP_PIN, LOW);
+        }
+        else if(receivedChar == 'd'){
+            driver.shaft(!driver.shaft());
+            delay(5);
+        }
+        else if(receivedChar == 'z'){
+            for(int i = 0; i < 100; i++){
+                digitalWrite(STEP_PIN, HIGH);
+                delay(10);
+                digitalWrite(STEP_PIN, LOW);
+                delay(10);
+            }
+        }
+        else if(receivedChar == 'h'){
+            stop_motor(true);
+        }
+    }
+}
+
+// void TMC_interfacer::step_dir_ramp(){
+//     char receivedChar;
+//     while(true){
+//         int time_difference = 0;
+//         for (uint16_t i = 5000; i>0; i--) {
+//         digitalWrite(STEP_PIN, HIGH);
+//         delay(160);
+//         digitalWrite(STEP_PIN, LOW);
+//         delay(160);
+//         }
+//         if(Serial.available() > 0){
+//             receivedChar = Serial.read();
+//             if(receivedChar == 'u'){
+
+//             }
+//             else if(receivedChar == 'd'){
+
+//             }
+//             else if(receivedChar == 'h'){
+//                 stop_motor(true);
+//             }
+//             // else if(receivedChar == 'c'){
+//             //     break;
+//             // }
+//         }
+//     }
+// }
 void TMC_interfacer::measure_position(){
     //TODO HANDLE BACKWORD ROTATION COUNTING
     //TODO HANDLE POSITION ACCURACY (about 30 degree error per rotation)
@@ -141,7 +198,7 @@ void TMC_interfacer::measure_position(){
     }
     int step_difference = sequence_difference / 256; //every 256, a step has been made
     if(sequence_difference >= 1){
-        rotations += (1/(float)STEPS) * step_difference; 
+        rotations += (step_difference/(float)STEPS) ; 
         prev_sequencer = current_sequencer;
     }
     // Serial.println(current_sequencer);
