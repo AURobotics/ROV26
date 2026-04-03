@@ -3,7 +3,7 @@
 // #include <position_test.h>
 //stepper motor microsteps
 #define MS 256
-#define RMS_CURRENT 1300
+#define RMS_CURRENT 1000
 #define K_P 0.086
 #define K_I 0.00879
 #define K_D 0.187
@@ -18,17 +18,20 @@ void setup() {
   while(!Serial2){
     delay(1);
   }
+  pinMode(STEP_PIN, OUTPUT);  
   Serial.begin(9600); 
   delay(500); 
   Serial.print("TMC interfacer created with ms: ");
   Serial.println(driver.ms);
-  driver.normal_setup(RMS_CURRENT, 25);
+  driver.normal_setup(RMS_CURRENT, 6);
+
   driver.manual_ramp();
+  // driver.single_step();
   // normal_setup(RMS_CURRENT, MS);
 }
 
 void loop() {  
   driver.measure_position();
-  delay(20);
+  delay(1);
   driver.readSerialAndRespond();
 }

@@ -8,6 +8,9 @@
 #define RX_PIN 16 
 #define TX_PIN 17
 #define STEPS 200
+#define STEP_PIN 22
+#define DIR_PIN 23
+
 class TMC_interfacer{
     public:
         TMC_interfacer(int ms);
@@ -18,6 +21,7 @@ class TMC_interfacer{
         int prev_sequencer = 0;
         int ms;
         float oscillator_multiplier = 0.715;
+        bool going_forward = true; //false if rotating the other direction
         TMC2208Stepper driver = TMC2208Stepper(&Serial2, R_SENSE);
         void normal_setup(int rms_current, int steps_per_second);
         void readSerialAndRespond();
@@ -26,6 +30,8 @@ class TMC_interfacer{
         void manual_ramp();
         float VACTUAL2SPS(uint32_t VACTUAL);
         uint32_t SPS2VACTUAL(int steps);
+        void step_dir_ramp();
+        void single_step();
 
 };
 
