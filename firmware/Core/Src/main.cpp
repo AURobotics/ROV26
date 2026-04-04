@@ -45,7 +45,7 @@ void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
     //     data[1] = std::nullopt;
     // }
 
-    if (HAL_GetTick() - mpu9250.last_read_time > 50) {
+   if (HAL_GetTick() - mpu9250.last_read_time > 50) {
         mpu9250.update();
         vec_3 angles = mpu9250.getEulerAngles();
         vec_3 rates = mpu9250.getBodyRates();
