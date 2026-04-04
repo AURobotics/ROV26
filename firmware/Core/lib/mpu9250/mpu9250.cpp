@@ -6,7 +6,7 @@
 int16_t accelCount[3]; // Stores the 16-bit signed accelerometer sensor output
 int16_t gyroCount[3]; // Stores the 16-bit signed gyro sensor output
 int16_t magCount[3]; // Stores the 16-bit signed magnetometer sensor output
-float magCalibration[3] = {0, 0, 0}, magbias[3] = {0, 0, 0}; // Factory mag calibration and mag bias
+float magCalibration[3] = {0, 0, 0}, magbias[3] = {0, 0, 0}, magscale[3] = {1.0f, 1.0f, 1.0f}; // Factory mag calibration and mag bias
 float gyroBias[3] = {0, 0, 0},
       accelBias[3] = {0, 0, 0}; // Bias corrections for gyro and accelerometer
 float ax, ay, az, gx, gy, gz, mx, my, mz; // variables to hold latest sensor data values
@@ -15,14 +15,12 @@ float temperature;
 float SelfTest[6];
 CalibrationData calib;
 
-int delt_t = 0; // used to control display output rate
-int count = 0; // used to control display output rate
 
 // parameters for 6 DoF sensor fusion calculations
 float PI = 3.14159265358979323846f;
-float GyroMeasError = PI * (60.0f / 180.0f); // gyroscope measurement error in rads/s (start at 60
+float GyroMeasError = PI * (5.0f / 180.0f); // gyroscope measurement error in rads/s (start at 60
                                              // deg/s), then reduce after ~10 s to 3
-float beta = 0.1; // sqrt(3.0f / 4.0f) * GyroMeasError;  // compute beta
+float beta = sqrt(3.0f / 4.0f) * GyroMeasError;  // compute beta
 float GyroMeasDrift =
     PI * (1.0f / 180.0f); // gyroscope measurement drift in rad/s/s (start at 0.0 deg/s/s)
 float zeta =
@@ -79,10 +77,6 @@ void MPU9250::update() {
         accelBias[0]; // get actual g value, this depends on scale being set
     ay = (float)accelCount[1] * aRes - accelBias[1];
     az = (float)accelCount[2] * aRes - accelBias[2];
-    // char buffer1[100];
-    // int len = 0;
-    // len +=sprintf(buffer1+len,"\n\rax = %f, ay = %f, az = %f",ax,ay,az);
-    // CDC_Transmit_FS((uint8_t*)buffer1,len);
 
     getGres();
     readGyroData(gyroCount); // Read the x/y/z adc values
@@ -91,21 +85,15 @@ void MPU9250::update() {
         gyroBias[0]; // get actual gyro value, this depends on scale being set
     gy = (float)gyroCount[1] * gRes - gyroBias[1];
     gz = (float)gyroCount[2] * gRes - gyroBias[2];
-    // len =0;
-    // len +=sprintf(buffer1+len,"\n\rgx = %f, gy = %f, gz = %f",gx,gy,gz);
-    // CDC_Transmit_FS((uint8_t*)buffer1,len);
 
     getMres();
     readMagData(magCount); // Read the x/y/z adc values
     // Calculate the magnetometer values in milliGauss
     // Include factory calibration per data sheet and user environmental corrections
-    mx = (float)magCount[0] * mRes * magCalibration[0] -
-        magbias[0]; // get actual magnetometer value, this depends on scale being set
-    my = (float)magCount[1] * mRes * magCalibration[1] - magbias[1];
-    mz = (float)magCount[2] * mRes * magCalibration[2] - magbias[2];
-    // len =0;
-    // len += sprintf(buffer1+len,"\n\rmx = %f , my = %f, mz = %f",mx,my,mz);
-    // CDC_Transmit_FS((uint8_t*)buffer1,len);
+    mx = ((float)magCount[0] * mRes * magCalibration[0] - magbias[0]) * magscale[0];
+    my = ((float)magCount[1] * mRes * magCalibration[1] - magbias[1]) * magscale[1];
+    mz = ((float)magCount[2] * mRes * magCalibration[2] - magbias[2]) * magscale[2];
+
     MadgwickQuaternionUpdate(
         ax, ay, az, gx * PI / 180.0f, gy * PI / 180.0f, gz * PI / 180.0f, mx, my, mz);
 }
@@ -124,6 +112,61 @@ void MPU9250::readGyroData(int16_t* destination) {
     destination[0] = (int16_t)(((int16_t)rawData[0] << 8) | rawData[1]);
     destination[1] = (int16_t)(((int16_t)rawData[2] << 8) | rawData[3]);
     destination[2] = (int16_t)(((int16_t)rawData[4] << 8) | rawData[5]);
+}
+
+void MPU9250::calibrateMag(uint16_t num_samples) {
+    float mx_max = -9999, my_max = -9999, mz_max = -9999;
+    float mx_min =  9999, my_min =  9999, mz_min =  9999;
+
+    char buf[120];
+    int len;
+
+    len = sprintf(buf, "\r\nMag cal: rotate sensor in all directions...\r\n");
+    CDC_Transmit_FS((uint8_t*)buf, len);
+    HAL_Delay(3000);
+
+    for (uint16_t i = 0; i < num_samples; i++) {
+        int16_t magRaw[3];
+        readMagData(magRaw);
+
+        float mx = (float)magRaw[0] * mRes * magCalibration[0];
+        float my = (float)magRaw[1] * mRes * magCalibration[1];
+        float mz = (float)magRaw[2] * mRes * magCalibration[2];
+
+        if (mx > mx_max) mx_max = mx;
+        if (my > my_max) my_max = my;
+        if (mz > mz_max) mz_max = mz;
+        if (mx < mx_min) mx_min = mx;
+        if (my < my_min) my_min = my;
+        if (mz < mz_min) mz_min = mz;
+
+        if (i % 100 == 0) {
+            len = sprintf(buf, "\r\nSample %d/%d", i, num_samples);
+            CDC_Transmit_FS((uint8_t*)buf, len);
+        }
+        HAL_Delay(10);
+    }
+
+    // Write directly into magbias and magscale
+    magbias[0] = (mx_max + mx_min) / 2.0f;
+    magbias[1] = (my_max + my_min) / 2.0f;
+    magbias[2] = (mz_max + mz_min) / 2.0f;
+
+    float range_x = (mx_max - mx_min) / 2.0f;
+    float range_y = (my_max - my_min) / 2.0f;
+    float range_z = (mz_max - mz_min) / 2.0f;
+    float avg_range = (range_x + range_y + range_z) / 3.0f;
+
+    magscale[0] = avg_range / range_x;
+    magscale[1] = avg_range / range_y;
+    magscale[2] = avg_range / range_z;
+
+    // Print so you can see what was computed
+    len = sprintf(buf,
+        "\r\nbias: %.4f, %.4f, %.4f\r\nscale: %.4f, %.4f, %.4f\r\n",
+        magbias[0], magbias[1], magbias[2],
+        magscale[0], magscale[1], magscale[2]);
+    CDC_Transmit_FS((uint8_t*)buf, len);
 }
 
 void MPU9250::readMagData(int16_t* destination) {

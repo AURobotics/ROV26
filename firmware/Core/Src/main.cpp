@@ -30,7 +30,7 @@ enum class Test_state { OFF, STEPPING, DONE };
     while (0)
 
 MPU9250 mpu9250(&hi2c3);
-MS5611 ms5611(&hi2c3);
+// MS5611 ms5611(&hi2c3);
 Cdc_driver cdc(20); /*need to set timeout*/
 
 extern "C" int _write(int file, char* ptr, int len) {
@@ -40,10 +40,10 @@ extern "C" int _write(int file, char* ptr, int len) {
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
 void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
-    if (HAL_GetTick() - ms5611.last_read_time > 50) {
-        data[0] = ms5611.getPressure();
-        data[1] = std::nullopt;
-    }
+    // if (HAL_GetTick() - ms5611.last_read_time > 50) {
+    //     data[0] = ms5611.getPressure();
+    //     data[1] = std::nullopt;
+    // }
 
     if (HAL_GetTick() - mpu9250.last_read_time > 50) {
         mpu9250.update();
@@ -95,11 +95,11 @@ static uint32_t read_adc(uint32_t channel) {
     return value;
 }
 
-static void GripperOpen() {
+static void GripperUp() {
     HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_RESET);
 }
-static void GripperClose() {
+static void GripperDown() {
     HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_SET);
 }
@@ -218,8 +218,8 @@ int main() {
     uint32_t now = HAL_GetTick();
 
     float data[6]; // Fx Fy Fz Froll Fpitch Fyaw
-                   // if control bit = 1 setpoint hatetba3at makan
-                   // el force fa will use this array as setpoint too
+    // if control bit = 1 setpoint hatetba3at makan
+    // el force fa will use this array as setpoint too
     float controller_output[6]; // surge sway depth roll pitch yaw
     float hold[4]; // depth roll pitch yaw
 
@@ -229,20 +229,20 @@ int main() {
     //                             Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
     //                             Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
 
-    Motor motors[] = {Motor({&htim1, TIM_CHANNEL_2}, {&htim1, TIM_CHANNEL_3}),
-                      Motor({&htim3, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_3}),
-                      Motor({&htim3, TIM_CHANNEL_3}, {&htim3, TIM_CHANNEL_2}),
-                      Motor({&htim3, TIM_CHANNEL_1}, {&htim2, TIM_CHANNEL_1}),
-                      Motor({&htim5, TIM_CHANNEL_3}, {&htim5, TIM_CHANNEL_2}),
-                      Motor({&htim4, TIM_CHANNEL_4}, {&htim4, TIM_CHANNEL_3}),
-                      Motor({&htim4, TIM_CHANNEL_1}, {&htim4, TIM_CHANNEL_2}),
-                      Motor({&htim5, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_2})};
-
-
-    for (const auto& motor : motors) {
-        motor.setup();
-    }
-
+    // Motor motors[] = {Motor({&htim1, TIM_CHANNEL_2}, {&htim1, TIM_CHANNEL_3}),
+    //                   Motor({&htim3, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_3}),
+    //                   Motor({&htim3, TIM_CHANNEL_3}, {&htim3, TIM_CHANNEL_2}),
+    //                   Motor({&htim3, TIM_CHANNEL_1}, {&htim2, TIM_CHANNEL_1}),
+    //                   Motor({&htim5, TIM_CHANNEL_3}, {&htim5, TIM_CHANNEL_2}),
+    //                   Motor({&htim4, TIM_CHANNEL_4}, {&htim4, TIM_CHANNEL_3}),
+    //                   Motor({&htim4, TIM_CHANNEL_1}, {&htim4, TIM_CHANNEL_2}),
+    //                   Motor({&htim5, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_2})};
+    //
+    //
+    // for (const auto& motor : motors) {
+    //     motor.setup();
+    // }
+    //
     Motor gripper( // TODO: use this variable
         [](float speed)
         {
@@ -260,21 +260,22 @@ int main() {
             }
         });
 
-    gripper.move(1);
-    motors[4].move(1);
-    motors[5].move(1);
 
-
+    // motors[4].move(1);
+    // motors[5].move(1);
+    //
+    //
     std::array<std::optional<float>, 8> sensor_data;
-    TxPacket tx_pkt;
-    tx_pkt.type = SENSOR_MESSAGE;
-    GenericMessage msg{};
-    float clamped_motors[8] = {};
+    // TxPacket tx_pkt;
+    // tx_pkt.type = SENSOR_MESSAGE;
+    // GenericMessage msg{};
+    // float clamped_motors[8] = {};
 
     //__HAL_TIM_SET_COMPARE(&htim1,2,0);
 
     mpu9250.init();
-    ms5611.begin();
+    mpu9250.calibrateMag(2000);
+    // ms5611.begin();
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
@@ -315,6 +316,10 @@ int main() {
 
         fetch_sensor_data(sensor_data);
 
+       // GripperUp();
+        //HAL_Delay(2000);
+        //GripperDown();
+      //  HAL_Delay(2000);
 
         // if (data_received_flag) {
         //     data_received_flag = 0;
@@ -377,16 +382,29 @@ int main() {
         //         // sway
         //         controller_output[1] = data[1]*4;
         //     }
-        //   HAL_GPIO_WritePin(DCV_1_GPIO_Port,
-        //                     DCV_1_Pin,
-        //                     GPIO_PIN_RESET);
+        //
+        //HAL_GPIO_WritePin(DCV_1_GPIO_Port,
+        //                DCV_1_Pin,
+        //                GPIO_PIN_RESET);
 
 
-        //   HAL_GPIO_WritePin(DCV_2_GPIO_Port,
-        //                     DCV_2_Pin,
-        //                     GPIO_PIN_RESET);
+//        HAL_GPIO_WritePin(DCV_2_GPIO_Port,
+  //                         DCV_2_Pin,
+    //                    GPIO_PIN_RESET);
 
-        // }
+
+      //  HAL_Delay(2000);
+      //  HAL_GPIO_WritePin(DCV_1_GPIO_Port,
+      //              DCV_1_Pin,
+      //              GPIO_PIN_SET);
+
+
+        //HAL_GPIO_WritePin(DCV_2_GPIO_Port,
+        //                   DCV_2_Pin,
+        //                GPIO_PIN_SET);
+        //HAL_Delay(2000);
+
+
 
         // else { // Testing mode
         //     if (last_received_msg_type == TUNING_MESSAGE && test_state == Test_state::OFF) {
@@ -428,39 +446,25 @@ int main() {
         //
 
         ///////////////////send data to GUI/////////////////////
-        static TxPacket feedback_pkt{};
 
-        if (HAL_GetTick() - last_send_time >= 50) {
-            fetch_sensor_data(sensor_data);
-            last_send_time = HAL_GetTick();
 
-            feedback_pkt.sync_byte = 0xFF;
-            feedback_pkt.type = 0x01;
-            // feedback_pkt.status = loadStatus();
+        // motor telemetry
+        //    for (int i = 0; i < 8; i++) {
+        //        feedback_pkt.motor_speeds[i] = clamped_motors[i] * 255.0f;
+        //    }
 
-            // sensor telemetry
-            feedback_pkt.depth = sensor_data[0].value_or(0.0f);
-            feedback_pkt.roll = sensor_data[2].value_or(0.0f);
-            feedback_pkt.pitch = sensor_data[4].value_or(0.0f);
-            feedback_pkt.yaw = sensor_data[6].value_or(0.0f);
+        // cdc.write_msg(&feedback_pkt);
 
-            // motor telemetry
-            //    for (int i = 0; i < 8; i++) {
-            //        feedback_pkt.motor_speeds[i] = clamped_motors[i] * 255.0f;
-            //    }
-
-            // cdc.write_msg(&feedback_pkt);
-
-            printf("\n\rdepth = %d yaw = %d, pitch = %d, roll = %d\n",
-                   (int)feedback_pkt.depth,
-                   (int)feedback_pkt.yaw,
-                   (int)feedback_pkt.pitch,
-                   (int)feedback_pkt.roll);
+        if (HAL_getTick() - prev > 50) {
+            printf("\n\r yaw = %f, pitch = %f, roll = %f\n",
+                   data[6],
+                   data[4],
+                   data[2]);
         }
+
+        // }
     }
 }
-
-
 /**
  * @brief System Clock Configuration
  * @retval None
