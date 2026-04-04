@@ -5,7 +5,6 @@
 
 class Motor {
     enum class HandlerType : uint8_t { FUNCTION, PWM } handler_type;
-
     struct pwm {
         TIM_HandleTypeDef* htim;
         uint8_t channel;
@@ -15,6 +14,8 @@ class Motor {
 
 
 public:
+    float val{};
+
     explicit constexpr Motor(void (*fn)(float)) : handler_type(HandlerType::FUNCTION) {
         handler_function = fn;
     }
@@ -24,7 +25,9 @@ public:
     Motor(const Motor&) = delete;
     Motor& operator=(const Motor&) = delete;
     void setup() const;
-    void move(float speed) const;
-    void stop() const;
-    static void move_motor(Motor motors[8], float speeds[8]);
+    void move(float speed);
+    void stop();
+    void swap_direction();
+    static void move_array(Motor motors[8], float speeds[8]);
+
 };

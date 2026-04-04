@@ -29,7 +29,7 @@ enum class Test_state { OFF, STEPPING, DONE };
             (_regs_)[addr] = (_data_);                                                             \
     while (0)
 
-MPU9250 mpu9250(&hi2c3);
+MPU9250 mpu(&hi2c3);
 // MS5611 ms5611(&hi2c3);
 Cdc_driver cdc(20); /*need to set timeout*/
 
@@ -45,17 +45,10 @@ void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
     //     data[1] = std::nullopt;
     // }
 
-   if (HAL_GetTick() - mpu9250.last_read_time > 50) {
-        mpu9250.update();
-        vec_3 angles = mpu9250.getEulerAngles();
-        vec_3 rates = mpu9250.getBodyRates();
+    if (HAL_GetTick() - mpu.last_read_time > 50) {
+        mpu.update();
 
-        data[2] = angles.x(); // roll
-        data[3] = 0; // rates.x();
-        data[4] = angles.y(); // pitch
-        data[5] = 0; // rates.y();
-        data[6] = angles.z(); // yaw
-        data[7] = 0; // rates.z();
+
     }
 }
 
@@ -95,13 +88,18 @@ static uint32_t read_adc(uint32_t channel) {
     return value;
 }
 
-static void GripperUp() {
+static void gripper_up() {
     HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_RESET);
 }
-static void GripperDown() {
+static void gripper_down() {
     HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_SET);
+}
+
+static void gripper_stop() {
+    HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(MOTOR_GRIPPER_B_GPIO_Port, MOTOR_GRIPPER_B_Pin, GPIO_PIN_RESET);
 }
 
 static uint8_t loadStatus() {
@@ -229,19 +227,19 @@ int main() {
     //                             Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
     //                             Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
 
-    // Motor motors[] = {Motor({&htim1, TIM_CHANNEL_2}, {&htim1, TIM_CHANNEL_3}),
-    //                   Motor({&htim3, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_3}),
-    //                   Motor({&htim3, TIM_CHANNEL_3}, {&htim3, TIM_CHANNEL_2}),
-    //                   Motor({&htim3, TIM_CHANNEL_1}, {&htim2, TIM_CHANNEL_1}),
-    //                   Motor({&htim5, TIM_CHANNEL_3}, {&htim5, TIM_CHANNEL_2}),
-    //                   Motor({&htim4, TIM_CHANNEL_4}, {&htim4, TIM_CHANNEL_3}),
-    //                   Motor({&htim4, TIM_CHANNEL_1}, {&htim4, TIM_CHANNEL_2}),
-    //                   Motor({&htim5, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_2})};
-    //
-    //
-    // for (const auto& motor : motors) {
-    //     motor.setup();
-    // }
+    Motor motors[] = {Motor({&htim1, TIM_CHANNEL_2}, {&htim1, TIM_CHANNEL_3}),
+                      Motor({&htim3, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_3}),
+                      Motor({&htim3, TIM_CHANNEL_3}, {&htim3, TIM_CHANNEL_2}),
+                      Motor({&htim3, TIM_CHANNEL_1}, {&htim2, TIM_CHANNEL_1}),
+                      Motor({&htim5, TIM_CHANNEL_3}, {&htim5, TIM_CHANNEL_2}),
+                      Motor({&htim4, TIM_CHANNEL_4}, {&htim4, TIM_CHANNEL_3}),
+                      Motor({&htim4, TIM_CHANNEL_1}, {&htim4, TIM_CHANNEL_2}),
+                      Motor({&htim5, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_2})};
+
+
+    for (auto& motor : motors)
+        motor.setup();
+
     //
     Motor gripper( // TODO: use this variable
         [](float speed)
@@ -273,13 +271,24 @@ int main() {
 
     //__HAL_TIM_SET_COMPARE(&htim1,2,0);
 
-    mpu9250.init();
-    mpu9250.calibrateMag(2000);
+    mpu.init();
     // ms5611.begin();
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
-        static Message_Type msg_type;
+
+        mpu.update();
+        static u_long last_print_time = HAL_GetTick();
+        const u_long _now = HAL_GetTick();
+        if (_now - last_print_time >= 100) {
+            last_print_time = _now;
+            vec_3 angles{};
+            mpu.getEulerAngles(angles);
+            printf("\r\n%f", angles.z());
+        }
+        HAL_Delay(10);
+
+        // static Message_Type msg_type;
         //  if (cdc.available()) {
         //      msg_type = cdc.read_msg(msg);
 
@@ -314,12 +323,12 @@ int main() {
         //}
 
 
-        fetch_sensor_data(sensor_data);
-
-       // GripperUp();
-        //HAL_Delay(2000);
-        //GripperDown();
-      //  HAL_Delay(2000);
+        // fetch_sensor_data(sensor_data);
+        //
+        // gripper.move(1);
+        // HAL_Delay(1000);
+        // gripper.move(-1);
+        // HAL_Delay(1000);
 
         // if (data_received_flag) {
         //     data_received_flag = 0;
@@ -383,27 +392,26 @@ int main() {
         //         controller_output[1] = data[1]*4;
         //     }
         //
-        //HAL_GPIO_WritePin(DCV_1_GPIO_Port,
+        // HAL_GPIO_WritePin(DCV_1_GPIO_Port,
         //                DCV_1_Pin,
         //                GPIO_PIN_RESET);
 
 
-//        HAL_GPIO_WritePin(DCV_2_GPIO_Port,
-  //                         DCV_2_Pin,
-    //                    GPIO_PIN_RESET);
+        //        HAL_GPIO_WritePin(DCV_2_GPIO_Port,
+        //                         DCV_2_Pin,
+        //                    GPIO_PIN_RESET);
 
 
-      //  HAL_Delay(2000);
-      //  HAL_GPIO_WritePin(DCV_1_GPIO_Port,
-      //              DCV_1_Pin,
-      //              GPIO_PIN_SET);
+        //  HAL_Delay(2000);
+        //  HAL_GPIO_WritePin(DCV_1_GPIO_Port,
+        //              DCV_1_Pin,
+        //              GPIO_PIN_SET);
 
 
-        //HAL_GPIO_WritePin(DCV_2_GPIO_Port,
-        //                   DCV_2_Pin,
-        //                GPIO_PIN_SET);
-        //HAL_Delay(2000);
-
+        // HAL_GPIO_WritePin(DCV_2_GPIO_Port,
+        //                    DCV_2_Pin,
+        //                 GPIO_PIN_SET);
+        // HAL_Delay(2000);
 
 
         // else { // Testing mode
@@ -455,12 +463,6 @@ int main() {
 
         // cdc.write_msg(&feedback_pkt);
 
-        if (HAL_getTick() - prev > 50) {
-            printf("\n\r yaw = %f, pitch = %f, roll = %f\n",
-                   data[6],
-                   data[4],
-                   data[2]);
-        }
 
         // }
     }

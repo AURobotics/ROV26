@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.20)
 
 #
 # This file is generated only once,
@@ -84,5 +84,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 )
 
 target_link_options(${PROJECT_NAME} PRIVATE
-        -u _printf_float
+       -u _printf_float
 )

@@ -3,36 +3,6 @@
 
 #include "usbd_cdc_if.h"
 
-int16_t accelCount[3]; // Stores the 16-bit signed accelerometer sensor output
-int16_t gyroCount[3]; // Stores the 16-bit signed gyro sensor output
-int16_t magCount[3]; // Stores the 16-bit signed magnetometer sensor output
-float magCalibration[3] = {0, 0, 0}, magbias[3] = {0, 0, 0}, magscale[3] = {1.0f, 1.0f, 1.0f}; // Factory mag calibration and mag bias
-float gyroBias[3] = {0, 0, 0},
-      accelBias[3] = {0, 0, 0}; // Bias corrections for gyro and accelerometer
-float ax, ay, az, gx, gy, gz, mx, my, mz; // variables to hold latest sensor data values
-int16_t tempCount; // Stores the real internal chip temperature in degrees Celsius
-float temperature;
-float SelfTest[6];
-CalibrationData calib;
-
-
-// parameters for 6 DoF sensor fusion calculations
-float PI = 3.14159265358979323846f;
-float GyroMeasError = PI * (5.0f / 180.0f); // gyroscope measurement error in rads/s (start at 60
-                                             // deg/s), then reduce after ~10 s to 3
-float beta = sqrt(3.0f / 4.0f) * GyroMeasError;  // compute beta
-float GyroMeasDrift =
-    PI * (1.0f / 180.0f); // gyroscope measurement drift in rad/s/s (start at 0.0 deg/s/s)
-float zeta =
-    sqrt(3.0f / 4.0f) * GyroMeasDrift; // compute zeta, the other free parameter in the Madgwick
-                                       // scheme usually set to a small or zero value
-
-float pitch, yaw, roll;
-float deltat = 0.0f; // integration interval for both filter schemes
-int lastUpdate = 0, firstUpdate = 0, Now = 0; // used to calculate integration interval // used to
-                                              // calculate integration interval
-float q[4] = {1.0f, 0.0f, 0.0f, 0.0f}; // vector to hold quaternion
-float eInt[3] = {0.0f, 0.0f, 0.0f}; // vector to hold integral error for Mahony method
 
 constexpr uint32_t flash_address = 0x08020000;
 
@@ -59,6 +29,7 @@ void MPU9250::init() {
                      accelBias); // Calibrate gyro and accelerometers, load biases in bias registers
     initMPU9250();
     initAK8963(magCalibration);
+    // calibrateMag(500);
 
     //     if(!loadCalibration(calib)) {
     // }
@@ -95,7 +66,7 @@ void MPU9250::update() {
     mz = ((float)magCount[2] * mRes * magCalibration[2] - magbias[2]) * magscale[2];
 
     MadgwickQuaternionUpdate(
-        ax, ay, az, gx * PI / 180.0f, gy * PI / 180.0f, gz * PI / 180.0f, mx, my, mz);
+        ax, ay, az, gx * M_PI / 180.0f, gy * M_PI / 180.0f, gz * M_PI / 180.0f, mx, my,  mz);
 }
 
 void MPU9250::readAccelData(int16_t* destination) {
@@ -116,37 +87,39 @@ void MPU9250::readGyroData(int16_t* destination) {
 
 void MPU9250::calibrateMag(uint16_t num_samples) {
     float mx_max = -9999, my_max = -9999, mz_max = -9999;
-    float mx_min =  9999, my_min =  9999, mz_min =  9999;
+    float mx_min = 9999, my_min = 9999, mz_min = 9999;
 
-    char buf[120];
-    int len;
 
-    len = sprintf(buf, "\r\nMag cal: rotate sensor in all directions...\r\n");
-    CDC_Transmit_FS((uint8_t*)buf, len);
-    HAL_Delay(3000);
+    char buffer1[100];
+    int len = 0;
+    len += sprintf(buffer1, "\r\n calibration of mag");
+    CDC_Transmit_FS((uint8_t*)buffer1, len);
+    HAL_Delay(1000);
 
     for (uint16_t i = 0; i < num_samples; i++) {
         int16_t magRaw[3];
         readMagData(magRaw);
 
-        float mx = (float)magRaw[0] * mRes * magCalibration[0];
-        float my = (float)magRaw[1] * mRes * magCalibration[1];
-        float mz = (float)magRaw[2] * mRes * magCalibration[2];
+        mx = (float)magRaw[0] * mRes * magCalibration[0];
+        my = (float)magRaw[1] * mRes * magCalibration[1];
+        mz = (float)magRaw[2] * mRes * magCalibration[2];
 
-        if (mx > mx_max) mx_max = mx;
-        if (my > my_max) my_max = my;
-        if (mz > mz_max) mz_max = mz;
-        if (mx < mx_min) mx_min = mx;
-        if (my < my_min) my_min = my;
-        if (mz < mz_min) mz_min = mz;
-
-        if (i % 100 == 0) {
-            len = sprintf(buf, "\r\nSample %d/%d", i, num_samples);
-            CDC_Transmit_FS((uint8_t*)buf, len);
-        }
+        if (mx > mx_max)
+            mx_max = mx;
+        if (my > my_max)
+            my_max = my;
+        if (mz > mz_max)
+            mz_max = mz;
+        if (mx < mx_min)
+            mx_min = mx;
+        if (my < my_min)
+            my_min = my;
+        if (mz < mz_min)
+            mz_min = mz;
         HAL_Delay(10);
+        len = sprintf(buffer1, "\r\n calibration of mag %d", i);
+        CDC_Transmit_FS((uint8_t*)buffer1, len);
     }
-
     // Write directly into magbias and magscale
     magbias[0] = (mx_max + mx_min) / 2.0f;
     magbias[1] = (my_max + my_min) / 2.0f;
@@ -157,16 +130,10 @@ void MPU9250::calibrateMag(uint16_t num_samples) {
     float range_z = (mz_max - mz_min) / 2.0f;
     float avg_range = (range_x + range_y + range_z) / 3.0f;
 
+
     magscale[0] = avg_range / range_x;
     magscale[1] = avg_range / range_y;
     magscale[2] = avg_range / range_z;
-
-    // Print so you can see what was computed
-    len = sprintf(buf,
-        "\r\nbias: %.4f, %.4f, %.4f\r\nscale: %.4f, %.4f, %.4f\r\n",
-        magbias[0], magbias[1], magbias[2],
-        magscale[0], magscale[1], magscale[2]);
-    CDC_Transmit_FS((uint8_t*)buf, len);
 }
 
 void MPU9250::readMagData(int16_t* destination) {
@@ -269,7 +236,6 @@ void MPU9250::initMPU9250() {
 
 void MPU9250::calibrateMPU9250(float* dest1, float* dest2) {
     uint8_t data[12];
-    uint16_t packet_count, fifo_count;
     int32_t gyro_bias[3] = {0, 0, 0}, accel_bias[3] = {0, 0, 0};
 
     // Reset device
@@ -306,8 +272,8 @@ void MPU9250::calibrateMPU9250(float* dest1, float* dest2) {
     // Read FIFO sample count
     writeByte(MPU9250_ADDRESS, FIFO_EN, 0x00);
     readBytes(MPU9250_ADDRESS, FIFO_COUNTH, 2, &data[0]);
-    fifo_count = ((uint16_t)data[0] << 8) | data[1];
-    packet_count = fifo_count / 12;
+    uint16_t fifo_count = ((uint16_t)data[0] << 8) | data[1];
+    uint16_t packet_count = fifo_count / 12;
 
     for (uint16_t ii = 0; ii < packet_count; ii++) {
         int16_t accel_temp[3] = {0}, gyro_temp[3] = {0};
@@ -376,6 +342,7 @@ void MPU9250::calibrateMPU9250(float* dest1, float* dest2) {
     dest2[0] = (float)accel_bias[0] / (float)accelsensitivity;
     dest2[1] = (float)accel_bias[1] / (float)accelsensitivity;
     dest2[2] = (float)accel_bias[2] / (float)accelsensitivity;
+
 }
 
 // ─────────────────────────────────────────────
@@ -480,22 +447,22 @@ void MPU9250::saveCalibration(CalibrationData& data) {
     HAL_FLASH_Lock();
 }
 
-bool MPU9250::loadCalibration(CalibrationData& data) {
-    memcpy(&data, reinterpret_cast<void*>(flash_address), sizeof(CalibrationData));
-    if (data.calibration_status == 0x01) {
-        accelBias[0] = data.acc_offset_x;
-        accelBias[1] = data.acc_offset_y;
-        accelBias[2] = data.acc_offset_z;
-        gyroBias[0] = data.gyr_offset_x;
-        gyroBias[1] = data.gyr_offset_y;
-        gyroBias[2] = data.gyr_offset_z;
-        magbias[0] = data.mag_offset_x;
-        magbias[1] = data.mag_offset_y;
-        magbias[2] = data.mag_offset_z;
-        return true;
-    }
-    return false;
-}
+// bool MPU9250::loadCalibration(CalibrationData& data) {
+//     memcpy(&data, reinterpret_cast<void*>(flash_address), sizeof(CalibrationData));
+//     if (data.calibration_status == 0x01) {
+//         accelBias[0] = data.acc_offset_x;
+//         accelBias[1] = data.acc_offset_y;
+//         accelBias[2] = data.acc_offset_z;
+//         gyroBias[0] = data.gyr_offset_x;
+//         gyroBias[1] = data.gyr_offset_y;
+//         gyroBias[2] = data.gyr_offset_z;
+//         magbias[0] = data.mag_offset_x;
+//         magbias[1] = data.mag_offset_y;
+//         magbias[2] = data.mag_offset_z;
+//         return true;
+//     }
+//     return false;
+// }
 
 void MPU9250::MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz,
                                        float mx, float my, float mz) {
@@ -750,31 +717,25 @@ void MPU9250::MahonyQuaternionUpdate(float ax, float ay, float az, float gx, flo
     q[3] = q4 * norm;
 }
 
-vec_3 MPU9250::getEulerAngles() {
-    vec_3 angles;
+void MPU9250::getEulerAngles(vec_3& angles) {
     float q0 = q[0], q1 = q[1], q2 = q[2], q3 = q[3];
-
     // yaw 0 to 360
     angles.z() =
-        atan2f(2.0f * (q1 * q2 + q0 * q3), q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3) * 180.0f / PI;
+        atan2f(2.0f * (q1 * q2 + q0 * q3), q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3) * 180.0f / M_PI;
     if (angles.z() < 0)
         angles.z() += 360.0f;
 
     // pitch -180 to 180
-    angles.y() = -asinf(2.0f * (q1 * q3 - q0 * q2)) * 180.0f / PI;
-
+    angles.y() = -asinf(2.0f * (q1 * q3 - q0 * q2)) * 180.0f / M_PI;
     // roll -90 to 90
     angles.x() =
-        atan2f(2.0f * (q0 * q1 + q2 * q3), q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3) * 180.0f / PI;
-    return angles;
+        atan2f(2.0f * (q0 * q1 + q2 * q3), q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3) * 180.0f / M_PI;
 }
 
-vec_3 MPU9250::getBodyRates() {
+void MPU9250::getBodyRates(vec_3& rates) {
     int16_t gyroCount[3];
     readGyroData(gyroCount);
-    vec_3 rates{};
     rates.x() = (float)gyroCount[0] * gRes - gyroBias[0];
     rates.y() = (float)gyroCount[1] * gRes - gyroBias[1];
     rates.z() = (float)gyroCount[2] * gRes - gyroBias[2];
-    return rates;
 }
