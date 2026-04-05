@@ -1,8 +1,7 @@
 from PySide6.QtWidgets import QMainWindow
 from console.core.vision.camera import VideoStream
-from console.core.vision.gstreamer import Gst
 from console.gui.menubar import MenuBar
-from console.core.active_joystick import ActiveJoystick
+from lib.joystick.active_joystick import ActiveJoystick
 from console.gui.pilot_tab_new import PilotTab2
 
 
