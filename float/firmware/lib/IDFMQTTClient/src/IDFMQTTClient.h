@@ -117,6 +117,7 @@ public:
      *
      * @param topic Base MQTT topic for the file transfer
      * @param path Path to the file to send
+     * @param name Name of the file
      * @param qos MQTT QoS level for the messages
      * @param retain Whether the MQTT messages should be retained
      *
@@ -124,6 +125,7 @@ public:
      */
     bool publishFileChunkedOverTopics(const std::string &topic,
                                       const char *path,
+                                      const char *name,
                                       int qos = 0,
                                       bool retain = false);
 
