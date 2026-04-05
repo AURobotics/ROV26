@@ -258,8 +258,24 @@ class file_receiver:
 def main():
     mqtt_client = mqtt("localhost", 1883)
     
-    file_receiver_instance = file_receiver(mqtt_client, f"{MAIN_TOPIC_NAME}", crc32=True)
+    file_receiver_instance = file_receiver(mqtt_client, f"{MAIN_TOPIC_NAME}", crc32=False)
 
     while not file_receiver_instance.is_complete:
         print("Waiting for file...")
         sleep(5)
+
+def simple_test():
+    """A simple test to verify the file receiver works without CRC32 and with small files that fit in one chunk"""
+    mqtt_client = mqtt("localhost", 1883)
+    
+    class test_handler(mqtt_message):
+        def decode(self, message):
+            print(f"Received message on topic {message.topic}: {message.payload.decode()}")
+
+    handler = test_handler()
+    test_topic = topic("test", mqtt_client)
+
+    test_topic.subscribe(handler)
+
+    while True:
+        sleep(1)
