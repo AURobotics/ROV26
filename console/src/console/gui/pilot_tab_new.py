@@ -8,13 +8,13 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-# Actual imports from your project
 from console.gui.camera_display import CameraDisplay
 from console.gui.leakage_display import LeakageDisplay
 from console.gui.model.orientation_data import OrientationData
 from console.gui.model.sensors import Sensors
 from console.gui.model.thruster_status import ThrusterStatus
 from console.gui.status_widget import StatusWidget
+from console.gui.auto_control_input import AutoControlInput
 
 
 class PilotTab2(QWidget):
@@ -68,6 +68,7 @@ class PilotTab2(QWidget):
         self.pitch_roll_widget = StatusWidget(
             OrientationData(self._sensors), "pitchRoll.qml"
         )
+        self.auto_input_widget = AutoControlInput()
 
         # 4.2 Wrap them in Docks
         self.leak_dock = self._create_dock("Leakage", self.leakage_widget)
@@ -75,30 +76,30 @@ class PilotTab2(QWidget):
         self.depth_dock = self._create_dock("Depth", self.depth_widget)
         self.compass_dock = self._create_dock("Compass", self.compass_widget)
         self.pitch_dock = self._create_dock("Pitch/Roll", self.pitch_roll_widget)
+        self.auto_input_dock = self._create_dock("Automatic Control", self.auto_input_widget)
 
         # 4.3 Initial Layout Positioning
-        # Add Leakage to the left
         self.dock_host.addDockWidget(
             Qt.DockWidgetArea.LeftDockWidgetArea, self.leak_dock
         )
 
-        # Add Thrusters to the bottom
         self.dock_host.addDockWidget(
             Qt.DockWidgetArea.BottomDockWidgetArea, self.thruster_dock
         )
-
 
         self.dock_host.addDockWidget(
             Qt.DockWidgetArea.RightDockWidgetArea, self.depth_dock
         )
 
-
         self.dock_host.splitDockWidget(
             self.thruster_dock, self.compass_dock, Qt.Orientation.Horizontal
         )
 
-        # Stack Pitch/Roll on top of Compass as a tab
-        self.dock_host.tabifyDockWidget(self.compass_dock, self.pitch_dock)
+        self.dock_host.splitDockWidget(
+            self.compass_dock, self.pitch_dock, Qt.Orientation.Horizontal
+        )
+
+        self.dock_host.tabifyDockWidget(self.compass_dock, self.auto_input_dock, )
 
     def _create_dock(self, title, widget):
         dock = QDockWidget(title, self)
