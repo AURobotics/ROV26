@@ -2,8 +2,8 @@ from typing import Optional
 
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Signal
-from lib.device.joystick import JoystickManager
-from console.core.active_joystick import ActiveJoystick
+from lib.joystick.manager import ThreadedJoystickManager
+from lib.joystick.active_joystick import ActiveJoystick
 from console.core.comms.stm32 import STM32
 from console.core.comms.comms import CommunicationManager
 from console.gui.main_window import MainWindow
@@ -16,7 +16,7 @@ class ConsoleApplication(QApplication):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._splash_screen: Optional[LoadingSplash] = None
-        self._joystick_manager: Optional[JoystickManager]
+        self._joystick_manager: Optional[ThreadedJoystickManager]
         self._active_joystick = ActiveJoystick()
         self._serial_device: Optional[STM32] = None
         self._comms_manager: Optional[CommunicationManager] = None
@@ -28,14 +28,14 @@ class ConsoleApplication(QApplication):
         self._splash_screen = LoadingSplash()
         self._splash_screen.show()
         self._splash_screen.update_progress("Initializing joystick system", 20)
-        self._joystick_manager = JoystickManager()
+        self._joystick_manager = ThreadedJoystickManager()
         joysticks = self._joystick_manager.joysticks
         if len(joysticks) > 0:
             self._active_joystick.selected = joysticks[0]
         self._splash_screen.update_progress("Initializing serial system", 40)
         self._serial_device = STM32(115200)
         self._splash_screen.update_progress("Initializing communication system", 60)
-        # self._comms_manager = CommunicationManager(self._serial_device, self._active_joystick)
+        self._comms_manager = CommunicationManager(self._serial_device, self._active_joystick)
         self._splash_screen.update_progress("Starting GUI", 80)
         self._main_window = MainWindow(
             self._serial_device, self._active_joystick, self._comms_manager

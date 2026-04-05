@@ -2,10 +2,11 @@ import struct
 from enum import IntEnum, StrEnum
 from threading import Event, Thread
 from time import sleep
-from typing import Dict, TypedDict, Annotated
-from console.core.active_joystick import ActiveJoystick
+from typing import TypedDict, Annotated
 from console.core.comms.stm32 import STM32
-from lib.device.joystick import GamepadButton, GamepadStick, GamepadTrigger, Joystick
+from lib.joystick.inputs import GamepadButton, GamepadStick, GamepadTrigger
+from lib.joystick.joystick import Joystick
+from lib.joystick.active_joystick import ActiveJoystick
 
 
 class MessageType(IntEnum):
@@ -63,11 +64,7 @@ class CommunicationManager:
             "status": {},
         }
 
-        self._toggles_cache = {
-            "LED": False,
-            "GRIPPER": False,
-            "ARM": False
-        }
+        self._toggles_cache = {"LED": False, "GRIPPER": False, "ARM": False}
 
         self._data_ready_event = Event()
 
@@ -81,7 +78,7 @@ class CommunicationManager:
         )
         self._serial_outgoing_thread.start()
         for btn in ToggleButtons.keys():
-            self._joystick.add_button_listener(self._controller_toggles, btn)
+            self._joystick.add_gamepad_button_listener(self._controller_toggles, btn)
 
     def _controller_toggles(self, _: Joystick, button: GamepadButton, is_pressed: bool):
         # if self._serial.serial_ready:

@@ -1,9 +1,9 @@
 from PySide6.QtCore import Slot, Signal
 from PySide6.QtWidgets import QInputDialog, QLineEdit, QMenuBar, QMenu, QWidget
 from PySide6.QtGui import QAction
-from console.core.active_joystick import ActiveJoystick
+from lib.joystick.active_joystick import ActiveJoystick
 from console.core.comms.stm32 import STM32
-from lib.device.joystick import JoystickManager
+from lib.joystick.manager import ThreadedJoystickManager
 
 
 class MenuBar(QMenuBar):
@@ -28,7 +28,7 @@ class MenuBar(QMenuBar):
         self._no_joystick_action = QAction("No joysticks Connected", self._joystick_menu)
         self._no_joystick_action.setEnabled(False)
         self._displayed_joysticks: dict[int, QAction] = {}
-        self._joyman = JoystickManager()
+        self._joyman = ThreadedJoystickManager()
         self._on_joysticks_changed = lambda x,y: self._joysticks_changed.emit()
         self._joyman.add_connection_listener(self._on_joysticks_changed)
         self._joysticks_changed.connect(self.update_joysticks)
