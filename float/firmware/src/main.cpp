@@ -8,8 +8,8 @@
 #include "idf_mqtt_manager.h"
 
 // WiFi credentials
-const char *WIFI_SSID = "Vodafone_VDSL_3BE7";
-const char *WIFI_PASSWORD = "Ee0123608241@";
+const char *WIFI_SSID = "";
+const char *WIFI_PASSWORD = "";
 
 // MQTT broker settings
 const char *MQTT_BROKER = "192.168.1.9";
