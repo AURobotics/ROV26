@@ -17,30 +17,29 @@
 
 typedef uint32_t (*CRC32Function)(const uint8_t *data, size_t length);
 
-class ESPMqttClient
+class ArduinoMqttClient
 {
 public:
     // Constructor
-    ESPMqttClient(
+    ArduinoMqttClient(
         const char *mqtt_broker,
         int mqtt_port = 1883,
         const char *mqtt_username = nullptr,
         const char *mqtt_password = nullptr);
 
     // Destructor
-    ~ESPMqttClient();
+    ~ArduinoMqttClient();
 
     // Public methods
     bool begin();
     void loop(bool pollMqttConnection = true);
     bool publish(const char *topic = "test", const char *payload = "publishing to \"test\"", bool retained = false);
-    bool subscribe(const char *topic = "test");
+    bool subscribe(const char *topic = "test", int qos = 1);
     bool unsubscribe(const char *topic);
     bool isConnected();
     void disconnect();
     void setCallback(std::function<void(char *, uint8_t *, unsigned int)> callback);
-    bool sendFileChunkedOverTopics(FS &fileSystem, const char *topic, const char *filename, CRC32Function crcCalculator = nullptr);
-    bool sendFileChunkedWithFeedback(FS &fileSystem, const char *topic, const char *filename, CRC32Function crcCalculator = nullptr);
+    bool publishFileChunkedOverTopics(FS &fileSystem, const char *topic, const char *filename, CRC32Function crcCalculator = nullptr);
 
 private:
     // WiFi
@@ -55,7 +54,6 @@ private:
 
     // subscribed topics
     std::vector<std::string> _subscribed_topics;
-
 
     // WiFi and MQTT clients
     WiFiClient _wifiClient;
