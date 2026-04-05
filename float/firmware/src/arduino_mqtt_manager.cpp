@@ -1,5 +1,5 @@
-#include "mqtt_manager.h"
-#include <ESPMqttClient.h>
+#include "arduino_mqtt_manager.h"
+#include <ArduinoMqttClient.h>
 #include <LittleFS.h>
 #include <rom/crc.h>
 
@@ -11,9 +11,9 @@ const char *IP5 = "192.168.4.6";
 
 const char *IPs[] = {startingIP, IP2, IP3, IP4, IP5};
 
-MQTTManager::MQTTManager() : _mqttClient(nullptr) {}
+ArduinoMqttManager::ArduinoMqttManager() : _mqttClient(nullptr) {}
 
-void MQTTManager::setup(const char *mqtt_broker, int mqtt_port,
+void ArduinoMqttManager::setup(const char *mqtt_broker, int mqtt_port,
                         const char *mqtt_username, const char *mqtt_password, bool asAccessPoint)
 {
     // Delete old client if exists
@@ -23,7 +23,7 @@ void MQTTManager::setup(const char *mqtt_broker, int mqtt_port,
     }
 
     // Create new client
-    _mqttClient = new ESPMqttClient(mqtt_broker, mqtt_port, mqtt_username, mqtt_password);
+    _mqttClient = new ArduinoMqttClient(mqtt_broker, mqtt_port, mqtt_username, mqtt_password);
 
     // Set callback
     _mqttClient->setCallback(messageCallback);
@@ -39,7 +39,7 @@ void MQTTManager::setup(const char *mqtt_broker, int mqtt_port,
             if (!res)
             {
                 delete _mqttClient;
-                _mqttClient = new ESPMqttClient(ip, mqtt_port, mqtt_username, mqtt_password);
+                _mqttClient = new ArduinoMqttClient(ip, mqtt_port, mqtt_username, mqtt_password);
                 _mqttClient->setCallback(messageCallback);
                 res = _mqttClient->begin();
             }
@@ -47,7 +47,7 @@ void MQTTManager::setup(const char *mqtt_broker, int mqtt_port,
     }
 }
 
-void MQTTManager::loop(bool pollMqttConnection)
+void ArduinoMqttManager::loop(bool pollMqttConnection)
 {
     if (_mqttClient != nullptr)
     {
@@ -55,7 +55,7 @@ void MQTTManager::loop(bool pollMqttConnection)
     }
 }
 
-bool MQTTManager::publish(const char *topic, const char *payload, bool retained)
+bool ArduinoMqttManager::publish(const char *topic, const char *payload, bool retained)
 {
     if (_mqttClient != nullptr)
     {
@@ -64,7 +64,7 @@ bool MQTTManager::publish(const char *topic, const char *payload, bool retained)
     return false;
 }
 
-void MQTTManager::messageCallback(char *topic, uint8_t *payload, unsigned int length)
+void ArduinoMqttManager::messageCallback(char *topic, uint8_t *payload, unsigned int length)
 {
     Serial.print("Message arrived [");
     Serial.print(topic);
@@ -84,20 +84,11 @@ uint32_t calculateCRC32(const uint8_t *data, size_t length)
     return ~crc32_le(~0, data, length);
 }
 
-bool MQTTManager::sendFileChunkedOverTopics(const char *topic, const char *filename)
+bool ArduinoMqttManager::publishFileChunkedOverTopics(const char *topic, const char *filename)
 {
     if (_mqttClient != nullptr)
     {
-        return _mqttClient->sendFileChunkedOverTopics((FS &)LittleFS, topic, filename, calculateCRC32);
-    }
-    return false;
-}
-
-bool MQTTManager::sendFileChunkedWithFeedback(const char *topic, const char *filename)
-{
-    if (_mqttClient != nullptr)
-    {
-        return _mqttClient->sendFileChunkedWithFeedback((FS &)LittleFS, topic, filename, calculateCRC32);
+        return _mqttClient->publishFileChunkedOverTopics((FS &)LittleFS, topic, filename, nullptr);
     }
     return false;
 }

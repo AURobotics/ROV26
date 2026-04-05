@@ -1,16 +1,18 @@
 #include <Arduino.h>
-#include <ESPMQTTClient.h>
+#include <ArduinoMQTTClient.h>
+#include <IDFMQTTClient.h>
 #include "ota_manager.h"
 #include <WiFi.h>
 #include "store_data.h"
-#include "mqtt_manager.h"
+#include "arduino_mqtt_manager.h"
+#include "idf_mqtt_manager.h"
 
 // WiFi credentials
-const char *WIFI_SSID = "aurobotics-ap";
-const char *WIFI_PASSWORD = "12345678";
+const char *WIFI_SSID = "";
+const char *WIFI_PASSWORD = "";
 
 // MQTT broker settings
-const char *MQTT_BROKER = "192.168.1.100";
+const char *MQTT_BROKER = "10.252.132.135";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optional
@@ -22,7 +24,8 @@ void connectToNetwork();
 bool connectToWiFi(const char *ssid, const char *password);
 bool initAccessPoint(const char *ssid, const char *password);
 
-MQTTManager mqttManager;
+// ArduinoMqttManager MqttManager;
+IDFMQTTManager MqttManager;
 
 // depths values for testing
 float testDepth = 0.0;
@@ -49,7 +52,7 @@ void loop()
     // To store depth per time
     store_data_loop();
 
-    if (isComplete())
+    if (true) // ###############################################################################
     {
         // MQTT setup
         Serial.println("Connecting to MQTT broker...");
@@ -57,7 +60,7 @@ void loop()
         if (!MqttSetupDone)
         {
             connectToNetwork();
-            mqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+            MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
             MqttSetupDone = true;
         }
 
@@ -65,7 +68,7 @@ void loop()
         while (1)
         {
             // Handle MQTT communication
-            mqttManager.loop();
+            MqttManager.loop();
 
             Serial.println("sending data to mqtt");
 
@@ -76,8 +79,10 @@ void loop()
                 WiFi.reconnect();
                 delay(500);
             }
+            Serial.print("Mqtt connection is: ");
+            Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
 
-            mqttManager.sendFileChunkedOverTopics("float/data", "/log.csv");
+            MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv");
             delay(5000); // Send data every 5 seconds
         }
     }
@@ -214,3 +219,25 @@ bool initAccessPoint(const char *ssid, const char *password)
     Serial.println("ERROR: Could not start Access Point!");
     return false;
 }
+
+/*
+Mqtt connection is: Connected
+E (60226) mqtt_client: esp_mqtt_handle_transport_read_error: transport_read(): EOF
+E (60226) mqtt_client: esp_mqtt_handle_transport_read_error: transport_read() error: errno=128
+E (60231) IDFMQTTClient: MQTT_EVENT_ERROR
+E (60234) IDFMQTTClient:   esp_tls_last_esp_err  = 0x8008
+E (60239) IDFMQTTClient:   esp_tls_stack_err     = 0x0
+E (60244) IDFMQTTClient:   esp_transport_sock_errno = 0
+E (60249) mqtt_client: mqtt_process_receive: mqtt_message_receive() returned -2
+E (60258) IDFMQTTClient: Lost connection at chunk 0/7
+Attempt 1/3 failed, retrying...
+E (75801) mqtt_client: esp_mqtt_handle_transport_read_error: transport_read(): EOF
+E (75802) mqtt_client: esp_mqtt_handle_transport_read_error: transport_read() error: errno=128
+E (75806) IDFMQTTClient: MQTT_EVENT_ERROR
+E (75810) IDFMQTTClient:   esp_tls_last_esp_err  = 0x8008
+E (75815) IDFMQTTClient:   esp_tls_stack_err     = 0x0
+E (75820) IDFMQTTClient:   esp_transport_sock_errno = 0
+E (75825) mqtt_client: mqtt_process_receive: mqtt_message_receive() returned -2
+E (75833) IDFMQTTClient: Lost connection at chunk 0/7
+Attempt 2/3 failed, retrying...
+*/
