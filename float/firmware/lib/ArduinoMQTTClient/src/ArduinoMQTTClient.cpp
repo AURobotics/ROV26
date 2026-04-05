@@ -1,7 +1,7 @@
 
-#include "ESPMqttClient.h"
+#include "ArduinoMqttClient.h"
 
-ESPMqttClient::ESPMqttClient(
+ArduinoMqttClient::ArduinoMqttClient(
     const char *mqtt_server,
     int mqtt_port,
     const char *mqtt_username,
@@ -13,7 +13,7 @@ ESPMqttClient::ESPMqttClient(
 {
 }
 
-ESPMqttClient::~ESPMqttClient()
+ArduinoMqttClient::~ArduinoMqttClient()
 {
     disconnect();
 }
@@ -24,7 +24,7 @@ ESPMqttClient::~ESPMqttClient()
  *
  * @returns true if connection to MQTT broker is successful, false otherwise
  */
-bool ESPMqttClient::begin()
+bool ArduinoMqttClient::begin()
 {
     _mqttClient.setServer(_mqtt_broker, _mqtt_port);
     // Register a lambda as the internal PubSubClient callback.
@@ -44,7 +44,7 @@ bool ESPMqttClient::begin()
  * It checks if the MQTT connection is still alive, and if not, it attempts to reconnect.
  * Then it calls the loop() method of the underlying PubSubClient to handle incoming messages,
  */
-void ESPMqttClient::loop(bool pollMqttConnection)
+void ArduinoMqttClient::loop(bool pollMqttConnection)
 {
     // If MQTT connection has dropped, attempt to reconnect
     if (!_mqttClient.connected())
@@ -57,7 +57,7 @@ void ESPMqttClient::loop(bool pollMqttConnection)
     _mqttClient.loop();
 }
 
-bool ESPMqttClient::connectToMQTT(bool poll)
+bool ArduinoMqttClient::connectToMQTT(bool poll)
 {
     while (!_mqttClient.connected())
     {
@@ -116,7 +116,7 @@ bool ESPMqttClient::connectToMQTT(bool poll)
  *                 to future subscribers immediately upon subscription
  * @returns true on success, false if not connected or message too large
  */
-bool ESPMqttClient::publish(const char *topic, const char *payload, bool retained)
+bool ArduinoMqttClient::publish(const char *topic, const char *payload, bool retained)
 {
     return _mqttClient.publish(topic, payload, retained);
 }
@@ -126,7 +126,7 @@ bool ESPMqttClient::publish(const char *topic, const char *payload, bool retaine
  * The registered callback (setCallback) will be invoked for each incoming message.
  * @returns true on success, false if not connected or subscription failed.
  */
-bool ESPMqttClient::subscribe(const char *topic)
+bool ArduinoMqttClient::subscribe(const char *topic, int qos)
 {
     std::string t(topic);
     // avoid duplicate entries
@@ -134,14 +134,14 @@ bool ESPMqttClient::subscribe(const char *topic)
     {
         _subscribed_topics.push_back(t);
     }
-    return _mqttClient.subscribe(topic);
+    return _mqttClient.subscribe(topic, qos);
 }
 
 /**
  * Unsubscribes from an MQTT topic.
  * @returns true on success, false if not connected or unsubscription failed.
  */
-bool ESPMqttClient::unsubscribe(const char *topic)
+bool ArduinoMqttClient::unsubscribe(const char *topic)
 {
     if (!_mqttClient.connected())
     {
@@ -155,7 +155,7 @@ bool ESPMqttClient::unsubscribe(const char *topic)
 /**
  * @returns true if the client currently has an active MQTT broker connection.
  */
-bool ESPMqttClient::isConnected()
+bool ArduinoMqttClient::isConnected()
 {
     return _mqttClient.connected();
 }
@@ -164,7 +164,7 @@ bool ESPMqttClient::isConnected()
  * Gracefully disconnects from the MQTT broker and then from WiFi.
  * Called automatically by the destructor.
  */
-void ESPMqttClient::disconnect()
+void ArduinoMqttClient::disconnect()
 {
     // Clear the list of subscribed topics since we're disconnecting
     _subscribed_topics.clear();
@@ -183,7 +183,7 @@ void ESPMqttClient::disconnect()
  *                 @param payload Raw message bytes (not null-terminated).
  *                 @param length Number of bytes in the payload.
  */
-void ESPMqttClient::setCallback(std::function<void(char *, uint8_t *, unsigned int)> callback)
+void ArduinoMqttClient::setCallback(std::function<void(char *, uint8_t *, unsigned int)> callback)
 {
     _callback = callback;
 }
@@ -216,7 +216,7 @@ void ESPMqttClient::setCallback(std::function<void(char *, uint8_t *, unsigned i
  *
  * @return true if file sent successfully, false otherwise
  */
-bool ESPMqttClient::sendFileChunkedOverTopics(FS &fileSystem, const char *topic, const char *filename, CRC32Function crcCalculator)
+bool ArduinoMqttClient::publishFileChunkedOverTopics(FS &fileSystem, const char *topic, const char *filename, CRC32Function crcCalculator)
 {
     base64 base64_encoder = base64();
     uint32_t calculatedCRC = 0;
@@ -367,124 +367,3 @@ bool ESPMqttClient::sendFileChunkedOverTopics(FS &fileSystem, const char *topic,
 
     return success;
 }
-
-/**
- * send file in chunks over MQTT.
- *
- * This is necessary because MQTT has a maximum payload size (256-512 bytes ).
- * sending the file in smaller chunks -> ensure that we don't exceed this limit
- *
- * This is the main function for sending files. It:
- * 1. Opens the file and gets its size
- * 2. Calculates number of chunks needed
- * 3. Sends metadata (file info) first
- * 4. Sends the file data in chunks
- *
- * Chunks are base64 encoded to ensure binary data can be sent over MQTT's text-based protocol.
- *
- * after sending each chunk it waits for a feedback message from the receiver (on topic "base_topic/feedback") before sending the next chunk.
- *
- * if crcCalculator is provided, it will be used to calculate CRC32 checksums metadata and each chunk
- * crc value is appended to the end of the base64 encoded string in hex format.
- * receiver must account that the last 8 characters of the encoded chunk are the CRC32 checksum (if crcCalculator is used)
- *
- * @param fileSystem Reference to the filesystem (e.g. SPIFFS) where the file is located
- * @param topic Base MQTT topic for the file transfer
- * @param filename Path to the file to send
- * @param crcCalculator Optional function pointer to calculate CRC32 checksums. If provided, CRC32 of the entire file will be included in metadata, and each chunk will have its own CRC32 appended to the end of the encoded data.
- *
- * @return true if file sent successfully, false otherwise
- */
-bool ESPMqttClient::sendFileChunkedWithFeedback(FS &fileSystem, const char *topic, const char *filename, CRC32Function crcCalculator)
-{
-    return false;
-}
-
-// =#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#
-// =#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#
-
-// for future extension if needed instead of using the setCallback
-
-// #include <sstream>
-
-// MqttMessage::MqttMessage() : args() {}
-
-// void MqttMessage::addVariable(const std::string &name, const std::any &value)
-// {
-//     args[name] = value;
-// }
-
-// void MqttMessage::setVariable(const std::string &name, const std::any &value)
-// {
-//     auto it = args.find(name);
-//     if (it != args.end())
-//     {
-//         it->second = value;
-//     }
-//     else
-//     {
-//         throw std::runtime_error("Variable '" + name + "' not found in message arguments.");
-//     }
-// }
-
-// bool MqttMessage::hasVariable(const std::string &name) const
-// {
-//     return args.find(name) != args.end();
-// }
-
-// // Encode to JSON string
-// std::string MqttMessage::encode() const
-// {
-//     const size_t capacity = 1024;
-//     DynamicJsonDocument doc(capacity);
-//     JsonObject obj = doc.to<JsonObject>();
-
-//     for (const auto &[key, value] : args)
-//     {
-//         obj[key] = value;
-//     }
-
-//     std::string output;
-//     serializeJson(doc, output);
-//     return output;
-// }
-
-// // Decode from JSON string
-// void MqttMessage::decode(const std::string &payload)
-// {
-//     const size_t capacity = 1024;
-//     DynamicJsonDocument doc(capacity);
-
-//     DeserializationError error = deserializeJson(doc, payload);
-//     if (error)
-//     {
-//         return;
-//     }
-
-//     args.clear();
-//     JsonObject obj = doc.as<JsonObject>();
-//     for (JsonPair kv : obj)
-//     {
-//         args[kv.key().c_str()] = kv.value();
-//     }
-// }
-
-// // Example derived class for specific message types
-// /*
-// class TemperatureMessage : public MqttMessage {
-// public:
-//     TemperatureMessage() {
-//         addVariable("temperature", 0.0f);
-//         addVariable("unit", std::string("C"));
-//         addVariable("timestamp", 0L);
-//     }
-
-//     void setTemperature(float temp) {
-//         setVariable("temperature", temp);
-//     }
-
-//     float getTemperature() const {
-//         return getVariable<float>("temperature");
-//     }
-// };
-// */
