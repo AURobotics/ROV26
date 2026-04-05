@@ -8,11 +8,11 @@
 #include "idf_mqtt_manager.h"
 
 // WiFi credentials
-const char *WIFI_SSID = "";
-const char *WIFI_PASSWORD = "";
+const char *WIFI_SSID = "Vodafone_VDSL_3BE7";
+const char *WIFI_PASSWORD = "Ee0123608241@";
 
 // MQTT broker settings
-const char *MQTT_BROKER = "10.252.132.135";
+const char *MQTT_BROKER = "192.168.1.9";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optional
@@ -82,7 +82,9 @@ void loop()
             Serial.print("Mqtt connection is: ");
             Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
 
-            MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv");
+            // MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv");
+            MqttManager.publish("test", "hello world", 1, false);
+            MqttManager.publish("test", "retest", 1, false);
             delay(5000); // Send data every 5 seconds
         }
     }
