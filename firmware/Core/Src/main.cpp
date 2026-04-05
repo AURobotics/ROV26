@@ -16,6 +16,7 @@ extern "C" {
 #include <cmath>
 #include <optional>
 #include "Kinematics.h"
+#include "Madgwick_filter.h"
 #include "array"
 #include "main.h"
 #include "usbd_cdc_if.h"
@@ -29,7 +30,6 @@ enum class Test_state { OFF, STEPPING, DONE };
             (_regs_)[addr] = (_data_);                                                             \
     while (0)
 
-MPU9250 mpu9250(&hi2c3);
 // MS5611 ms5611(&hi2c3);
 Cdc_driver cdc(20); /*need to set timeout*/
 
@@ -38,26 +38,6 @@ extern "C" int _write(int file, char* ptr, int len) {
     return len;
 }
 
-// yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
-void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
-    // if (HAL_GetTick() - ms5611.last_read_time > 50) {
-    //     data[0] = ms5611.getPressure();
-    //     data[1] = std::nullopt;
-    // }
-
-    if (HAL_GetTick() - mpu9250.last_read_time > 50) {
-        mpu9250.update();
-        vec_3 angles = mpu9250.getEulerAngles();
-        vec_3 rates = mpu9250.getBodyRates();
-
-        data[2] = angles.x(); // roll
-        data[3] = 0; // rates.x();
-        data[4] = angles.y(); // pitch
-        data[5] = 0; // rates.y();
-        data[6] = angles.z(); // yaw
-        data[7] = 0; // rates.z();
-    }
-}
 
 double normalize_angle(double angle) {
     angle = fmod(angle, 360.0);
@@ -204,82 +184,32 @@ int main() {
     HAL_Delay(2000);
     printf("code started\n");
 
-    Test_state test_state = Test_state::OFF; // normal mode
-    //////Testing Mode////////
-    float start_yaw = 0;
-    float max_testing[4] = {0.1, 30, 30, 90}; // need to set these
-    uint8_t test_axis = 0;
-
-    /////sending to GUI/////
-    uint32_t last_send_time = 0;
-
-    //////Controller////
-    float prev{}; // to calculate dt
-    uint32_t now = HAL_GetTick();
-
-    float data[6]; // Fx Fy Fz Froll Fpitch Fyaw
-    // if control bit = 1 setpoint hatetba3at makan
-    // el force fa will use this array as setpoint too
-    float controller_output[6]; // surge sway depth roll pitch yaw
-    float hold[4]; // depth roll pitch yaw
-
-    /*Initialize all controllers: depth roll pitch yaw*/
-    // Controller controller[4] = {Controller(PID(0, 0, 0)),
-    //                             Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
-    //                             Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0))),
-    //                             Controller(PID(0, 0, 0), std::optional(PID(0, 0, 0)))};
-
-    // Motor motors[] = {Motor({&htim1, TIM_CHANNEL_2}, {&htim1, TIM_CHANNEL_3}),
-    //                   Motor({&htim3, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_3}),
-    //                   Motor({&htim3, TIM_CHANNEL_3}, {&htim3, TIM_CHANNEL_2}),
-    //                   Motor({&htim3, TIM_CHANNEL_1}, {&htim2, TIM_CHANNEL_1}),
-    //                   Motor({&htim5, TIM_CHANNEL_3}, {&htim5, TIM_CHANNEL_2}),
-    //                   Motor({&htim4, TIM_CHANNEL_4}, {&htim4, TIM_CHANNEL_3}),
-    //                   Motor({&htim4, TIM_CHANNEL_1}, {&htim4, TIM_CHANNEL_2}),
-    //                   Motor({&htim5, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_2})};
-    //
-    //
-    // for (const auto& motor : motors) {
-    //     motor.setup();
-    // }
-    //
-    Motor gripper( // TODO: use this variable
-        [](float speed)
-        {
-            if (speed > 0.1f) {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-            }
-            else if (speed < -0.1f) {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
-            }
-            else {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-            }
-        });
-
-
-    // motors[4].move(1);
-    // motors[5].move(1);
-    //
-    //
-    std::array<std::optional<float>, 8> sensor_data;
-    // TxPacket tx_pkt;
-    // tx_pkt.type = SENSOR_MESSAGE;
-    // GenericMessage msg{};
-    // float clamped_motors[8] = {};
-
-    //__HAL_TIM_SET_COMPARE(&htim1,2,0);
-
-    mpu9250.init();
-    mpu9250.calibrateMag(2000);
-    // ms5611.begin();
-
+    uint8_t UART_tx_buffer[100];
+    uint8_t length;
+    printf("\r%d\r\n",MPU9250_init());
     // ReSharper disable once CppDFAEndlessLoop
+
     while (true) {
-        static Message_Type msg_type;
+        get_mpu_data();
+        get_ak_data();
+        MadgwickAHRSupdate(MPU9250.gx,
+                           MPU9250.gy,
+                           MPU9250.gz,
+                           MPU9250.ax,
+                           MPU9250.ay,
+                           MPU9250.az,
+                           MPU9250.my,
+                           MPU9250.mx,
+                           -MPU9250.mz);
+        computeAngles();
+        u_long now = HAL_GetTick();
+        static u_long last_time = now;
+        if (now - last_time > 100) {
+            last_time = now;
+            length = sprintf((char*)UART_tx_buffer, "Orientation: %f %f %f\r\n", yaw, pitch, roll);
+            CDC_Transmit_FS(UART_tx_buffer, length);
+        }
+        HAL_Delay(1);
         //  if (cdc.available()) {
         //      msg_type = cdc.read_msg(msg);
 
@@ -314,12 +244,10 @@ int main() {
         //}
 
 
-        fetch_sensor_data(sensor_data);
-
-       // GripperUp();
-        //HAL_Delay(2000);
-        //GripperDown();
-      //  HAL_Delay(2000);
+        // GripperUp();
+        // HAL_Delay(2000);
+        // GripperDown();
+        //  HAL_Delay(2000);
 
         // if (data_received_flag) {
         //     data_received_flag = 0;
@@ -383,27 +311,26 @@ int main() {
         //         controller_output[1] = data[1]*4;
         //     }
         //
-        //HAL_GPIO_WritePin(DCV_1_GPIO_Port,
+        // HAL_GPIO_WritePin(DCV_1_GPIO_Port,
         //                DCV_1_Pin,
         //                GPIO_PIN_RESET);
 
 
-//        HAL_GPIO_WritePin(DCV_2_GPIO_Port,
-  //                         DCV_2_Pin,
-    //                    GPIO_PIN_RESET);
+        //        HAL_GPIO_WritePin(DCV_2_GPIO_Port,
+        //                         DCV_2_Pin,
+        //                    GPIO_PIN_RESET);
 
 
-      //  HAL_Delay(2000);
-      //  HAL_GPIO_WritePin(DCV_1_GPIO_Port,
-      //              DCV_1_Pin,
-      //              GPIO_PIN_SET);
+        //  HAL_Delay(2000);
+        //  HAL_GPIO_WritePin(DCV_1_GPIO_Port,
+        //              DCV_1_Pin,
+        //              GPIO_PIN_SET);
 
 
-        //HAL_GPIO_WritePin(DCV_2_GPIO_Port,
-        //                   DCV_2_Pin,
-        //                GPIO_PIN_SET);
-        //HAL_Delay(2000);
-
+        // HAL_GPIO_WritePin(DCV_2_GPIO_Port,
+        //                    DCV_2_Pin,
+        //                 GPIO_PIN_SET);
+        // HAL_Delay(2000);
 
 
         // else { // Testing mode
@@ -455,12 +382,6 @@ int main() {
 
         // cdc.write_msg(&feedback_pkt);
 
-        if (HAL_getTick() - prev > 50) {
-            printf("\n\r yaw = %f, pitch = %f, roll = %f\n",
-                   data[6],
-                   data[4],
-                   data[2]);
-        }
 
         // }
     }
@@ -522,6 +443,7 @@ void SystemClock_Config(void) {
 void Error_Handler(void) {
     /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
+    MX_USB_DEVICE_Init();
     printf("inside error handling");
     __disable_irq();
     while (1) {

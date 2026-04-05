@@ -52,6 +52,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/mpu9250/mpu9250.cpp
         Core/lib/ms5611/ms5611.cpp
         Core/lib/pid/PID.cpp
+        Core/lib/mpu9250/Madgwick_filter.cpp
+
 )
 
 # Add include paths
