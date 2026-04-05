@@ -22,7 +22,7 @@ public:
     void loop(bool pollMqttConnection = true);
     bool publish(const char *topic, const char *payload, int qos = 1, bool retained = false);
     bool subscribe(const char *topic, int qos = 1);
-    bool publishFileChunkedOverTopics(const char *topic, const char *path);
+    bool publishFileChunkedOverTopics(const char *topic, const char *path, const char *name);
     bool isConnected() const { return _mqttClient && _mqttClient->isConnected(); }
 
 private:

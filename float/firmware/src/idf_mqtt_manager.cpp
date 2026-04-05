@@ -119,7 +119,7 @@ void IDFMQTTManager::messageCallback(const std::string &topic, const std::string
     Serial.println(message);
 }
 
-bool IDFMQTTManager::publishFileChunkedOverTopics(const char *topic, const char *path)
+bool IDFMQTTManager::publishFileChunkedOverTopics(const char *topic, const char *path, const char *name)
 {
     if (_mqttClient == nullptr)
         return false;
@@ -142,7 +142,7 @@ bool IDFMQTTManager::publishFileChunkedOverTopics(const char *topic, const char 
         }
 
         bool ok = _mqttClient->publishFileChunkedOverTopics(
-            (std::string)topic, path, 1, false);
+            (std::string)topic, path, name, 1, false);
 
         if (ok)
             return true;

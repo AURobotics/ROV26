@@ -52,7 +52,7 @@ void loop()
     // To store depth per time
     store_data_loop();
 
-    if (true) // ###############################################################################
+    if (isComplete())
     {
         // MQTT setup
         Serial.println("Connecting to MQTT broker...");
@@ -82,9 +82,7 @@ void loop()
             Serial.print("Mqtt connection is: ");
             Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
 
-            // MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv");
-            MqttManager.publish("test", "hello world", 1, false);
-            MqttManager.publish("test", "retest", 1, false);
+            MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
             delay(5000); // Send data every 5 seconds
         }
     }

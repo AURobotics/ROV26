@@ -180,6 +180,7 @@ int IDFMQTTClient::publish(const std::string &topic,
 
 bool IDFMQTTClient::publishFileChunkedOverTopics(const std::string &topic,
                                                  const char *path,
+                                                 const char *name,
                                                  int qos,
                                                  bool retain)
 {
@@ -218,10 +219,10 @@ bool IDFMQTTClient::publishFileChunkedOverTopics(const std::string &topic,
     // - encoding: how the data is encoded (base64 in this case)
 
     char metaTopic[128];
-    snprintf(metaTopic, sizeof(metaTopic), "%s/meta", topic);
+    snprintf(metaTopic, sizeof(metaTopic), "%s/meta", topic.c_str());
 
     cJSON *meta = cJSON_CreateObject();
-    cJSON_AddStringToObject(meta, "filename", path);
+    cJSON_AddStringToObject(meta, "filename", name);
     cJSON_AddNumberToObject(meta, "size", fileSize);
     cJSON_AddNumberToObject(meta, "chunks", totalChunks);
     cJSON_AddStringToObject(meta, "encoding", "base64");
@@ -278,11 +279,11 @@ bool IDFMQTTClient::publishFileChunkedOverTopics(const std::string &topic,
         // format: base_topic/chunk/chunk_number
         // e.g. "float/data/chunk/0", "float/data/chunk/1", etc.
         char chunkTopic[128];
-        snprintf(chunkTopic, sizeof(chunkTopic), "%s/chunk/%d", topic, chunkIndex);
+        snprintf(chunkTopic, sizeof(chunkTopic), "%s/chunk/%d", topic.c_str(), chunkIndex);
 
         // Send the chunk
         // Each chunk contains base64 encoded data
-        if (publish(chunkTopic, encodedData, qos, false) == -1)
+        if (publish(chunkTopic, encodedData, outLen, qos, false) == -1)
         {
             ESP_LOGE(TAG, "Failed to send chunk %d, chunck size: %d", chunkIndex, outLen);
             success = false;
