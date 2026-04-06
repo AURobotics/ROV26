@@ -228,6 +228,38 @@ int MPU9250_init() {
     return 0;
 }
 
+void load_gyro_calibration(int16_t _gx, int16_t _gy, int16_t _gz) {
+    // Gyroscope offsets — update these from serial output after calibration
+    MPU9250.gx_offset = _gx;
+    MPU9250.gy_offset = _gy;
+    MPU9250.gz_offset = _gz;
+}
+
+void load_mag_calibration(int16_t _mx, int16_t _my, int16_t _mz,
+                          float _mx_scale, float _my_scale, float _mz_scale) {
+    MPU9250.mx_offset = _mx;
+    MPU9250.my_offset = _my;
+    MPU9250.mz_offset = _mz;
+    MPU9250.mx_scale = _mx_scale;
+    MPU9250.my_scale = _my_scale;
+    MPU9250.mz_scale = _mz_scale;
+}
+
+void print_calibration() {
+    char buffer[300];
+    int len = 0;
+
+    len = sprintf(len + buffer,
+        "mx offset = %d, my offset = %d, mz offset = %d\r\n"
+        "mx scale = %f, my scale = %f, mz scale = %f\r\n"
+        "gx offset = %d, gy offset = %d, gz offset = %d\r\n",
+        MPU9250.mx_offset, MPU9250.my_offset, MPU9250.mz_offset,
+        MPU9250.mx_scale,  MPU9250.my_scale,  MPU9250.mz_scale,
+        MPU9250.gx_offset, MPU9250.gy_offset, MPU9250.gz_offset);
+
+    CDC_Transmit_FS((uint8_t*)buffer, len);
+}
+
 /*
  * Function: calibrate_compass
  * ----------------------------
