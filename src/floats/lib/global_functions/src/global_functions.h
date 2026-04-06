@@ -32,6 +32,8 @@ class TMC_interfacer{
         uint32_t SPS2VACTUAL(int steps);
         void step_dir_ramp();
         void single_step();
+        void calibrate();
+        void calibration_loop();
 
 };
 
