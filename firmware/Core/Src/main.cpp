@@ -184,12 +184,16 @@ int main() {
 
     HAL_Delay(2000);
     // printf("code started\n");
+    HAL_NVIC_SetPriority(IRQn_Type::OTG_FS_IRQn, 10, 0);
+    HAL_NVIC_SetPriority(IRQn_Type::OTG_FS_WKUP_IRQn, 10, 0);
 
     uint8_t UART_tx_buffer[100];
     uint8_t length;
     MPU9250_init();
     // ReSharper disable once CppDFAEndlessLoop
 
+    GYRO_CALIB = false;
+    MAG_CALIB = false;
     while (true) {
         u_long _now = HAL_GetTick();
         static u_long _last_time = _now;
@@ -215,6 +219,25 @@ int main() {
                                MPU9250.mx,
                                -1.0f * MPU9250.mz);
             computeAngles();
+        }
+
+        _now = HAL_GetTick();
+        static u_long last_check_time = _now;
+        static int dead_count = 0;
+        if (_now - last_check_time >= 1000) {
+            last_check_time = _now;
+            if (!ak_check_health()) {
+                HAL_Delay(1);
+                length = sprintf((char*)UART_tx_buffer, "sensor baz\r\n");
+                CDC_Transmit_FS(UART_tx_buffer, length);
+                dead_count++;
+            } else {
+                length = sprintf((char*)UART_tx_buffer, "sensor sha8al\r\n");
+                CDC_Transmit_FS(UART_tx_buffer, length);
+            }
+            if (dead_count == 10) {
+                   MPU9250_init();
+            }
         }
 
         _now = HAL_GetTick();

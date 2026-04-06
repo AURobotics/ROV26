@@ -320,6 +320,9 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t* Len) {
 
     if (Buf[0] == 0xFF /*start byte*/ && Buf[1] == 0x07 /*msg type*/) {
         dfu_flag = MAGIC_DFU;
+        // HAL_NVIC_SetPriority(OTG_FS_IRQn, 10, 0);
+        // HAL_NVIC_SetPriority(OTG_FS_WKUP_IRQn, 10,0);
+        for (volatile int i = 0; i < 10000; i= i + 1 ){}
         NVIC_SystemReset();
     }
 

@@ -6,8 +6,8 @@
 
 extern struct _MPU9250 MPU9250;
 
-#define MAG_CALIB	true
-#define GYRO_CALIB  false
+extern int GYRO_CALIB ;
+extern int MAG_CALIB ;
 
 // Constants
 #define RAD2DEG 57.2957795131
@@ -296,7 +296,6 @@ void mpu_set_gyro_FSR(GyroFSR gyro_fsr);
 void mpu_set_accel_FSR(AccelFSR accel_fsr);
 void mpu_set_gyro_bandwidth(GYRODLPFBandwidth gyro_bw);
 void mpu_set_accel_bandwidth(ACCELDLPFBandwidth accel_bw);
-void HAL_I2C_MemRxCpltCallback (I2C_HandleTypeDef * hi2c);
-void HAL_I2C_MemTxCpltCallback (I2C_HandleTypeDef * hi2c);
+int ak_check_health();
 
 #endif /* INC_MPU9250_H_ */

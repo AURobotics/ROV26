@@ -17,6 +17,8 @@ const int16_t tY[3] = {1, 0, 0};
 const int16_t tZ[3] = {0, 0, -1};
 
 struct _MPU9250 MPU9250;
+extern int GYRO_CALIB = true;
+extern int MAG_CALIB = true;
 
 /*
  * Function: max
@@ -102,10 +104,11 @@ void ak_i2c_readregister(uint8_t address, uint8_t* data) {
     HAL_I2C_Mem_Read(&hi2c3, AK8963_ADDRESS, address, MEM_ADD_SIZE, data, REG_MEM_SIZE, m_timeout);
 }
 
-/**
- * @brief Performs the AK8963 internal self-test.
- * @return 1 if passed, 0 if failed (timeout, overflow, or out of range).
- */
+int ak_check_health() {
+    ak_i2c_readregister(AK8963_CNTL1, &i2c_rx_data);
+    return i2c_rx_data == 0x16;
+}
+
 
 /*
  * Function: MPU9250_init
@@ -215,11 +218,11 @@ int MPU9250_init() {
     CDC_Transmit_FS(buffer, len);
     HAL_Delay(10);
 
-    if constexpr (GYRO_CALIB == true) {
+    if  (GYRO_CALIB == true) {
         calibrate_gyro();
     }
 
-    if constexpr (MAG_CALIB == true) {
+    if  (MAG_CALIB == true) {
         calibrate_compass();
     }
     return 0;
@@ -277,12 +280,13 @@ void calibrate_compass() {
                 mz_max = max(MPU9250.mz, mz_max);
             }
             n1++;
-            if (n1 >=10) {
+            if (n1 >= 10) {
                 n1 = 0;
                 HAL_Delay(10);
                 len = sprintf((char*)buffer, "\r%d\r\n", i);
                 CDC_Transmit_FS(buffer, len);
                 HAL_Delay(10);
+                HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_RESET);
             }
         }
 
@@ -291,15 +295,14 @@ void calibrate_compass() {
             n2++;
             if (n2 % 10 == 0) {
                 if (n2 >= 1000) {
-                    sensor_is_fucked_up = true;
-                    break;
+                    // sensor_is_fucked_up = true;
+                    MPU9250_init();
                 }
                 ak_i2c_readregister(AK8963_CNTL1, &i2c_rx_data);
                 HAL_Delay(10);
-                len = sprintf((char*)buffer, "AK8963_CNTL1 value: 0x%02X\r\n", i2c_rx_data);
-                CDC_Transmit_FS(buffer, len);
+                HAL_GPIO_WritePin(MOTOR_GRIPPER_A_GPIO_Port, MOTOR_GRIPPER_A_Pin, GPIO_PIN_SET);
                 HAL_Delay(10);
-                i2c_rx_data = 0x00;
+                i2c_rx_data = 0x01;
             }
         }
     }
