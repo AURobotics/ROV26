@@ -110,103 +110,100 @@ void ak_i2c_readregister(uint8_t address, uint8_t* data) {
  *
  *   returns: Currently returns two error codes if the sensors are not identified
  */
-int MPU9250_init() {
-    MPU9250.first_start = 1;
-    MPU9250.gyro_calibration_done = 0;
+int MPU9250_init()
+{
+	MPU9250.first_start = 1;
+	MPU9250.gyro_calibration_done = 0;
 
-    MPU9250.gx_offset = 3;
-    MPU9250.gy_offset = -5;
-    MPU9250.gz_offset = 12;
+	MPU9250.gx_offset = 3;
+	MPU9250.gy_offset = -5;
+	MPU9250.gz_offset = 12;
 
-    MPU9250.mx_scale = 1.042146;
-    MPU9250.my_scale = 0.906667;
-    MPU9250.mz_scale = 1.066667;
+	MPU9250.mx_scale = 1.042146;
+	MPU9250.my_scale = 0.906667;
+	MPU9250.mz_scale = 1.066667;
 
-    MPU9250.mx_offset = 18;
-    MPU9250.my_offset = -7;
-    MPU9250.mz_offset = -28;
+	MPU9250.mx_offset = 18;
+	MPU9250.my_offset = -7;
+	MPU9250.mz_offset = -28;
 
-    // configuring mpu6500 sensor//
-    // get device who am i ID first and check if its the standard value
-    mpu_i2c_readregister(WHO_AM_I_MPU9250, &i2c_rx_data);
-    if (i2c_rx_data != WHO_AM_I_MPU9250_ANS) {
-        uint8_t buffer[100];
-        int len = sprintf((char*)buffer,"mpu WHO_AM_I_fault \r\n");
-        CDC_Transmit_FS(buffer, len);
-        return mpu6500_who_am_I_fault;
-    }
+	//configuring mpu6500 sensor//
+	//get device who am i ID first and check if its the standard value
+	mpu_i2c_readregister(WHO_AM_I_MPU9250, &i2c_rx_data);
+	if(i2c_rx_data != WHO_AM_I_MPU9250_ANS)
+	{
+		return mpu6500_who_am_I_fault;
+	}
 
-    // reset mpu9250
-    i2c_tx_data = 0x80;
-    mpu_i2c_writeregister(PWR_MGMT_1, &i2c_tx_data);
-    HAL_Delay(10);
+	//reset mpu9250
+	i2c_tx_data = 0x80;
+	mpu_i2c_writeregister(PWR_MGMT_1, &i2c_tx_data);
+	HAL_Delay(10);
 
-    // Enable Pass through mode to access AK8963 on I2C bus from stm32
-    i2c_tx_data = 0x02;
-    mpu_i2c_writeregister(INT_PIN_CFG, &i2c_tx_data);
+	//Enable Pass through mode to access AK8963 on I2C bus from stm32
+	i2c_tx_data = 0x02;
+	mpu_i2c_writeregister(INT_PIN_CFG, &i2c_tx_data);
 
-    // setting accel range to 16G as default
-    mpu_set_accel_FSR(static_cast<GyroFSR>(ACCEL_RANGE_16G));
+	// setting accel range to 16G as default
+	mpu_set_accel_FSR(ACCEL_RANGE_16G);
 
-    // setting the gyro range to 2000DPS as default
-    mpu_set_gyro_FSR(GYRO_RANGE_2000DPS);
+	// setting the gyro range to 2000DPS as default
+	mpu_set_gyro_FSR(GYRO_RANGE_2000DPS);
 
-    // setting bandwidth to 99Hz
-    mpu_set_accel_bandwidth(ACCEL_DLPF_BANDWIDTH_45HZ);
+	// setting bandwidth to 99Hz
+	mpu_set_accel_bandwidth(ACCEL_DLPF_BANDWIDTH_45HZ);
 
-    // setting gyro bandwidth to 92Hz
-    mpu_set_gyro_bandwidth(GYRO_DLPF_BANDWIDTH_41HZ);
+	// setting gyro bandwidth to 92Hz
+	mpu_set_gyro_bandwidth(GYRO_DLPF_BANDWIDTH_41HZ);
 
-    // set sample rate divider to 200Hz
-    i2c_tx_data = 0x04;
-    mpu_i2c_writeregister(SMPLRT_DIV, &i2c_tx_data);
+	//set sample rate divider to 200Hz
+	i2c_tx_data = 0x04;
+	mpu_i2c_writeregister(SMPLRT_DIV, &i2c_tx_data);
 
-    // enable raw data ready interrupt
-    i2c_tx_data = 0x01;
-    mpu_i2c_writeregister(INT_ENABLE, &i2c_tx_data);
+	//enable raw data ready interrupt
 
-    // select clock automatically as PLL or internal oscillator
-    i2c_tx_data = 0x01;
-    mpu_i2c_writeregister(PWR_MGMT_1, &i2c_tx_data);
-    HAL_Delay(10);
+	//select clock automatically as PLL or internal oscillator
+	i2c_tx_data = 0x01;
+	mpu_i2c_writeregister(PWR_MGMT_1, &i2c_tx_data);
+	HAL_Delay(10);
 
-    // configuring AK8963 sensor//
-    // check who am I value of the AK8963
-    ak_i2c_readregister(AK8963_WHO_AM_I, &i2c_rx_data);
-    if (i2c_rx_data != AK8963_WHO_AM_I_ANS) {
-        uint8_t buffer[100];
-        int len = sprintf((char*)buffer,"AK8963 WHO_AM_I_fault \r\n");
-        CDC_Transmit_FS(buffer, len);
-        return ak8963_who_am_I_fault;
-    }
+	//configuring AK8963 sensor//
+	//check who am I value of the AK8963
+	ak_i2c_readregister(AK8963_WHO_AM_I, &i2c_rx_data);
+	if(i2c_rx_data != AK8963_WHO_AM_I_ANS)
+	{
+		return ak8963_who_am_I_fault;
+	}
 
-    // reset the AK8963
-    i2c_tx_data = 0x01;
-    ak_i2c_writeregister(AK8963_CNTL2, &i2c_tx_data);
-    HAL_Delay(10);
-
-    // select 16 bit data output mode and select fused ROM access mode
-    i2c_tx_data = 0x1F;
-    ak_i2c_writeregister(AK8963_CNTL1, &i2c_tx_data);
-    HAL_Delay(10);
-
-    // read fused ROM data and put data in global data structure
-    read_ak_fuseROM_data();
-
-    // select power down mode before entering the continuous measurement mode
-    i2c_tx_data = 0x16;
-    ak_i2c_writeregister(AK8963_CNTL1, &i2c_tx_data);
-    HAL_Delay(10);
+	//reset the AK8963
+	i2c_tx_data = 0x01;
+	ak_i2c_writeregister(AK8963_CNTL2,&i2c_tx_data);
+	HAL_Delay(10);
 
 
 
-    if (GYRO_CALIB == true) {
-        calibrate_gyro();
-    }
+	//select 16-bit data output mode and select fused ROM access mode
+	i2c_tx_data = 0x1F;
+	ak_i2c_writeregister(AK8963_CNTL1,&i2c_tx_data);
+	HAL_Delay(10);
 
-    if (MAG_CALIB == true) {
-        calibrate_compass();
-    }
+	//read fused ROM data and put data in global data structure
+	read_ak_fuseROM_data();
+
+	//select power down mode before entering the continuous measurement mode
+	i2c_tx_data = 0x16;
+	ak_i2c_writeregister(AK8963_CNTL1,&i2c_tx_data);
+	HAL_Delay(10);
+
+	if(MAG_CALIB == true)
+	{
+		calibrate_compass();
+	}
+
+	if(GYRO_CALIB == true)
+	{
+		calibrate_gyro();
+	}
 
     return 0;
 }
@@ -262,6 +259,9 @@ void calibrate_compass() {
         }
         else if (!(MPU9250.ak8963_st1 & AK8963_DRDY_Mask)) {
             i--;
+             len = sprintf((char*)buffer,"i am here\r\n");
+            CDC_Transmit_FS(buffer, len);
+            HAL_Delay(10);
         }
     }
 
@@ -538,7 +538,7 @@ void mpu_set_gyro_FSR(GyroFSR gyro_fsr) {
  *   returns: void
  *
  */
-void mpu_set_accel_FSR(GyroFSR accel_fsr) {
+void mpu_set_accel_FSR(AccelFSR accel_fsr) {
     uint8_t accel_config_reg_val;
     mpu_i2c_readregister(ACCEL_CONFIG, &accel_config_reg_val);
 

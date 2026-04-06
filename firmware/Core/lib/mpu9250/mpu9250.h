@@ -293,7 +293,7 @@ void ak_i2c_readdataregisters();
 void ak8963_i2c_readst1register();
 void read_ak_fuseROM_data();
 void mpu_set_gyro_FSR(GyroFSR gyro_fsr);
-void mpu_set_accel_FSR(GyroFSR accel_fsr);
+void mpu_set_accel_FSR(AccelFSR accel_fsr);
 void mpu_set_gyro_bandwidth(GYRODLPFBandwidth gyro_bw);
 void mpu_set_accel_bandwidth(ACCELDLPFBandwidth accel_bw);
 void HAL_I2C_MemRxCpltCallback (I2C_HandleTypeDef * hi2c);
