@@ -13,18 +13,19 @@ class MainWindow(QMainWindow):
 
         menubar = MenuBar(self, active_joystick, serial_device)
         self.setMenuBar(menubar)
-        pipeline = (
-            "udpsrc address=239.1.1.1 port=5000 ! "
+        ports = [5000, 5002, 5004]
+        pipelines = [
+            f"udpsrc address=239.1.1.1 port={port} ! "
             "application/x-rtp, payload=96 ! "
             "rtph264depay ! "
             "h264parse ! "
             "avdec_h264 ! "
             "videoconvert ! "
-            "appsink"
-        )
-        cam1 = VideoStream(pipeline)
-        cam2 = VideoStream(pipeline)
-        cam3 = VideoStream(pipeline)
+            "appsink" for port in ports
+        ]
+        cam1 = VideoStream(pipelines[0])
+        cam2 = VideoStream(pipelines[1])
+        cam3 = VideoStream(pipelines[2])
 
         
         self.pilot_tab = PilotTab2(cam1, cam2, cam3, comms)
