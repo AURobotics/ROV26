@@ -41,27 +41,46 @@ float PID::calculate_PID(float error, float time_stamp){
     else if(PID < -this->max_motor_output){
         PID = -this->max_motor_output;
     }
+    //TODO REMOVE PRINTS:
+    Serial.println("P, I, D: ");
+    Serial.println(P);
+    Serial.println(I);
+    Serial.println(D);
     return PID;
 }
 
-float time;
-bool hold_position = false;
 
+float get_height(){
+    Serial.print("h1:");
+    while(Serial.available() <= 0)
+        delay(10);
+    char receivedChar = Serial.read();
+    char h1_c[1] = {receivedChar};
+    int h1 = atoi(h1_c);
+    Serial.print("h2:");
+    while(Serial.available() <= 1){
+        delay(10);
+    }
+    char c1 = Serial.read();
+    char c2 = Serial.read();
+    char h2_c[2] = {c1, c2};
+    int h2 = atoi(h2_c);
+    float height = h1 + (0.01 * h2);
+    return height;
+}
 
-double control_loop(PID pid) {
-  // put your main code here, to run repeatedly:
-  if(hold_position && millis() - time > 1000 * 30){ //if we have been holding position for 30 seconds, we flip direction
-    pid.set_point = -2.5 - pid.set_point; //flip motor direction after being stable for 30 seconds
-    pid.current_integral = 0; //reset integral to help change direction faster
+double PID::control_loop() {
+  if(hold_position && (millis() - Time > holding_time)){ //if we have been holding position for 30 seconds, we flip direction
+    this->set_point = -2.5 - this->set_point; //flip motor direction after being stable for 30 seconds
+    this->current_integral = 0; //reset integral to help change direction faster
     hold_position = false;
   }
   float height = get_height(); //get height from pressure sensor
-  float error = pid.calculate_error(height);
+  float error = this->calculate_error(height);
   if(!hold_position && error < 0.3){ //error less than 30 cm
     hold_position = true; //start holding position
-    time = millis();
+    Time = millis();
   }
-  float signal = pid.calculate_PID(error, millis());
-//   driver.VACTUAL(signal);
+  float signal = this->calculate_PID(error, millis());
   return signal;
 }
