@@ -33,10 +33,10 @@ enum class Test_state { OFF, STEPPING, DONE };
 // MS5611 ms5611(&hi2c3);
 Cdc_driver cdc(20); /*need to set timeout*/
 
-extern "C" int _write(int file, char* ptr, int len) {
-    CDC_Transmit_FS((uint8_t*)ptr, len);
-    return len;
-}
+// extern "C" int _write(int file, char* ptr, int len) {
+//     CDC_Transmit_FS((uint8_t*)ptr, len);
+//     return len;
+// }
 
 
 double normalize_angle(double angle) {
@@ -171,10 +171,6 @@ int main() {
     HAL_Init();
     SystemClock_Config();
 
-    HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
-    HAL_NVIC_SetPriority(OTG_FS_IRQn, 0, 0);
-    HAL_NVIC_SetPriority(I2C3_EV_IRQn, 0, 0);
-    HAL_NVIC_SetPriority(I2C3_ER_IRQn, 0, 0);
 
     MX_GPIO_Init();
     MX_ADC1_Init();
@@ -187,11 +183,11 @@ int main() {
     MX_USB_DEVICE_Init();
 
     HAL_Delay(2000);
-    printf("code started\n");
+    // printf("code started\n");
 
     uint8_t UART_tx_buffer[100];
     uint8_t length;
-    printf("\r%d\r\n", MPU9250_init());
+    MPU9250_init();
     // ReSharper disable once CppDFAEndlessLoop
 
     while (true) {

@@ -13,8 +13,8 @@ extern struct _MPU9250 MPU9250;
 #define RAD2DEG 57.2957795131
 #define G2MSS	9.81
 // Defines
-#define AK8963_ADDRESS   0x0C<<1
-#define MPU9250_ADDRESS  0x68<<1  // Device address when ADO = 0
+#define AK8963_ADDRESS   (0x0C<<1)
+#define MPU9250_ADDRESS  (0x68<<1 ) // Device address when ADO = 0
 
 #define AK8963_WHO_AM_I  0x00 // should return 0x48
 #define AK8963_WHO_AM_I_ANS  0x48

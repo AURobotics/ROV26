@@ -106,75 +106,6 @@ void ak_i2c_readregister(uint8_t address, uint8_t* data) {
  * @brief Performs the AK8963 internal self-test.
  * @return 1 if passed, 0 if failed (timeout, overflow, or out of range).
  */
-int perform_ak8963_self_test() {
-    uint8_t i2c_data;
-    uint8_t st1_reg = 0;
-    uint8_t raw_buffer[7]; // HXL, HXH, HYL, HYH, HZL, HZH, ST2
-    int16_t self_test_data[3];
-
-    // (1) Set Power-down mode (MODE[3:0]="0000")
-    i2c_data = 0x00;
-    ak_i2c_writeregister(AK8963_CNTL1, &i2c_data);
-    HAL_Delay(10);
-
-    // (2) Write “1” to SELF bit of ASTC register (Bit 6)
-    i2c_data = 0x40; // 0100 0000
-    ak_i2c_writeregister(AK8963_ASTC, &i2c_data);
-    HAL_Delay(10);
-
-    // (3) Set Self-test Mode (MODE[3:0]="1000")
-    // We use 16-bit output (Bit 4 = 1) -> 0x18
-    i2c_data = 0x18;
-    ak_i2c_writeregister(AK8963_CNTL1, &i2c_data);
-    HAL_Delay(10);
-
-    // (4) Check Data Ready (DRDY) by polling ST1 register
-    uint32_t timeout = HAL_GetTick();
-    do {
-        ak_i2c_readregister(AK8963_ST1, &st1_reg);
-        if (HAL_GetTick() - timeout > 100) {
-            return 0; // Timeout failure
-        }
-    }
-    while (!(st1_reg & 0x01)); // Wait for Bit 0 (DRDY)
-
-    // (5) Read measurement data (HXL to HZH) and ST2
-    // Must read all 7 registers sequentially to clear the lock
-    for (uint8_t i = 0; i < 7; i++) {
-        // AK8963_HXL is 0x03
-        ak_i2c_readregister(0x03 + i, &raw_buffer[i]);
-    }
-
-    // Combine bytes (Little Endian)
-    self_test_data[0] = (int16_t)((raw_buffer[1] << 8) | raw_buffer[0]); // HX
-    self_test_data[1] = (int16_t)((raw_buffer[3] << 8) | raw_buffer[2]); // HY
-    self_test_data[2] = (int16_t)((raw_buffer[5] << 8) | raw_buffer[4]); // HZ
-
-    // (6) Write “0” to SELF bit of ASTC register
-    i2c_data = 0x00;
-    ak_i2c_writeregister(AK8963_ASTC, &i2c_data);
-    HAL_Delay(10);
-
-    // (7) Set Power-down mode
-    i2c_data = 0x00;
-    ak_i2c_writeregister(AK8963_CNTL1, &i2c_data);
-    HAL_Delay(10);
-
-    // --- Judgement (Based on 16-bit Criteria) ---
-    // Check Magnetic Overflow (ST2 Bit 3)
-    if (raw_buffer[6] & 0x08) {
-        return 0; // Failure: Magnetic sensor overflow
-    }
-
-    // Check HX, HY, HZ ranges
-    if (self_test_data[0] >= -200 && self_test_data[0] <= 200 && self_test_data[1] >= -200 &&
-        self_test_data[1] <= 200 && self_test_data[2] >= -3200 && self_test_data[2] <= -800) {
-
-        return 1; // SUCCESS
-    }
-
-    return 0; // Failure: Data out of range
-}
 
 /*
  * Function: MPU9250_init
@@ -212,8 +143,17 @@ int MPU9250_init() {
     // reset mpu9250
     i2c_tx_data = 0x80;
     mpu_i2c_writeregister(PWR_MGMT_1, &i2c_tx_data);
+    HAL_Delay(100);
+
+    i2c_tx_data = 0x01;
+    mpu_i2c_writeregister(PWR_MGMT_1, &i2c_tx_data);
     HAL_Delay(10);
 
+    // disable master i2c write
+    i2c_tx_data = 0x00;
+    mpu_i2c_writeregister(USER_CTRL, &i2c_tx_data);
+
+    HAL_Delay(10);
     // Enable Pass through mode to access AK8963 on I2C bus from stm32
     i2c_tx_data = 0x02;
     mpu_i2c_writeregister(INT_PIN_CFG, &i2c_tx_data);
@@ -234,14 +174,8 @@ int MPU9250_init() {
     i2c_tx_data = 0x04;
     mpu_i2c_writeregister(SMPLRT_DIV, &i2c_tx_data);
 
-    // enable raw data ready interrupt
-    i2c_tx_data = 0x01;
-    mpu_i2c_writeregister(INT_ENABLE, &i2c_tx_data);
 
     // select clock automatically as PLL or internal oscillator
-    i2c_tx_data = 0x01;
-    mpu_i2c_writeregister(PWR_MGMT_1, &i2c_tx_data);
-    HAL_Delay(10);
 
     // configuring AK8963 sensor//
     // check who am I value of the AK8963
@@ -250,16 +184,16 @@ int MPU9250_init() {
         return ak8963_who_am_I_fault;
     }
 
-    len = sprintf((char*)buffer, "\rself test : %d\r\n", perform_ak8963_self_test());
-    CDC_Transmit_FS(buffer, len);
-
-
     // reset the AK8963
     i2c_tx_data = 0x01;
     ak_i2c_writeregister(AK8963_CNTL2, &i2c_tx_data);
     HAL_Delay(10);
 
     // select 16 bit data output mode and select fused ROM access mode
+    i2c_tx_data = 0x00;
+    ak_i2c_writeregister(AK8963_CNTL1, &i2c_tx_data);
+    HAL_Delay(10);
+
     i2c_tx_data = 0x1F;
     ak_i2c_writeregister(AK8963_CNTL1, &i2c_tx_data);
     HAL_Delay(10);
@@ -267,14 +201,19 @@ int MPU9250_init() {
     // read fused ROM data and put data in global data structure
     read_ak_fuseROM_data();
 
-    // select power down mode before entering the continuous measurement mode
+    i2c_tx_data = 0x00;
+    ak_i2c_writeregister(AK8963_CNTL1, &i2c_tx_data);
+    HAL_Delay(10);
+
     i2c_tx_data = 0x16;
     ak_i2c_writeregister(AK8963_CNTL1, &i2c_tx_data);
     HAL_Delay(10);
 
     ak_i2c_readregister(AK8963_CNTL1, &i2c_rx_data);
+    HAL_Delay(10);
     len = sprintf((char*)buffer, "AK8963_CNTL1 value: 0x%02X\r\n", i2c_rx_data);
     CDC_Transmit_FS(buffer, len);
+    HAL_Delay(10);
 
     if constexpr (GYRO_CALIB == true) {
         calibrate_gyro();
@@ -283,8 +222,6 @@ int MPU9250_init() {
     if constexpr (MAG_CALIB == true) {
         calibrate_compass();
     }
-
-
     return 0;
 }
 
@@ -310,8 +247,12 @@ void calibrate_compass() {
 
     float chord_x, chord_y, chord_z; // Used for calculating scale factors
     float chord_average;
+    int n1 = 0;
+    int n2 = 0;
 
+    int sensor_is_fucked_up = false;
     for (uint16_t i = 0; i < 3000; i++) {
+        HAL_Delay(10);
         ak8963_i2c_readst1register();
         if (MPU9250.ak8963_st1 & AK8963_DRDY_Mask) {
             ak_i2c_readdataregisters();
@@ -335,19 +276,36 @@ void calibrate_compass() {
                 mz_min = min(MPU9250.mz, mz_min);
                 mz_max = max(MPU9250.mz, mz_max);
             }
-            HAL_Delay(10);
-            len = sprintf((char*)buffer, "\r%d\r\n", i);
-            CDC_Transmit_FS(buffer, len);
-            HAL_Delay(1);
+            n1++;
+            if (n1 >=10) {
+                n1 = 0;
+                HAL_Delay(10);
+                len = sprintf((char*)buffer, "\r%d\r\n", i);
+                CDC_Transmit_FS(buffer, len);
+                HAL_Delay(10);
+            }
         }
 
         else if (!(MPU9250.ak8963_st1 & AK8963_DRDY_Mask)) {
             i--;
-            len = sprintf((char*)buffer, "\ri am here\r\n");
-            CDC_Transmit_FS(buffer, len);
-            HAL_Delay(10);
+            n2++;
+            if (n2 % 10 == 0) {
+                if (n2 >= 1000) {
+                    sensor_is_fucked_up = true;
+                    break;
+                }
+                ak_i2c_readregister(AK8963_CNTL1, &i2c_rx_data);
+                HAL_Delay(10);
+                len = sprintf((char*)buffer, "AK8963_CNTL1 value: 0x%02X\r\n", i2c_rx_data);
+                CDC_Transmit_FS(buffer, len);
+                HAL_Delay(10);
+                i2c_rx_data = 0x00;
+            }
         }
     }
+
+    if (sensor_is_fucked_up)
+        MPU9250_init();
 
     // ----- Calculate hard-iron offsets
     MPU9250.mx_offset = (mx_max + mx_min) / 2; // Get average magnetic bias in counts
