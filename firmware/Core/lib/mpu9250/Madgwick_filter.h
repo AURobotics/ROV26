@@ -13,7 +13,7 @@ extern float roll, pitch, yaw;
 //---------------------------------------------------------------------------------------------------
 // Function declarations
 
-void MadgwickAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz);
-void MadgwickAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float az);
+void MadgwickAHRSupdate(float dt, float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz);
+void MadgwickAHRSupdateIMU(float dt, float gx, float gy, float gz, float ax, float ay, float az);
 void computeAngles();
 #endif /* INC_MADGWICK_FILTER_H_ */

@@ -7,7 +7,7 @@
 extern struct _MPU9250 MPU9250;
 
 #define MAG_CALIB	true
-#define GYRO_CALIB  true
+#define GYRO_CALIB  false
 
 // Constants
 #define RAD2DEG 57.2957795131

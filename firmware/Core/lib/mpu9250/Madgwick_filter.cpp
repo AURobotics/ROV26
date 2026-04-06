@@ -16,7 +16,10 @@
 // Header files
 
 #include "Madgwick_filter.h"
+
+#include <cfloat>
 #include <cmath>
+#include <sys/types.h>
 
 #include "stm32f4xx_hal.h"
 
@@ -42,7 +45,8 @@ float invSqrt(float x);
 //---------------------------------------------------------------------------------------------------
 // AHRS algorithm update
 
-void MadgwickAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz) {
+void MadgwickAHRSupdate(float dt, float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz) {
+    if (dt <= FLT_EPSILON) return;
 	float recipNorm;
 	float s0, s1, s2, s3;
 	float qDot1, qDot2, qDot3, qDot4;
@@ -51,7 +55,7 @@ void MadgwickAHRSupdate(float gx, float gy, float gz, float ax, float ay, float 
 
 	// Use IMU algorithm if magnetometer measurement invalid (avoids NaN in magnetometer normalisation)
 	if((mx == 0.0f) && (my == 0.0f) && (mz == 0.0f)) {
-		MadgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az);
+		MadgwickAHRSupdateIMU(dt, gx, gy, gz, ax, ay, az);
 		return;
 	}
 
@@ -123,17 +127,13 @@ void MadgwickAHRSupdate(float gx, float gy, float gz, float ax, float ay, float 
 		qDot3 -= beta * s2;
 		qDot4 -= beta * s3;
 	}
-    static uint32_t lastTick = 0;
-    uint32_t now = HAL_GetTick();
 
-    float deltat = (lastTick == 0) ? 0.005f : (now - lastTick) * 0.001f;
-    lastTick = now;
 
 	// Integrate rate of change of quaternion to yield quaternion
-	q0 += qDot1 * (1.0f * deltat);
-	q1 += qDot2 * (1.0f * deltat);
-	q2 += qDot3 * (1.0f * deltat);
-	q3 += qDot4 * (1.0f * deltat);
+	q0 += qDot1 * (1.0f * dt);
+	q1 += qDot2 * (1.0f * dt);
+	q2 += qDot3 * (1.0f * dt);
+	q3 += qDot4 * (1.0f * dt);
 
 	// Normalise quaternion
 	recipNorm = invSqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
@@ -146,7 +146,7 @@ void MadgwickAHRSupdate(float gx, float gy, float gz, float ax, float ay, float 
 //---------------------------------------------------------------------------------------------------
 // IMU algorithm update
 
-void MadgwickAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float az) {
+void MadgwickAHRSupdateIMU(float dt, float gx, float gy, float gz, float ax, float ay, float az) {
 	float recipNorm;
 	float s0, s1, s2, s3;
 	float qDot1, qDot2, qDot3, qDot4;
@@ -200,16 +200,12 @@ void MadgwickAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, flo
 		qDot4 -= beta * s3;
 	}
 
-    static uint32_t lastTick = 0;
-    uint32_t now = HAL_GetTick();
 
-    float deltat = (lastTick == 0) ? 0.005f : (now - lastTick) * 0.001f;
-    lastTick = now;
 	// Integrate rate of change of quaternion to yield quaternion
-	q0 += qDot1 * (1.0f *  deltat);
-	q1 += qDot2 * (1.0f *  deltat);
-	q2 += qDot3 * (1.0f *  deltat);
-	q3 += qDot4 * (1.0f *  deltat);
+	q0 += qDot1 * (1.0f *  dt);
+	q1 += qDot2 * (1.0f *  dt);
+	q2 += qDot3 * (1.0f *  dt);
+	q3 += qDot4 * (1.0f *  dt);
 
 	// Normalise quaternion
 	recipNorm = invSqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
