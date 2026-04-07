@@ -89,7 +89,7 @@ float MS5611::getPressure() {
 
     int32_t  P = (int32_t)((((int64_t)D1 * SENSITIVITY >> 21) - OFFSET) >> 15);
 
-    return (float)p;   // Pa
+    return (float)P;   // Pa
 }
 void MS5611::calibrateSurface() {
     const int samples = 5;

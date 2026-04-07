@@ -11,6 +11,6 @@ bool isComplete();
 float getCurrentTarget();
 void clearLog();
 void store_data_loop();
-void store_data_setup();
+bool store_data_setup();
 
 #endif
