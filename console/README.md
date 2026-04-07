@@ -39,6 +39,7 @@ Due to how we handle `opencv-python` and `gstreamer` support, during the initial
 ### Windows
 
 ```ps1
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 .\scripts\setup_venv.ps1
 ```
 
