@@ -20,7 +20,7 @@ private:
     uint8_t  _addr;
     uint16_t C1, C2, C3, C4, C5, C6;
     float    surfacePressure;
-    float    density = 1025f;   
+    float    density = 1025.0f;   
 
     void     reset();
     void     sendCmd(uint8_t cmd);
