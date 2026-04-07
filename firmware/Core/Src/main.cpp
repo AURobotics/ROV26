@@ -184,8 +184,11 @@ int main() {
 
     HAL_Delay(2000);
     // printf("code started\n");
-    HAL_NVIC_SetPriority(IRQn_Type::OTG_FS_IRQn, 10, 0);
-    HAL_NVIC_SetPriority(IRQn_Type::OTG_FS_WKUP_IRQn, 10, 0);
+    HAL_NVIC_SetPriority(IRQn_Type::OTG_FS_IRQn, 1, 0);
+    HAL_NVIC_SetPriority(IRQn_Type::OTG_FS_WKUP_IRQn, 1, 0);
+    HAL_NVIC_SetPriority(IRQn_Type::I2C3_ER_IRQn, 1, 0);
+    HAL_NVIC_SetPriority(IRQn_Type::I2C3_EV_IRQn, 1, 0);
+    HAL_NVIC_SetPriority(IRQn_Type::SysTick_IRQn, 0, 0);
 
     uint8_t UART_tx_buffer[100];
     uint8_t length;
@@ -247,6 +250,15 @@ int main() {
             length = sprintf((char*)UART_tx_buffer, "Orientation: %f %f %f\r\n", yaw, pitch, roll);
             CDC_Transmit_FS(UART_tx_buffer, length);
         }
+        static bool is_beta_set = false;
+        if (!is_beta_set)
+            if (HAL_GetTick() > 10000) {
+                is_beta_set = true;
+                beta = 0.1;
+                print_calibration();
+            }
+
+
         HAL_Delay(1);
     }
 }

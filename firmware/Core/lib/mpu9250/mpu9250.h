@@ -297,5 +297,8 @@ void mpu_set_accel_FSR(AccelFSR accel_fsr);
 void mpu_set_gyro_bandwidth(GYRODLPFBandwidth gyro_bw);
 void mpu_set_accel_bandwidth(ACCELDLPFBandwidth accel_bw);
 int ak_check_health();
+void load_gyro_calibration(int16_t _gx, int16_t _gy, int16_t _gz);
+void load_mag_calibration();
+void print_calibration();
 
 #endif /* INC_MPU9250_H_ */
