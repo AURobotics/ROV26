@@ -6,7 +6,7 @@ from annotated_types import Ge, Le
 if TYPE_CHECKING:
     # only use the following in type hints
     # use [Joystick]._manager in expressions
-    from lib.joystick.manager import _BaseJoystickManager
+    from lib.joystick.manager import JoystickManager
     import pygame
 
 from lib.joystick.inputs import (
@@ -29,7 +29,7 @@ class Joystick:
     def __init__(
         self,
         joystick: pygame.joystick.JoystickType,
-        manager: _BaseJoystickManager,
+        manager: JoystickManager,
         mapping: dict[str, str] | None,
     ) -> None:
         self._connected = True

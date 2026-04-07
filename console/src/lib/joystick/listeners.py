@@ -13,7 +13,7 @@ from lib.joystick.inputs import GamepadButton, HatDirection
 
 class CallbackFactory:
     @staticmethod
-    def _create_callback_ref(
+    def create_callback_ref(
         callback: Callable,
     ) -> weakref.WeakMethod | weakref.ReferenceType:
         if inspect.ismethod(callback) and not inspect.isbuiltin(callback):
@@ -25,14 +25,14 @@ class CallbackFactory:
     def create_connection_callback(
         callback: Callable[[Joystick, bool], None],
     ) -> ConnectionCallback:
-        callback_ref = CallbackFactory._create_callback_ref(callback)
+        callback_ref = CallbackFactory.create_callback_ref(callback)
         return ConnectionCallback(callback_ref)
 
     @staticmethod
     def create_button_callback(
         joystick: Joystick, callback: Callable[[Joystick, int, bool], None], hwid: int
     ) -> ButtonCallback:
-        callback_ref = CallbackFactory._create_callback_ref(callback)
+        callback_ref = CallbackFactory.create_callback_ref(callback)
         return ButtonCallback(joystick=joystick, hwid=hwid, callback_ref=callback_ref)
 
     @staticmethod
@@ -47,7 +47,7 @@ class CallbackFactory:
             raise UnsupportedFeatureError()
         hwid_str = joystick._mapping[button.value]
         assert hwid_str.startswith("b") or hwid_str.startswith("h")
-        callback_ref = CallbackFactory._create_callback_ref(callback)
+        callback_ref = CallbackFactory.create_callback_ref(callback)
         if hwid_str.startswith("b"):
             hwid = int(hwid_str[1:])
             return GamepadButtonCallback(
@@ -71,7 +71,7 @@ class CallbackFactory:
         callback: Callable[[Joystick, int, HatDirection], None],
         hwid: int,
     ) -> HatMotionCallback:
-        callback_ref = CallbackFactory._create_callback_ref(callback)
+        callback_ref = CallbackFactory.create_callback_ref(callback)
         return HatMotionCallback(
             joystick=joystick, hwid=hwid, callback_ref=callback_ref
         )
@@ -85,7 +85,7 @@ class CallbackFactory:
     ) -> DirectedHatCallback:
         if direction == HatDirection.ANY:
             raise ValueError()
-        callback_ref = CallbackFactory._create_callback_ref(callback)
+        callback_ref = CallbackFactory.create_callback_ref(callback)
         return DirectedHatCallback(
             joystick=joystick,
             hwid=hwid,

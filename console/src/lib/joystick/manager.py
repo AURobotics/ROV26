@@ -1,6 +1,7 @@
 from __future__ import annotations
-from abc import ABC
 from collections import defaultdict
+from contextlib import nullcontext
+from pathlib import Path
 import threading
 from typing import Callable, Self, TYPE_CHECKING, cast
 
@@ -32,55 +33,59 @@ from lib.joystick.listeners import (
 from lib.joystick.exceptions import NotAGamepadError, UnsupportedFeatureError
 
 
-class _BaseJoystickManager(ABC):
+class JoystickManager:
     _joysticks: dict[int, Joystick]
     _initialized: bool
     _button_listeners: dict[Joystick, list[ButtonCallback]]
     _hat_listeners: dict[Joystick, list[HatMotionCallback]]
     _connection_listeners: list[ConnectionCallback]
+    _running: bool
+    _lock: threading.RLock | nullcontext
+    _event_worker_thread: threading.Thread | None
+    _threaded: bool
+    _last_virtualized_sync_time: int
 
-    _instance: _BaseJoystickManager | None = None
+    _instance: JoystickManager | None = None
     _creation_lock: threading.Lock = threading.Lock()
     _pg = pygame if TYPE_CHECKING else None
     _sdl_c = sdl_controller if TYPE_CHECKING else None
 
     def __new__(cls, *args, **kwargs) -> Self:
-        if not _BaseJoystickManager._instance:
-            with _BaseJoystickManager._creation_lock:
-                if not _BaseJoystickManager._instance:
-                    _BaseJoystickManager._instance = super().__new__(cls)
-        return cast(Self, _BaseJoystickManager._instance)
+        if not JoystickManager._instance:
+            with JoystickManager._creation_lock:
+                if not JoystickManager._instance:
+                    JoystickManager._instance = super().__new__(cls)
+        return cast(Self, JoystickManager._instance)
 
-    def __init__(self) -> None:
+    def __init__(self, threaded: bool = True) -> None:
         if hasattr(self, "_initialized"):
             return
-        self._running = True
+        self._initialized = True
         self._connection_listeners = []
         self._button_listeners = defaultdict(list)
         self._hat_listeners = defaultdict(list)
         self._joysticks = {}
-        self._lock = threading.RLock()
-        self._pre_init()
+        self._threaded = threaded
+        if self._threaded:
+            os.environ["SDL_VIDEODRIVER"] = "dummy"
+            os.environ["SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS"] = "1"
         import pygame
         from pygame._sdl2 import controller as sdl_controller
 
-        _BaseJoystickManager._pg = pygame
-        _BaseJoystickManager._sdl_c = sdl_controller
+        JoystickManager._pg = pygame
+        JoystickManager._sdl_c = sdl_controller
         self._pg.display.init()
         self._pg.joystick.init()
         self._sdl_c.init()
-        for i in range(self._pg.joystick.get_count()):
-            self._on_connection_event(
-                self._pg.event.Event(self._pg.JOYDEVICEADDED, {"device_index": i})
-            )
-        self._post_init()
-        self._initialized = True
-
-    def _pre_init(self):
-        pass
-
-    def _post_init(self):
-        pass
+        self._last_virtualized_sync_time = 0
+        if self._threaded:
+            self._lock = threading.RLock()
+            self._running = True
+            self._event_worker_thread = threading.Thread(target=self._event_worker)
+            self._event_worker_thread.start()
+        else:
+            self._lock = nullcontext()
+            self._event_worker_thread = None
 
     @property
     def num_connected(self) -> int:
@@ -309,10 +314,14 @@ class _BaseJoystickManager(ABC):
                 l for l in self._connection_listeners if l.callback_ref() != callback
             ]
 
-    def _on_connection_event(self, event: _BaseJoystickManager._pg.event.Event):
+    def _on_connection_event(self, event: JoystickManager._pg.event.Event):
         devid = event.device_index
         mapping: dict[str, str] | None = None
-        pg_joystick = self._pg.joystick.Joystick(devid)
+        try:
+            pg_joystick = self._pg.joystick.Joystick(devid)
+            print(devid)
+        except pygame.error:
+            return
         with self._lock:
             if pg_joystick.get_instance_id() in self._joysticks:
                 return
@@ -337,7 +346,7 @@ class _BaseJoystickManager(ABC):
                     l for l in self._connection_listeners if l.callback_alive
                 ]
 
-    def _on_disconnection_event(self, event: _BaseJoystickManager._pg.event.Event):
+    def _on_disconnection_event(self, event: JoystickManager._pg.event.Event):
         instance_id = event.instance_id
 
         with self._lock:
@@ -366,7 +375,7 @@ class _BaseJoystickManager(ABC):
                         l for l in self._connection_listeners if l.callback_alive
                     ]
 
-    def _on_button_event(self, event: _BaseJoystickManager._pg.event.Event):
+    def _on_button_event(self, event: JoystickManager._pg.event.Event):
         with self._lock:
             joy = self._joysticks.get(event.instance_id)
             if joy is None:
@@ -393,7 +402,7 @@ class _BaseJoystickManager(ABC):
                     l for l in self._button_listeners[joy] if l.callback_alive
                 ]
 
-    def _on_hat_event(self, event: _BaseJoystickManager._pg.event.Event):
+    def _on_hat_event(self, event: JoystickManager._pg.event.Event):
         with self._lock:
             joy = self._joysticks.get(event.instance_id)
             if joy is None:
@@ -422,7 +431,7 @@ class _BaseJoystickManager(ABC):
                     l for l in self._hat_listeners[joy] if l.callback_alive
                 ]
 
-    def _prune_all_listeners(self):
+    def prune_all_listeners(self):
         with self._lock:
             for joy in list(self._button_listeners.keys()):
                 self._button_listeners[joy] = [
@@ -439,15 +448,20 @@ class _BaseJoystickManager(ABC):
                     del self._hat_listeners[joy]
 
     def _event_worker(self):
-        if (
-            _IS_VIRTUALIZED
-            and os.path.exists("/dev/input/js0")
-            and len(self._joysticks) == 0
-        ):
-            self._pg.joystick.quit()
-            self._sdl_c.quit()
-            self._pg.joystick.init()
-            self._sdl_c.init()
+        last_prune_time = self._pg.time.get_ticks()
+        PRUNE_INTERVAL = 30000  # 30 seconds in milliseconds
+        clock = self._pg.time.Clock()
+        while self._running:
+            self._event_handler()
+
+            current_time = self._pg.time.get_ticks()
+            if current_time - last_prune_time > PRUNE_INTERVAL:
+                self.prune_all_listeners()
+                last_prune_time = current_time
+
+            clock.tick(120)
+
+    def _event_handler(self):
         if not self._pg.joystick.get_init() or not self._sdl_c.get_init():
             return
 
@@ -467,56 +481,40 @@ class _BaseJoystickManager(ABC):
                 self._running = False
                 return
 
-    def shutdown(self):
-        self._sdl_c.quit()
-        self._pg.joystick.quit()
-
-
-class JoystickManager(_BaseJoystickManager):
-    def _setup(self):
-        self._pg.display.init()
-        self._pg.joystick.init()
-        self._sdl_c.init()
-
-    def spin(self):
-        self._event_worker()
-
-    def prune_all_listeners(self):
-        return self._prune_all_listeners()
-
-
-class ThreadedJoystickManager(_BaseJoystickManager):
-    _running: bool
-    _event_worker_thread: threading.Thread
-    _lock: threading.RLock
-
-    def _pre_init(self):
-        os.environ["SDL_VIDEODRIVER"] = "dummy"
-        os.environ["SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS"] = "1"
-
-    def _post_init(self):
-        self._event_worker_thread = threading.Thread(target=self._event_worker)
-        self._event_worker_thread.start()
-
-    def _event_worker(self):
-        last_prune_time = self._pg.time.get_ticks()
-        PRUNE_INTERVAL = 30000  # 30 seconds in milliseconds
-        clock = self._pg.time.Clock()
-        while self._running:
-            super()._event_worker()
-
+        if _IS_VIRTUALIZED:
+            SYNC_INTERVAL = 1000  # 1 seconds
             current_time = self._pg.time.get_ticks()
-            if current_time - last_prune_time > PRUNE_INTERVAL:
-                self._prune_all_listeners()
-                last_prune_time = current_time
+            if current_time - self._last_virtualized_sync_time > SYNC_INTERVAL:
+                self._last_virtualized_sync_time = current_time
+                with self._lock:
+                    new_count = len(list(Path("/dev/input/").glob("js*")))
+                    if self._pg.joystick.get_count() < new_count:
+                        for instance_id in list(self._joysticks.keys()):
+                                self._on_disconnection_event(
+                                    self._pg.event.Event(
+                                        self._pg.JOYDEVICEREMOVED,
+                                        {"instance_id": instance_id},
+                                    )
+                                )
+                        while self._pg.joystick.get_count() < len(list(Path("/dev/input/").glob("js*"))):
+                            self._pg.event.clear()
+                            self._pg.joystick.quit()
+                            self._sdl_c.quit()
+                            self._pg.time.wait(100)
+                            self._pg.joystick.init()
+                            self._sdl_c.init()
 
-            clock.tick(120)
+
+    def spin(self) -> None:
+        self._event_handler()
 
     def shutdown(self):
         self._running = False
-        if (
-            self._event_worker_thread.is_alive()
-            and threading.current_thread() != self._event_worker_thread
-        ):
-            self._event_worker_thread.join(timeout=1.0)
-        super().shutdown()
+        if self._threaded and self._event_worker_thread is not None:
+            if (
+                self._event_worker_thread.is_alive()
+                and threading.current_thread() != self._event_worker_thread
+            ):
+                self._event_worker_thread.join(timeout=1.0)
+        self._sdl_c.quit()
+        self._pg.joystick.quit()

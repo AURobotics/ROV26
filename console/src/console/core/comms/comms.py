@@ -77,6 +77,11 @@ class CommunicationManager:
             target=self._serial_outgoing_loop, daemon=True
         )
         self._serial_outgoing_thread.start()
+        if self._joystick.selected:
+            self._set_button_listeners()
+        self._joystick.add_on_select_listener(self._set_button_listeners)
+
+    def _set_button_listeners(self):
         for btn in ToggleButtons.keys():
             self._joystick.add_gamepad_button_listener(self._controller_toggles, btn)
 
@@ -206,7 +211,7 @@ class CommunicationManager:
             joy.get_gpinput(GamepadButton.RIGHT_SHOULDER)
             - joy.get_gpinput(GamepadButton.LEFT_SHOULDER),
         ]
-        print(payload)
+        # print(payload)
         return struct.pack(MessageFormat.COMMAND_MESSAGE, *payload)
 
     def __del__(self):
