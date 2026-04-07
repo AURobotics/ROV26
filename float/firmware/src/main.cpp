@@ -8,6 +8,8 @@
 #include "idf_mqtt_manager.h"
 #include <ms5611.h>
 
+#define COMPANY_NUMBER "AU Robotics"
+
 // WiFi credentials
 const char *WIFI_SSID = "";
 const char *WIFI_PASSWORD = "";
@@ -79,6 +81,12 @@ void setup()
         delay(1000);
         ESP.restart();
     }
+
+    connectToNetwork();
+    MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+    MqttManager.publish("float/status", "Device started and about to collect data");
+    MqttManager.disconnect();
+    WiFi.disconnect(); 
 }
 
 void loop()
@@ -180,6 +188,7 @@ void loop()
             Serial.print("Mqtt connection is: ");
             Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
 
+            MqttManager.publish("float/data/credential", COMPANY_NUMBER);
             MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
             delay(5000); // Send data every 5 seconds
         }
