@@ -6,6 +6,7 @@
 #include "store_data.h"
 #include "arduino_mqtt_manager.h"
 #include "idf_mqtt_manager.h"
+#include <ms5611.h>
 
 // WiFi credentials
 const char *WIFI_SSID = "";
@@ -28,11 +29,26 @@ bool initAccessPoint(const char *ssid, const char *password);
 IDFMQTTManager MqttManager;
 
 // depths values for testing
-float testDepth = 0.0;
-float depthIncrement = 0.1;
+// float testDepth = 0.0;
+// float depthIncrement = 0.1;
 
 // Flag to ensure MQTT setup is done only once
-bool MqttSetupDone = false;
+bool wifiState = false;
+
+// pressure sensor
+MS5611 pressureSensor = MS5611();
+float depth = 0.0f;
+
+enum State
+{
+    IDLE,
+    COLLECTING, // Collecting data and doing operations
+    UPLOADING   // Uploading data to MQTT broker
+};
+State currentState = IDLE;
+
+#define MAX_WIFI_RETRY_COUNT 5
+int wifiRetryCount = 0;
 
 void setup()
 {
@@ -41,7 +57,28 @@ void setup()
     // OTA
     // setupOTA();
 
-    store_data_setup();
+    // @attention - Logic to change state is not implemented yet
+    while (currentState == IDLE)
+    {
+        // Wait for sequence to complete
+        delay(50);
+    }
+
+    // setup and calibrate pressure sensor
+    if (!pressureSensor.begin())
+    {
+        Serial.println("Failed to initialize MS5611 sensor!");
+        delay(1000);
+        ESP.restart();
+    }
+
+    // Start the sequence
+    if (!store_data_setup())
+    {
+        Serial.println("Failed to setup data storage!");
+        delay(1000);
+        ESP.restart();
+    }
 }
 
 void loop()
@@ -49,36 +86,97 @@ void loop()
     // Handle OTA updates
     // otaupdate();
 
-    // To store depth per time
-    store_data_loop();
+    if (currentState == COLLECTING)
+    {
+        // To store depth per time
+        store_data_loop();
 
-    if (isComplete())
+        // depth = testDepth;
+        depth = pressureSensor.getDepth();
+        setDepth(depth);
+
+        if (isComplete())
+        {
+            currentState = UPLOADING;
+        }
+
+        // // For testing depth changes without sensor
+        // if (abs(depth - getCurrentTarget()) < 0.05)
+        // {
+        //     Serial.println("At target depth, holding...");
+        //     setDepth(depth);
+        //     delay(500); // Wait for 30 seconds
+        //     setDepth(depth);
+        //     delay(500);
+        //     setDepth(depth);
+        // }
+        // else if (depth > getCurrentTarget())
+        // {
+        //     depth -= depthIncrement; // Move slightly below target
+        // }
+        // else
+        // {
+        //     depth += depthIncrement;
+        // }
+        // setDepth(depth);
+
+        Serial.print("Current Target: ");
+        Serial.println(getCurrentTarget());
+        Serial.print("Current Depth: ");
+        Serial.println(depth);
+
+        // delay(500);
+    }
+    else if (currentState == UPLOADING) // keep sending data to MQTT broker every 5 seconds till shutdown
     {
         // MQTT setup
         Serial.println("Connecting to MQTT broker...");
 
-        if (!MqttSetupDone)
+        if (!wifiState)
         {
             connectToNetwork();
             MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
-            MqttSetupDone = true;
+            wifiState = true;
         }
 
-        // keep sending data to MQTT broker every 5 seconds till shutdown
-        while (1)
+        // Ensure WiFi is still connected before checking MQTT state
+        if (WiFi.status() != WL_CONNECTED)
+        {
+            wifiState = false; // reset MQTT state to trigger reconnection logic
+            wifiRetryCount++;
+            Serial.println("WiFi connection lost. Reconnecting...");
+            WiFi.reconnect();
+            delay(500);
+
+            if (WiFi.status() == WL_CONNECTED)
+            {
+                MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+                wifiRetryCount = 0; // reset retry count on successful reconnection
+                wifiState = true;
+            }
+            else if (wifiRetryCount >= MAX_WIFI_RETRY_COUNT)
+            {
+                Serial.println("Failed to reconnect after multiple attempts. Restarting network...");
+                delay(5000);
+                WiFi.disconnect();
+                connectToNetwork();
+
+                if (WiFi.status() == WL_CONNECTED)
+                {
+                    MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+                    wifiRetryCount = 0; // reset retry count on successful reconnection
+                    wifiState = true;
+                }
+            }
+        }
+
+        if (wifiState)
         {
             // Handle MQTT communication
-            MqttManager.loop();
+            MqttManager.loop(); // checks for mqtt connection and reconnects if needed
 
             Serial.println("sending data to mqtt");
 
-            // Ensure WiFi is still connected before checking MQTT state
-            if (WiFi.status() != WL_CONNECTED)
-            {
-                Serial.println("WiFi connection lost. Reconnecting...");
-                WiFi.reconnect();
-                delay(500);
-            }
             Serial.print("Mqtt connection is: ");
             Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
 
@@ -86,31 +184,6 @@ void loop()
             delay(5000); // Send data every 5 seconds
         }
     }
-
-    if (abs(testDepth - getCurrentTarget()) < 0.05)
-    {
-        Serial.println("At target depth, holding...");
-        setDepth(testDepth);
-        delay(500); // Wait for 30 seconds
-        setDepth(testDepth);
-        delay(500);
-        setDepth(testDepth);
-    }
-    else if (testDepth > getCurrentTarget())
-    {
-        testDepth -= depthIncrement; // Move slightly below target
-    }
-    else
-    {
-        testDepth += depthIncrement;
-    }
-
-    setDepth(testDepth);
-    Serial.print("Current Target: ");
-    Serial.println(getCurrentTarget());
-    Serial.print("Current Depth: ");
-    Serial.println(testDepth);
-    delay(500);
 }
 
 void connectToNetwork()
@@ -219,25 +292,3 @@ bool initAccessPoint(const char *ssid, const char *password)
     Serial.println("ERROR: Could not start Access Point!");
     return false;
 }
-
-/*
-Mqtt connection is: Connected
-E (60226) mqtt_client: esp_mqtt_handle_transport_read_error: transport_read(): EOF
-E (60226) mqtt_client: esp_mqtt_handle_transport_read_error: transport_read() error: errno=128
-E (60231) IDFMQTTClient: MQTT_EVENT_ERROR
-E (60234) IDFMQTTClient:   esp_tls_last_esp_err  = 0x8008
-E (60239) IDFMQTTClient:   esp_tls_stack_err     = 0x0
-E (60244) IDFMQTTClient:   esp_transport_sock_errno = 0
-E (60249) mqtt_client: mqtt_process_receive: mqtt_message_receive() returned -2
-E (60258) IDFMQTTClient: Lost connection at chunk 0/7
-Attempt 1/3 failed, retrying...
-E (75801) mqtt_client: esp_mqtt_handle_transport_read_error: transport_read(): EOF
-E (75802) mqtt_client: esp_mqtt_handle_transport_read_error: transport_read() error: errno=128
-E (75806) IDFMQTTClient: MQTT_EVENT_ERROR
-E (75810) IDFMQTTClient:   esp_tls_last_esp_err  = 0x8008
-E (75815) IDFMQTTClient:   esp_tls_stack_err     = 0x0
-E (75820) IDFMQTTClient:   esp_transport_sock_errno = 0
-E (75825) mqtt_client: mqtt_process_receive: mqtt_message_receive() returned -2
-E (75833) IDFMQTTClient: Lost connection at chunk 0/7
-Attempt 2/3 failed, retrying...
-*/
