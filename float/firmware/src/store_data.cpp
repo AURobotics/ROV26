@@ -12,14 +12,14 @@ bool isRunning = false;
 unsigned long lastLogTime = 0;
 unsigned long holdTimer = 0;
 
-void store_data_setup()
+bool store_data_setup()
 {
 
   // Initialize filesystem
   if (!LittleFS.begin(true))
   {
     Serial.println("FS failed!");
-    return;
+    return false;
   }
 
   // Create file with headers
@@ -30,6 +30,7 @@ void store_data_setup()
     file.close();
     Serial.println("Log file created");
   }
+  return true;
   startSequence();
 }
 
