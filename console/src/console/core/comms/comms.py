@@ -98,10 +98,9 @@ class CommunicationManager:
 
     def _serial_outgoing_loop(self):
         while not self._killswitch:
-            # self._data_ready_event.wait()
-            # print("Ready")
-            # if self._serial.serial_ready and self._joystick.selected:
-            if True and self._joystick.selected:
+            self._data_ready_event.wait()
+            print("Ready")
+            if self._serial.serial_ready and self._joystick.selected:
                 payload = self._serial_controller_payload()
                 # self._serial.send(payload)
                 # self._data_ready_event.clear()

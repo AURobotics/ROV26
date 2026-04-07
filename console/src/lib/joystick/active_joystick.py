@@ -18,8 +18,8 @@ class _ActiveJoystick:
         self._selected_joystick = joystick
         self._on_select_listeners = []
         self._listeners_lock = threading.RLock()
-        if strict_mode:
-            self._fallback_joystick = Joystick(None, None, None) # type: ignore
+        if not strict_mode:
+            self._fallback_joystick = Joystick(None, None, None)  # type: ignore
             self._fallback_joystick._connected = False
         else:
             self._fallback_joystick = None
@@ -69,7 +69,7 @@ class _ActiveJoystick:
             return getattr(self._fallback_joystick, name)
         else:
             raise AttributeError("No joystick currently selected.")
-        
+
 
 if TYPE_CHECKING:
 
