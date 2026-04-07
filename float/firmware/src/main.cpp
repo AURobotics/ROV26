@@ -33,7 +33,7 @@ IDFMQTTManager MqttManager;
 // float depthIncrement = 0.1;
 
 // Flag to ensure MQTT setup is done only once
-bool MqttSetupDone = false;
+bool wifiState = false;
 
 // pressure sensor
 MS5611 pressureSensor = MS5611();
@@ -132,16 +132,17 @@ void loop()
         // MQTT setup
         Serial.println("Connecting to MQTT broker...");
 
-        if (!MqttSetupDone)
+        if (!wifiState)
         {
             connectToNetwork();
             MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
-            MqttSetupDone = true;
+            wifiState = true;
         }
 
         // Ensure WiFi is still connected before checking MQTT state
-        while (WiFi.status() != WL_CONNECTED)
+        if (WiFi.status() != WL_CONNECTED)
         {
+            wifiState = false; // reset MQTT state to trigger reconnection logic
             wifiRetryCount++;
             Serial.println("WiFi connection lost. Reconnecting...");
             WiFi.reconnect();
@@ -151,6 +152,7 @@ void loop()
             {
                 MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
                 wifiRetryCount = 0; // reset retry count on successful reconnection
+                wifiState = true;
             }
             else if (wifiRetryCount >= MAX_WIFI_RETRY_COUNT)
             {
@@ -163,20 +165,24 @@ void loop()
                 {
                     MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
                     wifiRetryCount = 0; // reset retry count on successful reconnection
+                    wifiState = true;
                 }
             }
         }
 
-        // Handle MQTT communication
-        MqttManager.loop();
+        if (wifiState)
+        {
+            // Handle MQTT communication
+            MqttManager.loop(); // checks for mqtt connection and reconnects if needed
 
-        Serial.println("sending data to mqtt");
+            Serial.println("sending data to mqtt");
 
-        Serial.print("Mqtt connection is: ");
-        Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
+            Serial.print("Mqtt connection is: ");
+            Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
 
-        MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
-        delay(5000); // Send data every 5 seconds
+            MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
+            delay(5000); // Send data every 5 seconds
+        }
     }
 }
 
