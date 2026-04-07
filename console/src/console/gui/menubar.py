@@ -1,9 +1,9 @@
 from PySide6.QtCore import Slot, Signal
-from PySide6.QtWidgets import QInputDialog, QLineEdit, QMenuBar, QMenu, QWidget
+from PySide6.QtWidgets import QInputDialog, QLineEdit, QMenuBar, QWidget
 from PySide6.QtGui import QAction
 from lib.joystick.active_joystick import ActiveJoystick
 from console.core.comms.stm32 import STM32
-from lib.joystick.manager import ThreadedJoystickManager
+from lib.joystick.manager import JoystickManager
 
 
 class MenuBar(QMenuBar):
@@ -25,11 +25,13 @@ class MenuBar(QMenuBar):
 
         self._active_joystick = active_joystick
         self._joystick_menu = self.addMenu("Joystick")
-        self._no_joystick_action = QAction("No joysticks Connected", self._joystick_menu)
+        self._no_joystick_action = QAction(
+            "No joysticks Connected", self._joystick_menu
+        )
         self._no_joystick_action.setEnabled(False)
         self._displayed_joysticks: dict[int, QAction] = {}
-        self._joyman = ThreadedJoystickManager()
-        self._on_joysticks_changed = lambda x,y: self._joysticks_changed.emit()
+        self._joyman = JoystickManager()
+        self._on_joysticks_changed = lambda x, y: self._joysticks_changed.emit()
         self._joyman.add_connection_listener(self._on_joysticks_changed)
         self._joysticks_changed.connect(self.update_joysticks)
         self.triggered.connect(self._on_triggered)
@@ -83,12 +85,13 @@ class MenuBar(QMenuBar):
                 self._joystick_menu.removeAction(action)
             self._displayed_joysticks = {}
             self._joystick_menu.addAction(self._no_joystick_action)
+            self._active_joystick.selected = None
             return
         else:
             if self._no_joystick_action in self._joystick_menu.actions():
-                self._active_joystick.selected = joysticks[0]
                 self._joystick_menu.removeAction(self._no_joystick_action)
-
+            if self._active_joystick.selected not in joysticks:
+                self._active_joystick.selected = joysticks[0]
 
         new_joysticks = {j.id for j in joysticks}
         old_joysticks = set(self._displayed_joysticks.keys())
@@ -106,9 +109,7 @@ class MenuBar(QMenuBar):
             if joystick.id not in to_add:
                 action = self._displayed_joysticks[joystick.id]
             else:
-                action = QAction(
-                    f"{joystick.id}: {joystick.name}", self._joystick_menu
-                )
+                action = QAction(f"{joystick.id}: {joystick.name}", self._joystick_menu)
                 self._joystick_menu.addAction(action)
                 action.setCheckable(True)
                 self._displayed_joysticks[joystick.id] = action

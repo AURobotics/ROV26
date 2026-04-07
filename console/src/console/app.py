@@ -2,7 +2,7 @@ from typing import Optional
 
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Signal
-from lib.joystick.manager import ThreadedJoystickManager
+from lib.joystick.manager import JoystickManager
 from lib.joystick.active_joystick import ActiveJoystick
 from console.core.comms.stm32 import STM32
 from console.core.comms.comms import CommunicationManager
@@ -16,7 +16,7 @@ class ConsoleApplication(QApplication):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._splash_screen: Optional[LoadingSplash] = None
-        self._joystick_manager: Optional[ThreadedJoystickManager]
+        self._joystick_manager: Optional[JoystickManager]
         self._active_joystick = ActiveJoystick()
         self._serial_device: Optional[STM32] = None
         self._comms_manager: Optional[CommunicationManager] = None
@@ -28,7 +28,7 @@ class ConsoleApplication(QApplication):
         self._splash_screen = LoadingSplash()
         self._splash_screen.show()
         self._splash_screen.update_progress("Initializing joystick system", 20)
-        self._joystick_manager = ThreadedJoystickManager()
+        self._joystick_manager = JoystickManager()
         joysticks = self._joystick_manager.joysticks
         if len(joysticks) > 0:
             self._active_joystick.selected = joysticks[0]
