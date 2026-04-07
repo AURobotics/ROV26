@@ -33,6 +33,9 @@ class PilotTab2(QWidget):
         self.dock_host.setDockOptions(
             QMainWindow.DockOption.AllowNestedDocks
             | QMainWindow.DockOption.AnimatedDocks
+            | QMainWindow.DockOption.AllowTabbedDocks
+            | QMainWindow.DockOption.GroupedDragging
+            | QMainWindow.DockOption.VerticalTabs
         )
         self.main_layout.addWidget(self.dock_host)
 
