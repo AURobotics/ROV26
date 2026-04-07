@@ -6,6 +6,7 @@
 #include "store_data.h"
 #include "arduino_mqtt_manager.h"
 #include "idf_mqtt_manager.h"
+#include <ms5611.h>
 
 // WiFi credentials
 const char *WIFI_SSID = "";
@@ -28,11 +29,15 @@ bool initAccessPoint(const char *ssid, const char *password);
 IDFMQTTManager MqttManager;
 
 // depths values for testing
-float testDepth = 0.0;
-float depthIncrement = 0.1;
+// float testDepth = 0.0;
+// float depthIncrement = 0.1;
 
 // Flag to ensure MQTT setup is done only once
 bool MqttSetupDone = false;
+
+// pressure sensor
+MS5611 pressureSensor = MS5611();
+float depth = 0.0f;
 
 void setup()
 {
@@ -42,6 +47,14 @@ void setup()
     // setupOTA();
 
     store_data_setup();
+
+    // setup and calibrate pressure sensor
+    if (!pressureSensor.begin())
+    {
+        Serial.println("Failed to initialize MS5611 sensor!");
+        delay(1000);
+        ESP.restart();
+    }
 }
 
 void loop()
@@ -87,30 +100,36 @@ void loop()
         }
     }
 
-    if (abs(testDepth - getCurrentTarget()) < 0.05)
-    {
-        Serial.println("At target depth, holding...");
-        setDepth(testDepth);
-        delay(500); // Wait for 30 seconds
-        setDepth(testDepth);
-        delay(500);
-        setDepth(testDepth);
-    }
-    else if (testDepth > getCurrentTarget())
-    {
-        testDepth -= depthIncrement; // Move slightly below target
-    }
-    else
-    {
-        testDepth += depthIncrement;
-    }
+    // depth = testDepth;
+    depth = pressureSensor.getDepth();
+    setDepth(depth);
 
-    setDepth(testDepth);
+    // // For testing depth changes without sensor
+    // if (abs(depth - getCurrentTarget()) < 0.05)
+    // {
+    //     Serial.println("At target depth, holding...");
+    //     setDepth(depth);
+    //     delay(500); // Wait for 30 seconds
+    //     setDepth(depth);
+    //     delay(500);
+    //     setDepth(depth);
+    // }
+    // else if (depth > getCurrentTarget())
+    // {
+    //     depth -= depthIncrement; // Move slightly below target
+    // }
+    // else
+    // {
+    //     depth += depthIncrement;
+    // }
+    // setDepth(depth);
+    
     Serial.print("Current Target: ");
     Serial.println(getCurrentTarget());
     Serial.print("Current Depth: ");
-    Serial.println(testDepth);
-    delay(500);
+    Serial.println(depth);
+    
+    // delay(500);
 }
 
 void connectToNetwork()
