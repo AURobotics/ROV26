@@ -7,7 +7,6 @@ from numpy import dtype, floating, integer
 from console.core.vision.camera import VideoStream
 import cv2
 
-from console.core.vision.gstreamer import Gst
 
 class CameraDisplay(QWidget):
     def __init__(self, camera_device: VideoStream, parent: QWidget | None = None):

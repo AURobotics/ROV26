@@ -25,6 +25,7 @@ class Joystick:
     _connected: bool
     _hat_motion_cache: tuple[int, int]
     _lock: threading.Lock
+    _pygame_error: type[RuntimeError]
 
     def __init__(
         self,
@@ -38,6 +39,10 @@ class Joystick:
         self._mapping = mapping
         self._hat_motion_cache = (0, 0)
         self._lock = threading.Lock()
+        if joystick is None:
+            self._pygame_error = RuntimeError
+        else:
+            self._pygame_error = self._manager._pg.error
 
     @property
     def connected(self) -> bool:
@@ -50,7 +55,7 @@ class Joystick:
             return False
         try:
             self._joystick.get_instance_id()
-        except self._manager._pg.error:
+        except self._pygame_error:
             self._connected = False
             return False
         return True
@@ -66,7 +71,7 @@ class Joystick:
                 return ""
             try:
                 return self._joystick.get_guid()
-            except self._manager._pg.error:
+            except self._pygame_error:
                 self._check_connection()
                 return ""
 
@@ -77,7 +82,7 @@ class Joystick:
                 return -1
             try:
                 return self._joystick.get_instance_id()
-            except self._manager._pg.error:
+            except self._pygame_error:
                 self._check_connection()
                 return -1
 
@@ -88,7 +93,7 @@ class Joystick:
                 return "Disconnected Joystick"
             try:
                 return self._joystick.get_name()
-            except self._manager._pg.error:
+            except self._pygame_error:
                 self._check_connection()
                 return "Disconnected Joystick"
 
@@ -99,7 +104,7 @@ class Joystick:
                 return "unkown"
             try:
                 return self._joystick.get_power_level()
-            except self._manager._pg.error:
+            except self._pygame_error:
                 self._check_connection()
                 return "unknown"
 
@@ -109,7 +114,7 @@ class Joystick:
                 return False
             try:
                 return self._joystick.rumble(low, high, duration)
-            except self._manager._pg.error:
+            except self._pygame_error:
                 self._check_connection()
                 return False
 
@@ -119,7 +124,7 @@ class Joystick:
                 return
             try:
                 self._joystick.stop_rumble()
-            except self._manager._pg.error:
+            except self._pygame_error:
                 self._check_connection()
 
     def _value_from_hwid(self, mapping: str) -> float:
@@ -209,7 +214,7 @@ class Joystick:
                     raise UnsupportedFeatureError()
                 key_type = self._key_type_from_mapping(inp.value)
                 value = self._value_from_mapping(inp.value, key_type)
-            except (self._manager._pg.error, UnsupportedFeatureError):
+            except (self._pygame_error, UnsupportedFeatureError):
                 self._check_connection()
                 match inp:
                     case GamepadButton():
@@ -236,7 +241,7 @@ class Joystick:
                 if self._joystick.get_numbuttons() <= button_idx:
                     raise IndexError()
                 return self._joystick.get_button(button_idx)
-            except self._manager._pg.error:
+            except self._pygame_error:
                 return False
 
     def get_axis(self, axis_idx: int) -> Annotated[float, Ge(-1.0), Le(1.0)]:
@@ -247,7 +252,7 @@ class Joystick:
                 if self._joystick.get_numaxes() <= axis_idx:
                     raise IndexError()
                 return self._joystick.get_axis(axis_idx)
-            except self._manager._pg.error:
+            except self._pygame_error:
                 return -1.0
 
     def get_hat(self, hat_idx: int) -> tuple[int, int]:
@@ -259,7 +264,7 @@ class Joystick:
                     raise IndexError()
                 x, y = self._joystick.get_hat(hat_idx)
                 return (int(x), int(y))
-            except self._manager._pg.error:
+            except self._pygame_error:
                 return (0, 0)
 
     def get_ball(self, ball_idx: int) -> tuple[float, float]:
@@ -270,7 +275,7 @@ class Joystick:
                 if self._joystick.get_numballs() <= ball_idx:
                     raise IndexError()
                 return self._joystick.get_ball(ball_idx)
-            except self._manager._pg.error:
+            except self._pygame_error:
                 return (0, 0)
 
     @property
@@ -280,7 +285,7 @@ class Joystick:
                 return 0
             try:
                 return self._joystick.get_numbuttons()
-            except self._manager._pg.error:
+            except self._pygame_error:
                 self._check_connection()
                 return 0
 
@@ -291,7 +296,7 @@ class Joystick:
                 return 0
             try:
                 return self._joystick.get_numballs()
-            except self._manager._pg.error:
+            except self._pygame_error:
                 self._check_connection()
                 return 0
 
@@ -302,7 +307,7 @@ class Joystick:
                 return 0
             try:
                 return self._joystick.get_numaxes()
-            except self._manager._pg.error:
+            except self._pygame_error:
                 self._check_connection()
                 return 0
 
@@ -313,7 +318,7 @@ class Joystick:
                 return 0
             try:
                 return self._joystick.get_numhats()
-            except self._manager._pg.error:
+            except self._pygame_error:
                 self._check_connection()
                 return 0
 

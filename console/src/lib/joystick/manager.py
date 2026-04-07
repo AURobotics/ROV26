@@ -319,7 +319,6 @@ class JoystickManager:
         mapping: dict[str, str] | None = None
         try:
             pg_joystick = self._pg.joystick.Joystick(devid)
-            print(devid)
         except pygame.error:
             return
         with self._lock:
@@ -482,7 +481,7 @@ class JoystickManager:
                 return
 
         if _IS_VIRTUALIZED:
-            SYNC_INTERVAL = 1000  # 1 seconds
+            SYNC_INTERVAL = 3000  # 3 seconds
             current_time = self._pg.time.get_ticks()
             if current_time - self._last_virtualized_sync_time > SYNC_INTERVAL:
                 self._last_virtualized_sync_time = current_time
@@ -490,20 +489,21 @@ class JoystickManager:
                     new_count = len(list(Path("/dev/input/").glob("js*")))
                     if self._pg.joystick.get_count() < new_count:
                         for instance_id in list(self._joysticks.keys()):
-                                self._on_disconnection_event(
-                                    self._pg.event.Event(
-                                        self._pg.JOYDEVICEREMOVED,
-                                        {"instance_id": instance_id},
-                                    )
+                            self._on_disconnection_event(
+                                self._pg.event.Event(
+                                    self._pg.JOYDEVICEREMOVED,
+                                    {"instance_id": instance_id},
                                 )
-                        while self._pg.joystick.get_count() < len(list(Path("/dev/input/").glob("js*"))):
+                            )
+                        while self._pg.joystick.get_count() < len(
+                            list(Path("/dev/input/").glob("js*"))
+                        ):
                             self._pg.event.clear()
                             self._pg.joystick.quit()
                             self._sdl_c.quit()
                             self._pg.time.wait(100)
                             self._pg.joystick.init()
                             self._sdl_c.init()
-
 
     def spin(self) -> None:
         self._event_handler()
