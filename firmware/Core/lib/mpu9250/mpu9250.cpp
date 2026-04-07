@@ -1,7 +1,5 @@
 #include "mpu9250.h"
-
 #include <cstdio>
-
 #include "i2c.h"
 #include "usbd_cdc_if.h"
 
