@@ -11,7 +11,6 @@ class StatusWidget(QWidget):
 
         self._layout = QVBoxLayout(self)
         self._view = QQuickWidget()
-        #self._view.setClearColor(Qt.GlobalColor.transparent)
         
         # 2. Pass the OBJECT, not just a number
         self._view.rootContext().setContextProperty("rov", self._data_bridge)
