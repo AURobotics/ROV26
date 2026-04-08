@@ -47,8 +47,6 @@ void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
 
     if (HAL_GetTick() - mpu.last_read_time > 50) {
         mpu.update();
-
-
     }
 }
 
@@ -236,9 +234,17 @@ int main() {
                       Motor({&htim4, TIM_CHANNEL_1}, {&htim4, TIM_CHANNEL_2}),
                       Motor({&htim5, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_2})};
 
-
-    for (auto& motor : motors)
-        motor.setup();
+    // while (true)
+    //     for (int i = 0; i < 8; i++) {
+    //         motors[i].setup();
+    //         motors[i].move(1);
+    //         if (i != 6){
+    //             HAL_Delay(3000);
+    //             motors[i].move(-1);
+    //             HAL_Delay(3000);
+    //             motors[i].move(0);
+    //         }
+    //     }
 
     //
     Motor gripper( // TODO: use this variable
@@ -277,16 +283,16 @@ int main() {
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
 
-        mpu.update();
-        static u_long last_print_time = HAL_GetTick();
-        const u_long _now = HAL_GetTick();
-        if (_now - last_print_time >= 100) {
-            last_print_time = _now;
-            vec_3 angles{};
-            mpu.getEulerAngles(angles);
-            printf("\r\n%f", angles.z());
-        }
-        HAL_Delay(10);
+        // mpu.update();
+        // static u_long last_print_time = HAL_GetTick();
+        // const u_long _now = HAL_GetTick();
+        // if (_now - last_print_time >= 100) {
+        //     last_print_time = _now;
+        //     vec_3 angles{};
+        //     mpu.getEulerAngles(angles);
+        //     printf("\r\n%f", angles.z());
+        // }
+        // HAL_Delay(10);
 
         // static Message_Type msg_type;
         //  if (cdc.available()) {
@@ -325,10 +331,10 @@ int main() {
 
         // fetch_sensor_data(sensor_data);
         //
-        // gripper.move(1);
-        // HAL_Delay(1000);
-        // gripper.move(-1);
-        // HAL_Delay(1000);
+        gripper.move(1);
+        HAL_Delay(700);
+        gripper.move(-1);
+        HAL_Delay(700);
 
         // if (data_received_flag) {
         //     data_received_flag = 0;
@@ -395,19 +401,19 @@ int main() {
         // HAL_GPIO_WritePin(DCV_1_GPIO_Port,
         //                DCV_1_Pin,
         //                GPIO_PIN_RESET);
-
-
+        //
+        //
         //        HAL_GPIO_WritePin(DCV_2_GPIO_Port,
         //                         DCV_2_Pin,
         //                    GPIO_PIN_RESET);
-
-
+        //
+        //
         //  HAL_Delay(2000);
         //  HAL_GPIO_WritePin(DCV_1_GPIO_Port,
         //              DCV_1_Pin,
         //              GPIO_PIN_SET);
-
-
+        //
+        //
         // HAL_GPIO_WritePin(DCV_2_GPIO_Port,
         //                    DCV_2_Pin,
         //                 GPIO_PIN_SET);

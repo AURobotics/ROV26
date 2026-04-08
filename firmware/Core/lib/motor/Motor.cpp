@@ -26,10 +26,9 @@ void Motor::setup() const {
 }
 
 void Motor::move(float speed) {
-    static float safezone = 0.23f;
-
+    const auto v = speed;
     float sign = speed > 0 ? 1.0f : -1.0f;
-    speed = sign * (map_float<float>(std::fabs(speed), 0.0f, 1.0f, safezone, 1.0f));
+    speed = sign * (map_float<float>(std::fabs(speed), 0.0f, 1.0f, this->m_safezone, 1.0f));
     speed = constrain(speed, -1.0f, 1.0f);
     switch (this->handler_type) {
     case HandlerType::FUNCTION :
@@ -42,9 +41,12 @@ void Motor::move(float speed) {
             __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, duty);
             __HAL_TIM_SET_COMPARE(pwm_2.htim, pwm_2.channel, 0);
         }
-        else if (speed <= 0) {
+        else if (speed < 0) {
             __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, 0);
             __HAL_TIM_SET_COMPARE(pwm_2.htim, pwm_2.channel, duty);
+        } if (v == 0) {
+            __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, 0);
+            __HAL_TIM_SET_COMPARE(pwm_2.htim, pwm_2.channel, 0);
         }
     }
 }

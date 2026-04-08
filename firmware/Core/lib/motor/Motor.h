@@ -11,7 +11,7 @@ class Motor {
     } pwm_1{}, pwm_2{};
 
     void (*handler_function)(float){};
-
+    static inline float m_safezone = 0.23f;
 
 public:
     float val{};
