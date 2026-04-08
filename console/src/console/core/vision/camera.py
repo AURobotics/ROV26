@@ -247,7 +247,7 @@ class VideoStream:
 
         elif cap_type == CapType.FILE and isinstance(descriptor, str):
             filepath = Path(descriptor).resolve()
-            ok = self._cap.open(str(filepath))
+            ok = self._cap.open(descriptor)
             if not ok:
                 self._disconnect(
                     reason=DisconnectReason.RESOURCE_BUSY, cam_name=descriptor
@@ -259,7 +259,7 @@ class VideoStream:
             self._connection_status = ConnectionStatus.CONNECTED
 
         elif cap_type == CapType.IP and isinstance(descriptor, str):
-            reachable = False
+            reachable = True
             try:
                 response = requests.get(descriptor, timeout=3, stream=True)
                 if response.status_code == 200:
@@ -267,7 +267,7 @@ class VideoStream:
                     response.close()
                     sleep(2)
             except requests.RequestException:
-                reachable = False
+                reachable = True
             if not reachable:
                 self._disconnect(
                     reason=DisconnectReason.RESOURCE_UNREACHABLE, cam_name=descriptor

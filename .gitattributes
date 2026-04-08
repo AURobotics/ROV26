@@ -1,0 +1,5 @@
+# Ensure shell scripts always use Unix LF
+*.sh text eol=lf
+# Ensure Windows batch files always use Windows CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
