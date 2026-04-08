@@ -1,8 +1,12 @@
+from typing import Any
+
 from PySide6.QtWidgets import QWidget, QLabel, QSizePolicy, QHBoxLayout, QPushButton
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QImage, QPixmap, QResizeEvent
+from numpy import dtype, floating, integer
 from console.core.vision.camera import VideoStream
 import cv2
+
 
 class CameraDisplay(QWidget):
     def __init__(self, camera_device: VideoStream, parent: QWidget | None = None):
@@ -51,6 +55,7 @@ class CameraDisplay(QWidget):
         self.rotate_r.clicked.connect(self.toggle_rotate_r)
         self.flipH.clicked.connect(self.toggle_flipH)
         self.flipV.clicked.connect(self.toggle_flipV)
+        self.destroyed.connect(self._cleanup)
 
 
     def toggle_rotate_l(self):
@@ -81,8 +86,10 @@ class CameraDisplay(QWidget):
         return
 
     def update_view(self):
-        frame = self._camera_device.frame
-
+        frame: cv2.Mat | ndarray[Any, dtype[integer[Any] | floating[Any]]] | None = self._camera_device.frame
+        if frame is None:
+            return
+        frame = frame.copy()
         if self._is_flipped_h:
             frame = cv2.flip(frame, 1)
         if self._is_flipped_v:
@@ -104,3 +111,6 @@ class CameraDisplay(QWidget):
     
     def hasHeightForWidth(self) -> bool:
         return True
+
+    def _cleanup(self):
+        self._camera_timer.stop()

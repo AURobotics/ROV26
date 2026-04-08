@@ -1,0 +1,4 @@
+[submodule "opencv-build/vendored/opencv-python"]
+	path = opencv-build/vendored/opencv-python
+	url = https://github.com/opencv/opencv-python.git
+	shallow = true
