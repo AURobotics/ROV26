@@ -5,6 +5,9 @@ import QtQuick.Shapes
 
 Rectangle {
     id: root
+
+    property real bearing: rov ? rov.bearing : 0
+
     width: 300
     height: 300
     antialiasing: true
@@ -25,7 +28,7 @@ Rectangle {
             anchors.fill: parent
             anchors.margins: parent.border.width
 
-            rotation: -rov.bearing
+            rotation: -root.bearing
 
             Behavior on rotation {
                 RotationAnimation {
@@ -64,6 +67,7 @@ Rectangle {
                                 return "S";
                             if (tickContainer.index === 27)
                                 return "W";
+                            return "";
                         }
                         color: (palette.window.hsvValue > 0.5) ? "#dddddd" : "#333333"
                         font.pixelSize: (tickContainer.index % 9 === 0) ? 24 : 16
@@ -115,7 +119,7 @@ Rectangle {
             Text {
                 anchors.centerIn: parent
                 // BINDING: Update text readout from Python property
-                text: rov.bearing.toFixed(0) + "°"
+                text: root.bearing.toFixed(0) + "°"
                 color: "white"
                 font.pixelSize: 20
                 font.bold: true

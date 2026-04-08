@@ -6,6 +6,11 @@ pragma ComponentBehavior: Bound
 
 Rectangle {
     id: root
+
+    property real pitch: rov ? rov.pitch : 0
+    property real roll: rov ? rov.roll : 0
+    property real pitchFOV: rov ? rov.pitchFOV : 90
+
     width: 300
     height: 300
     antialiasing: true
@@ -60,7 +65,7 @@ Rectangle {
             }
         }
 
-        rotation: -rov.roll
+        rotation: -root.roll
         Behavior on rotation {
             RotationAnimation {
                 direction: RotationAnimation.Shortest
@@ -72,7 +77,7 @@ Rectangle {
         Rectangle {
             id: groundPlane
             width: parent.width
-            height: Math.max(0, Math.min(parent.height * (0.5 - rov.pitch / rov.pitchFOV), parent.height)) // Map pitch to vertical position
+            height: Math.max(0, Math.min(parent.height * (0.5 - root.pitch / root.pitchFOV), parent.height)) // Map pitch to vertical position
             color: "#C45A3D"
             anchors.bottom: parent.bottom
             
@@ -89,8 +94,8 @@ Rectangle {
             anchors.centerIn: parent
 
             // This container moves the whole ladder up and down based on the current pitch
-            property real pixelsPerDegree: parent.height / rov.pitchFOV
-            anchors.verticalCenterOffset: (rov.pitch * pixelsPerDegree)
+            property real pixelsPerDegree: parent.height / root.pitchFOV
+            anchors.verticalCenterOffset: (root.pitch * pixelsPerDegree)
 
             Repeater {
                 // Range from -60 to 60, every 5 degrees
