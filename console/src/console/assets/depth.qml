@@ -7,8 +7,8 @@ import Qt5Compat.GraphicalEffects
 Rectangle {
     id: root
 
-    property real depth: rov.depth
-    property real maxDepth: rov.max_depth
+    property real depth: rov ? rov.depth : 0
+    property real maxDepth: rov ? rov.max_depth : 1
 
     width: 42
     height: 300
