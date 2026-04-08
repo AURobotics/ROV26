@@ -1,7 +1,7 @@
 [Unit]
 Description=GStreamer Dynamic Port Stream for /dev/%i
 
-ConditionPathExists=!/etc/no-camera-autostart
+ConditionPathExists=!/opt/gstreamer/settings/no-camera-autostart
 # Physical Logic:
 # BindsTo ensures that if dev-%i.device disappears, this service STOPS.
 # It also prevents Restart=on-failure from looping when the hardware is gone.
