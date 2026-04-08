@@ -2,9 +2,11 @@ import struct
 from enum import IntEnum, StrEnum
 from threading import Event, Thread
 from time import sleep
-from typing import Dict, TypedDict, Annotated
+from typing import TypedDict, Annotated
 from console.core.comms.stm32 import STM32
-from console.core.gamepad import Controller
+from lib.joystick.inputs import GamepadButton, GamepadStick, GamepadTrigger
+from lib.joystick.joystick import Joystick
+from lib.joystick.active_joystick import ActiveJoystick
 
 
 class MessageType(IntEnum):
@@ -27,7 +29,11 @@ class MagicNumbers(IntEnum):
     SYNC_BYTE = 0xFF
 
 
-ToggleButtons = {"CROSS": "LED", "TRIANGLE": "GRIPPER", "CIRCLE": "ARM"}
+ToggleButtons = {
+    GamepadButton.SOUTH: "LED",
+    GamepadButton.NORTH: "GRIPPER",
+    GamepadButton.EAST: "ARM",
+}
 
 
 class SensorCache(TypedDict):
@@ -46,9 +52,9 @@ class CommunicationManager:
 
     _IN_SIZE = struct.calcsize(MessageFormat.SENSOR_MESSAGE)  # 53 bytes
 
-    def __init__(self, serial: STM32, controller: Controller):
+    def __init__(self, serial: STM32, joystick: ActiveJoystick):
         self._serial = serial
-        self._controller = controller
+        self._joystick: ActiveJoystick = joystick
         self._sensor_cache: SensorCache = {
             "thrusters": [0, 0, 0, 0, 0, 0, 0],
             "yaw": 0,
@@ -58,9 +64,7 @@ class CommunicationManager:
             "status": {},
         }
 
-        self._toggles_cache = {
-            "LED": False,
-        }
+        self._toggles_cache = {"LED": False, "GRIPPER": False, "ARM": False}
 
         self._data_ready_event = Event()
 
@@ -73,13 +77,18 @@ class CommunicationManager:
             target=self._serial_outgoing_loop, daemon=True
         )
         self._serial_outgoing_thread.start()
-        self._controller.register_listener(
-            self._controller_toggles, [*ToggleButtons.keys()], send_buttons=True
-        )
+        if self._joystick.selected:
+            self._set_button_listeners()
+        self._joystick.add_on_select_listener(self._set_button_listeners)
 
-    def _controller_toggles(self, button: str):
-        if self._serial.serial_ready:
-            if button in ToggleButtons:
+    def _set_button_listeners(self):
+        for btn in ToggleButtons.keys():
+            self._joystick.add_gamepad_button_listener(self._controller_toggles, btn)
+
+    def _controller_toggles(self, _: Joystick, button: GamepadButton, is_pressed: bool):
+        # if self._serial.serial_ready:
+        if True:
+            if is_pressed:
                 toggle = ToggleButtons[button]
                 self._toggles_cache[toggle] = not self._toggles_cache[toggle]
 
@@ -90,10 +99,9 @@ class CommunicationManager:
     def _serial_outgoing_loop(self):
         while not self._killswitch:
             self._data_ready_event.wait()
-            # print("Ready")
-            if self._serial.serial_ready and self._controller.connected:
-                current_state = self._controller.bindings_state
-                payload = self._serial_controller_payload(current_state)
+            print("Ready")
+            if self._serial.serial_ready and self._joystick.selected:
+                payload = self._serial_controller_payload()
                 self._serial.send(payload)
                 self._data_ready_event.clear()
 
@@ -171,7 +179,7 @@ class CommunicationManager:
         except struct.error as e:
             print(f"Unpack error: {e}")
 
-    def _serial_controller_payload(self, current_state: Dict):
+    def _serial_controller_payload(self):
         # Keybindings:
         # LStick - Axis 0 (Horizontal): Shift the ROV sideways
         # LStick - Axis 1 (Vertical): Move forward/ backward
@@ -181,27 +189,28 @@ class CommunicationManager:
         # R2 - Axis 5 (+1 then / 2): climb
         # Climb total value: R2 - L2
 
-        bindings = current_state
-
+        joy = self._joystick
         control_word = int(self._toggles_cache["LED"]) << 0
 
-        control_word |= int(bindings.get("TRIANGLE", 0)) << 1
-        control_word |= int(bindings.get("CIRCLE", 0)) << 2
-        control_word |= int(bindings.get("D-UP", 0)) << 3
-        control_word |= int(bindings.get("D-DOWN", 0)) << 4
+        control_word |= int(self._toggles_cache["GRIPPER"]) << 1
+        control_word |= int(self._toggles_cache["ARM"]) << 2
+        control_word |= int(joy.get_gpinput(GamepadButton.DPAD_UP)) << 3
+        control_word |= int(joy.get_gpinput(GamepadButton.DPAD_DOWN)) << 4
 
         payload = [
             0xFF,
             0x01,
             control_word,
-            -bindings.get("LS-V", 0),
-            bindings.get("LS-H", 0),
-            bindings.get("L2", 0) - bindings.get("R2", 0),
-            bindings.get("RS-H", 0),
-            bindings.get("RS-V", 0),
-            bindings.get("R1", 0) - bindings.get("L1", 0),
+            -joy.get_gpinput(GamepadStick.LEFT_Y),
+            joy.get_gpinput(GamepadStick.LEFT_X),
+            joy.get_gpinput(GamepadTrigger.LEFT_TRIGGER)
+            - joy.get_gpinput(GamepadTrigger.RIGHT_TRIGGER),
+            joy.get_gpinput(GamepadStick.RIGHT_X),
+            joy.get_gpinput(GamepadStick.RIGHT_Y),
+            joy.get_gpinput(GamepadButton.RIGHT_SHOULDER)
+            - joy.get_gpinput(GamepadButton.LEFT_SHOULDER),
         ]
-        print(payload)
+        # print(payload)
         return struct.pack(MessageFormat.COMMAND_MESSAGE, *payload)
 
     def __del__(self):
