@@ -2,6 +2,8 @@
 venv/
 env/
 .venv/
+uv.lock
+
 
 # Python cache
 __pycache__/
@@ -15,3 +17,6 @@ __pycache__/
 # Build files
 build/
 dist/
+
+# opencv-build leftovers
+.tmp/
