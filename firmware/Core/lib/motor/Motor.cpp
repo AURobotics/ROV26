@@ -1,6 +1,10 @@
 #include "Motor.h"
+
+#include <algorithm>
 #include <cfloat>
 #include <cmath>
+
+#include "main.h"
 #include "stm32f4xx_hal.h"
 
 
@@ -25,33 +29,46 @@ void Motor::setup() const {
     }
 }
 
-void Motor::move(float speed) {
-    const auto v = speed;
-    float sign = speed > 0 ? 1.0f : -1.0f;
-    speed = sign * (map_float<float>(std::fabs(speed), 0.0f, 1.0f, this->m_safezone, 1.0f));
-    speed = constrain(speed, -1.0f, 1.0f);
-    switch (this->handler_type) {
-    case HandlerType::FUNCTION :
-        handler_function(speed);
-        return;
-    case HandlerType::PWM :;
-        speed = constrain(speed, -1, 1);
-        const auto duty = static_cast<uint16_t>(std::fabs(speed) * 999);
-        if (speed > 0) {
-            __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, duty);
-            __HAL_TIM_SET_COMPARE(pwm_2.htim, pwm_2.channel, 0);
-        }
-        else if (speed < 0) {
-            __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, 0);
-            __HAL_TIM_SET_COMPARE(pwm_2.htim, pwm_2.channel, duty);
-        } if (v == 0) {
-            __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, 0);
-            __HAL_TIM_SET_COMPARE(pwm_2.htim, pwm_2.channel, 0);
-        }
+int Motor::move(float speed) {
+    HAL_TIM_PWM_Stop(pwm_1.htim, pwm_1.channel);
+    HAL_TIM_PWM_Stop(pwm_2.htim, pwm_2.channel);
+
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = MOTOR_1_A_Pin | MOTOR_1_B_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    if (std::abs(speed) <= FLT_EPSILON) {
+        this->setup();
+        __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, 0);
+        __HAL_TIM_SET_COMPARE(pwm_2.htim, pwm_2.channel, 0);
+        this->setup();
+        this->val = 0;
+        return 0;
     }
+    speed = std::clamp(speed, -1.0f, 1.0f);
+    float abs_speed = std::fabs(speed);
+    float mapped_speed = m_safezone + abs_speed * (1.0f - m_safezone);
+    const auto duty = static_cast<uint16_t>(mapped_speed * 999.0f);
+
+    if (speed > 0) {
+        __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, duty);
+        __HAL_TIM_SET_COMPARE(pwm_2.htim, pwm_2.channel, 0);
+        this->setup();
+
+    }
+    else if (speed < 0) {
+        __HAL_TIM_SET_COMPARE(pwm_2.htim, pwm_2.channel, duty);
+        __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, 0);
+        this->setup();
+    }
+    this->val = std::signbit(speed) ? -duty : duty;
+    return this->val;
 }
 
-void Motor::stop() { move(0); }
+int Motor::stop() {return move(0.0f); }
+
 void Motor::swap_direction() { std::swap(pwm_1, pwm_2); }
 
 void Motor::move_array(Motor motors[8], float speeds[8]) {

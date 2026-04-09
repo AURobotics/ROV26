@@ -14,7 +14,7 @@ class Motor {
     static inline float m_safezone = 0.23f;
 
 public:
-    float val{};
+    int val{};
 
     explicit constexpr Motor(void (*fn)(float)) : handler_type(HandlerType::FUNCTION) {
         handler_function = fn;
@@ -25,8 +25,8 @@ public:
     Motor(const Motor&) = delete;
     Motor& operator=(const Motor&) = delete;
     void setup() const;
-    void move(float speed);
-    void stop();
+    int move(float speed);
+    int stop();
     void swap_direction();
     static void move_array(Motor motors[8], float speeds[8]);
 

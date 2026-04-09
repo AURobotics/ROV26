@@ -231,44 +231,17 @@ int main() {
                       Motor({&htim3, TIM_CHANNEL_1}, {&htim2, TIM_CHANNEL_1}),
                       Motor({&htim5, TIM_CHANNEL_3}, {&htim5, TIM_CHANNEL_2}),
                       Motor({&htim4, TIM_CHANNEL_4}, {&htim4, TIM_CHANNEL_3}),
-                      Motor({&htim4, TIM_CHANNEL_1}, {&htim4, TIM_CHANNEL_2}),
+                      // Motor({&htim4, TIM_CHANNEL_1}, {&htim4, TIM_CHANNEL_2}),
                       Motor({&htim5, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_2})};
 
-    // while (true)
-    //     for (int i = 0; i < 8; i++) {
-    //         motors[i].setup();
-    //         motors[i].move(1);
-    //         if (i != 6){
-    //             HAL_Delay(3000);
-    //             motors[i].move(-1);
-    //             HAL_Delay(3000);
-    //             motors[i].move(0);
-    //         }
-    //     }
+    for (auto& motor : motors) {
+        motor.setup();
+    }
+    while (1) {
+        printf("\r\n%d", motors[0].move(-1.0f));
+        HAL_Delay(10);
+    }
 
-    //
-    Motor gripper( // TODO: use this variable
-        [](float speed)
-        {
-            if (speed > 0.1f) {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-            }
-            else if (speed < -0.1f) {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
-            }
-            else {
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-            }
-        });
-
-
-    // motors[4].move(1);
-    // motors[5].move(1);
-    //
-    //
     std::array<std::optional<float>, 8> sensor_data;
     // TxPacket tx_pkt;
     // tx_pkt.type = SENSOR_MESSAGE;
@@ -331,10 +304,6 @@ int main() {
 
         // fetch_sensor_data(sensor_data);
         //
-        gripper.move(1);
-        HAL_Delay(700);
-        gripper.move(-1);
-        HAL_Delay(700);
 
         // if (data_received_flag) {
         //     data_received_flag = 0;
