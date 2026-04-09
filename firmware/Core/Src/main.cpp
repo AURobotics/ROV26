@@ -238,8 +238,10 @@ int main() {
         motor.setup();
     }
     while (1) {
+        motors[0].move(1.0f);
+        HAL_Delay(3000);
         printf("\r\n%d", motors[0].move(-1.0f));
-        HAL_Delay(10);
+        HAL_Delay(3000);
     }
 
     std::array<std::optional<float>, 8> sensor_data;

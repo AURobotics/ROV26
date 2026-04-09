@@ -30,15 +30,6 @@ void Motor::setup() const {
 }
 
 int Motor::move(float speed) {
-    HAL_TIM_PWM_Stop(pwm_1.htim, pwm_1.channel);
-    HAL_TIM_PWM_Stop(pwm_2.htim, pwm_2.channel);
-
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin = MOTOR_1_A_Pin | MOTOR_1_B_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
     if (std::abs(speed) <= FLT_EPSILON) {
         this->setup();
         __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, 0);
@@ -47,6 +38,7 @@ int Motor::move(float speed) {
         this->val = 0;
         return 0;
     }
+
     speed = std::clamp(speed, -1.0f, 1.0f);
     float abs_speed = std::fabs(speed);
     float mapped_speed = m_safezone + abs_speed * (1.0f - m_safezone);
