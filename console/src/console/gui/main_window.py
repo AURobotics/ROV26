@@ -1,8 +1,11 @@
-from PySide6.QtWidgets import QMainWindow
-from hal.camera.camera import VideoStream
+from PySide6.QtWidgets import QMainWindow, QStackedWidget, QToolBar
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QActionGroup, QAction
+from console.core.vision.camera import VideoStream
 from console.gui.menubar import MenuBar
 from hal.joystick.active_joystick import ActiveJoystick
 from console.gui.pilot_tab_new import PilotTab2
+from console.gui.cv_tab import CVTab
 
 
 class MainWindow(QMainWindow):
@@ -27,57 +30,31 @@ class MainWindow(QMainWindow):
         cam2 = VideoStream(pipelines[1])
         cam3 = VideoStream(pipelines[2])
 
+        self._stack = QStackedWidget()
         
         self._pilot_tab = PilotTab2(cam1, cam2, cam3, comms)
         self._cv_tab = CVTab()
-        self._float_tab = FloatTab()
 
         self._stack.addWidget(self._pilot_tab)
         self._stack.addWidget(self._cv_tab)
-        self._stack.addWidget(self._float_tab)
 
         self.setCentralWidget(self._stack)
 
-        self._sidebar = QToolBar()
-        self._sidebar.setMovable(False)
-        self._sidebar.setStyleSheet("""
-            QToolBar {
-                background-color: #2b2b2b;
-                border-right: 1px solid #444444;
-                spacing: 10px;
-                padding: 5px;
-            }
+        self._toolbar = QToolBar()
+        self._toolbar.setMovable(False)
+        self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self._toolbar)
 
-            QToolButton {
-                color: white;
-                width: 24px;
-                background-color: transparent;
-                border-radius: 4px;
-                padding: 8px;
-            }
-            
-            QToolButton:hover {
-                background-color: #3d3d3d;
-            }
+        self._group = QActionGroup(self)
+        self._group.setExclusive(True)
 
-            QToolButton:checked {
-                background-color: #0078d7;
-                font-weight: bold;
-            }
-        """)
-        self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self._sidebar)
-
-        self._sidebar_actions = QActionGroup(self)
-        self._sidebar_actions.setExclusive(True)
-
-        for i, name in enumerate(["Pilot", "CV", "Float"]):
+        for i, name in enumerate(["Pilot", "CV"]):
             self._setup_action(i, name)
 
     def _setup_action(self, idx, name):
         action = QAction(name, self, checkable=True)
         action.setData(idx)
-        self._sidebar_actions.addAction(action)
-        self._sidebar.addAction(action)
+        self._group.addAction(action)
+        self._toolbar.addAction(action)
         action.triggered.connect(lambda _:self._stack.setCurrentIndex(action.data()))
         if idx == 0:
             action.setChecked(True)
