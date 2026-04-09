@@ -52,6 +52,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/mpu9250/mpu9250.cpp
         Core/lib/ms5611/ms5611.cpp
         Core/lib/pid/PID.cpp
+        Core/lib/micros/micros.cpp
+        Core/lib/micros/micros.h
 )
 
 # Add include paths
@@ -64,6 +66,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         Core/lib/ms5611
         Core/lib/pid
         Core/Inc
+        Core/lib/micros
         # Add user defined include paths
 )
 

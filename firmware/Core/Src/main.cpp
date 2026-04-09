@@ -1,4 +1,5 @@
 #include "main.h"
+#include "../lib/micros/micros.h"
 #include "Cdc_driver.h"
 #include "Controller.h"
 #include "Motor.h"
@@ -19,6 +20,7 @@ extern "C" {
 #include "array"
 #include "main.h"
 #include "usbd_cdc_if.h"
+#include "micros.h"
 
 static constexpr int16_t LEAKAGE_THRESHOLD = 0;
 enum class Test_state { OFF, STEPPING, DONE };
@@ -30,7 +32,7 @@ enum class Test_state { OFF, STEPPING, DONE };
     while (0)
 
 MPU9250 mpu9250(&hi2c3);
-// MS5611 ms5611(&hi2c3);
+MS5611 ms5611(&hi2c3);
 Cdc_driver cdc(20); /*need to set timeout*/
 
 extern "C" int _write(int file, char* ptr, int len) {
@@ -40,23 +42,26 @@ extern "C" int _write(int file, char* ptr, int len) {
 
 // yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
 void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
-    // if (HAL_GetTick() - ms5611.last_read_time > 50) {
-    //     data[0] = ms5611.getPressure();
-    //     data[1] = std::nullopt;
-    // }
-
-   if (HAL_GetTick() - mpu9250.last_read_time > 50) {
-        mpu9250.update();
-        vec_3 angles = mpu9250.getEulerAngles();
-        vec_3 rates = mpu9250.getBodyRates();
-
-        data[2] = angles.x(); // roll
-        data[3] = 0; // rates.x();
-        data[4] = angles.y(); // pitch
-        data[5] = 0; // rates.y();
-        data[6] = angles.z(); // yaw
-        data[7] = 0; // rates.z();
+    if (HAL_GetTick() - ms5611.last_read_time > 50) {
+        data[0] = ms5611.getPressure();
+        data[1] = std::nullopt;
+        ms5611.last_read_time = HAL_GetTick();
     }
+
+
+
+   // if (HAL_GetTick() - mpu9250.last_read_time > 50) {
+   //      mpu9250.update();
+   //      vec_3 angles = mpu9250.getEulerAngles();
+   //      vec_3 rates = mpu9250.getBodyRates();
+   //
+   //      data[2] = angles.x(); // roll
+   //      data[3] = 0; // rates.x();
+   //      data[4] = angles.y(); // pitch
+   //      data[5] = 0; // rates.y();
+   //      data[6] = angles.z(); // yaw
+   //      data[7] = 0; // rates.z();
+   //  }
 }
 
 double normalize_angle(double angle) {
@@ -199,6 +204,7 @@ int main() {
     MX_TIM3_Init();
     MX_TIM4_Init();
     MX_TIM5_Init();
+    TIM11_Init();
     MX_USB_DEVICE_Init();
 
     HAL_Delay(2000);
@@ -273,9 +279,9 @@ int main() {
 
     //__HAL_TIM_SET_COMPARE(&htim1,2,0);
 
-    mpu9250.init();
-    mpu9250.calibrateMag(2000);
-    // ms5611.begin();
+    // mpu9250.init();
+    // mpu9250.calibrateMag(2000);
+    ms5611.begin();
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
@@ -315,6 +321,12 @@ int main() {
 
 
         fetch_sensor_data(sensor_data);
+        char buffer [200];
+        int len = 0;
+        // uint16_t *c = ms5611.readCalibrationData();
+        len += sprintf(buffer+len,"pressure = %d\r\nC1=%u C2=%u C3=%u C4=%u C5=%u C6=%u\r\n",(int)sensor_data[0].value(),ms5611.C1,ms5611.C2,ms5611.C3,ms5611.C4,ms5611.C5,ms5611.C6) ;
+        CDC_Transmit_FS((uint8_t*)buffer,len);
+
 
        // GripperUp();
         //HAL_Delay(2000);
@@ -455,12 +467,12 @@ int main() {
 
         // cdc.write_msg(&feedback_pkt);
 
-        if (HAL_getTick() - prev > 50) {
-            printf("\n\r yaw = %f, pitch = %f, roll = %f\n",
-                   data[6],
-                   data[4],
-                   data[2]);
-        }
+        // if (HAL_getTick() - prev > 50) {
+        //     printf("\n\r yaw = %f, pitch = %f, roll = %f\n",
+        //            data[6],
+        //            data[4],
+        //            data[2]);
+        // }
 
         // }
     }

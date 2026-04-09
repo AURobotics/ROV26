@@ -1,5 +1,9 @@
 #include "ms5611.h"
 
+#include <cstdio>
+
+#include "usbd_cdc_if.h"
+
 #define RESET 0x1E
 #define D1_P 0x48 // raw pressure
 #define D2_T 0x58 // raw temperature
@@ -22,21 +26,41 @@ bool MS5611::begin() {
 
 void MS5611::reset() {
     sendCmd(RESET);
-    HAL_Delay(3);
+    HAL_Delay(10);
 }
 uint16_t MS5611::readPROM(I2C_HandleTypeDef* hi2c, uint8_t addr) {
     uint8_t data[2];
-    HAL_I2C_Master_Transmit(hi2c, i2cAddr, &addr, 1, HAL_MAX_DELAY);
-    HAL_I2C_Master_Receive(hi2c, i2cAddr, data, 2, HAL_MAX_DELAY);
+    char buffer[200];
+    int len = 0;
+    len += sprintf(buffer+len,"prom addr=0x%02X ",addr);
+    if (HAL_I2C_Master_Transmit(hi2c, i2cAddr, &addr, 1, HAL_MAX_DELAY) != HAL_OK) {
+        // len += sprintf(buffer+len,"prom addr=0x%02X ",addr);
+        // CDC_Transmit_FS((uint8_t*)buffer,len);
+    }
+        if (HAL_I2C_Master_Receive(hi2c, i2cAddr, data, 2, HAL_MAX_DELAY) != HAL_OK) {
+            // len += sprintf(buffer+len,"prom addr=0x%02X ",addr);
+            // CDC_Transmit_FS((uint8_t*)buffer,len);
+        }
     return (data[0] << 8) | data[1];
 }
-void MS5611::readCalibrationData() {
+ void MS5611::readCalibrationData() {
+    readPROM(_hi2c, 0xA2); // dummy read — first transaction after reset often fails
+    HAL_Delay(5);
     C1 = readPROM(_hi2c, 0XA2);
     C2 = readPROM(_hi2c, 0XA4);
     C3 = readPROM(_hi2c, 0XA6);
     C4 = readPROM(_hi2c, 0XA8);
     C5 = readPROM(_hi2c, 0XAA);
     C6 = readPROM(_hi2c, 0XAC);
+
+    // uint16_t constants[6];
+    // constants[0] = C1;
+    // constants[1] = C2;
+    // constants[2] = C3;
+    // constants[3] = C4;
+    // constants[4] = C5;
+    // constants[5] = C6;
+    // return constants;
 }
 
 uint32_t MS5611::readADC() {
@@ -60,6 +84,25 @@ float MS5611::getTemperature() {
     return temp / 100.0f; // °C
 }
 
+// float MS5611::getPressure() {
+//     sendCmd(D1_P);
+//     HAL_Delay(10);
+//     uint32_t D1 = readADC(); // raw pressure
+//
+//     sendCmd(D2_T);
+//     HAL_Delay(10);
+//     uint32_t D2 = readADC(); // raw temperature
+//
+//     int32_t dT = D2 - ((int32_t)C5 << 8);
+//
+//     int64_t OFFSET = ((int64_t)C2 << 16) + ((int64_t)C4 * dT >> 7);
+//     int64_t SENSITIVITY = ((int64_t)C1 << 15) + ((int64_t)C3 * dT >> 8);
+//
+//     int32_t P = (((((int64_t)D1 * SENSITIVITY) >> 21) - OFFSET) >> 15);
+//
+//     return (float)P; // Pa
+// }
+
 float MS5611::getPressure() {
     sendCmd(D1_P);
     HAL_Delay(10);
@@ -71,12 +114,13 @@ float MS5611::getPressure() {
 
     int32_t dT = D2 - ((int32_t)C5 << 8);
 
-    int64_t OFFSET = ((int64_t)C2 << 16) + ((int64_t)C4 * dT >> 7);
-    int64_t SENSITIVITY = ((int64_t)C1 << 15) + ((int64_t)C3 * dT >> 8);
+    // MS5607 Specific Math (Notice the bit shifts are different from MS5611)
+    int64_t OFFSET = ((int64_t)C2 << 17) + (((int64_t)C4 * dT) >> 6);
+    int64_t SENSITIVITY = ((int64_t)C1 << 16) + (((int64_t)C3 * dT) >> 7);
 
     int32_t P = (((((int64_t)D1 * SENSITIVITY) >> 21) - OFFSET) >> 15);
 
-    return P * 100.0f; // Pa
+    return (float)P; // Pa
 }
 
 void MS5611::calibrateSurface() {

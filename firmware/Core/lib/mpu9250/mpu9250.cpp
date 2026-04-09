@@ -114,60 +114,60 @@ void MPU9250::readGyroData(int16_t* destination) {
     destination[2] = (int16_t)(((int16_t)rawData[4] << 8) | rawData[5]);
 }
 
-void MPU9250::calibrateMag(uint16_t num_samples) {
-    float mx_max = -9999, my_max = -9999, mz_max = -9999;
-    float mx_min =  9999, my_min =  9999, mz_min =  9999;
-
-    char buf[120];
-    int len;
-
-    len = sprintf(buf, "\r\nMag cal: rotate sensor in all directions...\r\n");
-    CDC_Transmit_FS((uint8_t*)buf, len);
-    HAL_Delay(3000);
-
-    for (uint16_t i = 0; i < num_samples; i++) {
-        int16_t magRaw[3];
-        readMagData(magRaw);
-
-        float mx = (float)magRaw[0] * mRes * magCalibration[0];
-        float my = (float)magRaw[1] * mRes * magCalibration[1];
-        float mz = (float)magRaw[2] * mRes * magCalibration[2];
-
-        if (mx > mx_max) mx_max = mx;
-        if (my > my_max) my_max = my;
-        if (mz > mz_max) mz_max = mz;
-        if (mx < mx_min) mx_min = mx;
-        if (my < my_min) my_min = my;
-        if (mz < mz_min) mz_min = mz;
-
-        if (i % 100 == 0) {
-            len = sprintf(buf, "\r\nSample %d/%d", i, num_samples);
-            CDC_Transmit_FS((uint8_t*)buf, len);
-        }
-        HAL_Delay(10);
-    }
-
-    // Write directly into magbias and magscale
-    magbias[0] = (mx_max + mx_min) / 2.0f;
-    magbias[1] = (my_max + my_min) / 2.0f;
-    magbias[2] = (mz_max + mz_min) / 2.0f;
-
-    float range_x = (mx_max - mx_min) / 2.0f;
-    float range_y = (my_max - my_min) / 2.0f;
-    float range_z = (mz_max - mz_min) / 2.0f;
-    float avg_range = (range_x + range_y + range_z) / 3.0f;
-
-    magscale[0] = avg_range / range_x;
-    magscale[1] = avg_range / range_y;
-    magscale[2] = avg_range / range_z;
-
-    // Print so you can see what was computed
-    len = sprintf(buf,
-        "\r\nbias: %.4f, %.4f, %.4f\r\nscale: %.4f, %.4f, %.4f\r\n",
-        magbias[0], magbias[1], magbias[2],
-        magscale[0], magscale[1], magscale[2]);
-    CDC_Transmit_FS((uint8_t*)buf, len);
-}
+// void MPU9250::calibrateMag(uint16_t num_samples) {
+//     float mx_max = -9999, my_max = -9999, mz_max = -9999;
+//     float mx_min =  9999, my_min =  9999, mz_min =  9999;
+//
+//     char buf[120];
+//     int len;
+//
+//     len = sprintf(buf, "\r\nMag cal: rotate sensor in all directions...\r\n");
+//     CDC_Transmit_FS((uint8_t*)buf, len);
+//     HAL_Delay(3000);
+//
+//     for (uint16_t i = 0; i < num_samples; i++) {
+//         int16_t magRaw[3];
+//         readMagData(magRaw);
+//
+//         float mx = (float)magRaw[0] * mRes * magCalibration[0];
+//         float my = (float)magRaw[1] * mRes * magCalibration[1];
+//         float mz = (float)magRaw[2] * mRes * magCalibration[2];
+//
+//         if (mx > mx_max) mx_max = mx;
+//         if (my > my_max) my_max = my;
+//         if (mz > mz_max) mz_max = mz;
+//         if (mx < mx_min) mx_min = mx;
+//         if (my < my_min) my_min = my;
+//         if (mz < mz_min) mz_min = mz;
+//
+//         if (i % 100 == 0) {
+//             len = sprintf(buf, "\r\nSample %d/%d", i, num_samples);
+//             CDC_Transmit_FS((uint8_t*)buf, len);
+//         }
+//         HAL_Delay(10);
+//     }
+//
+//     // Write directly into magbias and magscale
+//     magbias[0] = (mx_max + mx_min) / 2.0f;
+//     magbias[1] = (my_max + my_min) / 2.0f;
+//     magbias[2] = (mz_max + mz_min) / 2.0f;
+//
+//     float range_x = (mx_max - mx_min) / 2.0f;
+//     float range_y = (my_max - my_min) / 2.0f;
+//     float range_z = (mz_max - mz_min) / 2.0f;
+//     float avg_range = (range_x + range_y + range_z) / 3.0f;
+//
+//     magscale[0] = avg_range / range_x;
+//     magscale[1] = avg_range / range_y;
+//     magscale[2] = avg_range / range_z;
+//
+//     // Print so you can see what was computed
+//     len = sprintf(buf,
+//         "\r\nbias: %.4f, %.4f, %.4f\r\nscale: %.4f, %.4f, %.4f\r\n",
+//         magbias[0], magbias[1], magbias[2],
+//         magscale[0], magscale[1], magscale[2]);
+//     CDC_Transmit_FS((uint8_t*)buf, len);
+// }
 
 void MPU9250::readMagData(int16_t* destination) {
     uint8_t rawData[7];

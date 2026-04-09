@@ -6,7 +6,7 @@
 
 float constrain(const float x, const float a, const float b) { return x > b ? b : x < a ? a : x; }
 
-template<Typename T>
+template<typename T>
 T map_float(T x, T in_min, T in_max, T out_min, T out_max) {
 return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
@@ -34,7 +34,7 @@ void Motor::move(float speed) const {
     speed = constrain(speed, -1.0f, 1.0f);
     switch (this->handler_type) {
     case HandlerType::FUNCTION :
-        handler(speed);
+        handler_function(speed);
         break;
     case HandlerType::PWM :
         if (speed > 0) {
