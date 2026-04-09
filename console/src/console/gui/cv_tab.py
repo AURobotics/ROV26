@@ -1,6 +1,6 @@
-from PySide6.QtWidgets import QMainWindow, QWidget
+from PySide6.QtWidgets import QMainWindow
 
 class CVTab(QMainWindow):
-    def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
+    def __init__(self):
+        super().__init__()
         ... # Placeholder for CVTab implementation
