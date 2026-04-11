@@ -197,7 +197,6 @@ int main() {
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
 
-    HAL_Delay(2000);
     printf("code started\n");
 
     Test_state test_state = Test_state::OFF; // normal mode
@@ -231,16 +230,61 @@ int main() {
                       Motor({&htim3, TIM_CHANNEL_1}, {&htim2, TIM_CHANNEL_1}),
                       Motor({&htim5, TIM_CHANNEL_3}, {&htim5, TIM_CHANNEL_2}),
                       Motor({&htim4, TIM_CHANNEL_4}, {&htim4, TIM_CHANNEL_3}),
-                      // Motor({&htim4, TIM_CHANNEL_1}, {&htim4, TIM_CHANNEL_2}),
+                      Motor({&htim4, TIM_CHANNEL_1}, {&htim4, TIM_CHANNEL_2}),
                       Motor({&htim5, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_2})};
 
     for (auto& motor : motors) {
         motor.setup();
     }
+
+    while (true) {
+        for (auto& motor : motors) {
+            motor.move(1);
+        }
+        HAL_Delay(2000);
+        for (auto& motor : motors) {
+            motor.stop();
+        }
+        HAL_Delay(500);
+        for (auto& motor : motors) {
+            motor.move(-1);
+        }
+        HAL_Delay(2000);
+    }
+
+
     while (1) {
-        motors[0].move(1.0f);
+        motors[0].move(0.99f);
         HAL_Delay(3000);
-        printf("\r\n%d", motors[0].move(-1.0f));
+        printf("\r\n%d", motors[0].move(-0.99f));
+        HAL_Delay(3000);
+        motors[1].move(0.99f);
+        HAL_Delay(3000);
+        printf("\r\n%d", motors[1].move(-0.99f));
+        HAL_Delay(3000);
+        motors[2].move(0.99f);
+        HAL_Delay(3000);
+        printf("\r\n%d", motors[2].move(-0.99f));
+        HAL_Delay(3000);
+        motors[3].move(0.99f);
+        HAL_Delay(3000);
+        printf("\r\n%d", motors[3].move(-0.99f));
+        HAL_Delay(3000);
+        motors[4].move(0.99f);
+        HAL_Delay(3000);
+        printf("\r\n%d", motors[4].move(-0.99f));
+        HAL_Delay(3000);
+        motors[5].move(0.99f);
+        HAL_Delay(3000);
+        printf("\r\n%d", motors[5].move(-0.99f));
+        HAL_Delay(3000);
+        motors[6].move(0.99f);
+        HAL_Delay(3000);
+        printf("\r\n%d", motors[6].move(-0.99f));
+        HAL_Delay(3000);
+        motors[7].move(0.99f);
+        HAL_Delay(3000);
+        printf("\r\n%d", motors[7].move(-0.99f));
         HAL_Delay(3000);
     }
 
@@ -465,9 +509,9 @@ void SystemClock_Config(void) {
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
     RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
     RCC_OscInitStruct.PLL.PLLM = 25;
-    RCC_OscInitStruct.PLL.PLLN = 384;
-    RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV6;
-    RCC_OscInitStruct.PLL.PLLQ = 8;
+    RCC_OscInitStruct.PLL.PLLN = 336;
+    RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+    RCC_OscInitStruct.PLL.PLLQ = 7;
     if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
         Error_Handler();
     }
