@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QSizePolicy, QHBoxLayout, QPushBu
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QImage, QPixmap, QResizeEvent
 from numpy import dtype, floating, integer
-from console.core.vision.camera import VideoStream
+from hal.camera.camera import VideoStream
 import cv2
 
 

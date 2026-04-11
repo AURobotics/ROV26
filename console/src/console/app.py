@@ -2,10 +2,10 @@ from typing import Optional
 
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Signal
-from lib.joystick.manager import JoystickManager
-from lib.joystick.active_joystick import ActiveJoystick
-from console.core.comms.stm32 import STM32
-from console.core.comms.comms import CommunicationManager
+from hal.joystick.manager import JoystickManager
+from hal.joystick.active_joystick import ActiveJoystick
+from hal.serial.stm32 import STM32
+from console.comms.comms.comms import CommunicationManager
 from console.gui.main_window import MainWindow
 
 from console.gui.splash_screen import LoadingSplash

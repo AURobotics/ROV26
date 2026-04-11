@@ -5,10 +5,10 @@ import weakref
 from typing import Any, Callable, cast
 from abc import ABC, abstractmethod
 
-from lib.joystick.joystick import Joystick
+from hal.joystick.joystick import Joystick
 
-from lib.joystick.exceptions import NotAGamepadError, UnsupportedFeatureError
-from lib.joystick.inputs import GamepadButton, HatDirection
+from hal.joystick.exceptions import NotAGamepadError, UnsupportedFeatureError
+from hal.joystick.inputs import GamepadButton, HatDirection
 
 
 class CallbackFactory:

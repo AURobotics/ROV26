@@ -5,4 +5,5 @@ Manages the following:
    - Regularly checking for, presenting and managing connection changes
    - Providing an event-based interface for tracking
 """
-from lib.joystick.manager import JoystickManager
+
+from hal.joystick.manager import JoystickManager

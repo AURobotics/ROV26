@@ -5,9 +5,9 @@ from pathlib import Path
 import threading
 from typing import Callable, Self, TYPE_CHECKING, cast
 
-from lib.joystick.inputs import GamepadButton, HatDirection
+from hal.joystick.inputs import GamepadButton, HatDirection
 
-from lib.joystick.joystick import Joystick
+from hal.joystick.joystick import Joystick
 import os
 
 if TYPE_CHECKING:
@@ -22,7 +22,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 os.environ["SDL_NO_SIGNAL_HANDLERS"] = "1"
 _IS_VIRTUALIZED = os.environ.get("VIRTUALIZED_UDEV")
 
-from lib.joystick.listeners import (
+from hal.joystick.listeners import (
     CallbackFactory,
     GamepadHatCallback,
     GamepadButtonCallback,
@@ -30,7 +30,7 @@ from lib.joystick.listeners import (
     HatMotionCallback,
     ConnectionCallback,
 )
-from lib.joystick.exceptions import NotAGamepadError, UnsupportedFeatureError
+from hal.joystick.exceptions import NotAGamepadError, UnsupportedFeatureError
 
 
 class JoystickManager:

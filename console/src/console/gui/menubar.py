@@ -1,9 +1,9 @@
 from PySide6.QtCore import Slot, Signal
 from PySide6.QtWidgets import QInputDialog, QLineEdit, QMenuBar, QWidget
 from PySide6.QtGui import QAction
-from lib.joystick.active_joystick import ActiveJoystick
-from console.core.comms.stm32 import STM32
-from lib.joystick.manager import JoystickManager
+from hal.joystick.active_joystick import ActiveJoystick
+from hal.serial.stm32 import STM32
+from hal.joystick.manager import JoystickManager
 
 
 class MenuBar(QMenuBar):
