@@ -1,33 +1,19 @@
 import struct
-from enum import IntEnum, StrEnum
 from threading import Event, Thread
 from time import sleep
-from typing import TypedDict, Annotated
-from console.core.comms.stm32 import STM32
-from lib.joystick.inputs import GamepadButton, GamepadStick, GamepadTrigger
-from lib.joystick.joystick import Joystick
-from lib.joystick.active_joystick import ActiveJoystick
-
-
-class MessageType(IntEnum):
-    READY_MESSAGE = 0x00
-    COMMAND_MESSAGE = 0x01
-    PARAMETERS_MESSAGE = 0x02
-    OPERATION_MESSAGE = 0x03
-    SENSOR_MESSAGE = 0x04
-    TUNING_MESSAGE = 0x05
-
-
-class MessageFormat(StrEnum):
-    COMMAND_MESSAGE = "<BBH6f"  # sync + msg_type + control_word + 6 floats = 29 bytes
-    SENSOR_MESSAGE = (
-        "<Bffff8f"  # status + depth + yaw + pitch + roll + 8 motor speeds = 53 bytes
-    )
-
-
-class MagicNumbers(IntEnum):
-    SYNC_BYTE = 0xFF
-
+from typing import TypedDict, Annotated, cast
+from core.math.exponential_filter import ExponentialFilter
+from hal.serial.stm32 import STM32
+from hal.joystick.inputs import GamepadButton, GamepadStick, GamepadTrigger
+from hal.joystick.joystick import Joystick
+from hal.joystick.active_joystick import ActiveJoystick
+from console.comms.messages import (
+    CommandData,
+    MessageType,
+    Constants,
+    Message,
+    SensorsData,
+)
 
 ToggleButtons = {
     GamepadButton.SOUTH: "LED",
@@ -37,7 +23,7 @@ ToggleButtons = {
 
 
 class SensorCache(TypedDict):
-    thrusters: Annotated[list[int], 8]
+    thrusters: Annotated[list[float], 8]
     status: dict
     yaw: float
     pitch: float
@@ -45,12 +31,12 @@ class SensorCache(TypedDict):
     depth: float
 
 
+class CommandStateCache(TypedDict):
+    forces: Annotated[list[ExponentialFilter], 6]
+
+
 class CommunicationManager:
     """Competition-specific handler for the serial comms"""
-
-    _IDLE_TIMOUT = 0.05  # 50ms = 20Hz
-
-    _IN_SIZE = struct.calcsize(MessageFormat.SENSOR_MESSAGE)  # 53 bytes
 
     def __init__(self, serial: STM32, joystick: ActiveJoystick):
         self._serial = serial
@@ -86,8 +72,7 @@ class CommunicationManager:
             self._joystick.add_gamepad_button_listener(self._controller_toggles, btn)
 
     def _controller_toggles(self, _: Joystick, button: GamepadButton, is_pressed: bool):
-        # if self._serial.serial_ready:
-        if True:
+        if self._serial.serial_ready:
             if is_pressed:
                 toggle = ToggleButtons[button]
                 self._toggles_cache[toggle] = not self._toggles_cache[toggle]
@@ -131,64 +116,49 @@ class CommunicationManager:
             if not self._serial.incoming:
                 continue
 
-            # 1. Hunt for sync byte (0xFF)
             if not synced:
                 byte = self._serial.recieve(1)
-                if byte and byte[0] == MagicNumbers.SYNC_BYTE:
+                if byte and byte[0] == Constants.SYNC_BYTE:
                     synced = True
                 continue
 
-            # 2. Read size byte
             if detected_rx is None:
                 byte = self._serial.recieve(1)
                 if not byte:
                     synced = False
                     continue
                 msg_type = byte[0]
-                if msg_type in MessageType._value2member_map_:
-                    detected_rx = MessageType(msg_type)
-                else:
+                try:
+                    detected_rx = MessageType.from_type(msg_type)
+                except ValueError:
                     synced = False
                     continue
 
-            # 3. Handle message
-            if detected_rx == MessageType.READY_MESSAGE:
+            if detected_rx == MessageType.READY:
                 self._data_ready_event.set()
-            elif detected_rx == MessageType.SENSOR_MESSAGE:
-                raw = self._serial.recieve(self._IN_SIZE)
-                if raw and len(raw) == self._IN_SIZE:
+            elif detected_rx == MessageType.SENSORS:
+                raw = self._serial.recieve(MessageType.SENSORS.size)
+                if raw and len(raw) == MessageType.SENSORS.size:
                     self._parse_incoming(raw)
 
             synced = False
             detected_rx = None
 
-    def _parse_incoming(self, data: bytes):
+    def _parse_incoming(self, raw_data: bytes):
         try:
-            values = struct.unpack(MessageFormat.SENSOR_MESSAGE, data)
-            self._sensor_cache["status"] = {
-                "LED": (values[0] >> 2) & 1  # bit 2 (status_byte)
-            }
-
-            self._sensor_cache["depth"] = values[1]
-            self._sensor_cache["yaw"] = values[2]
-            self._sensor_cache["pitch"] = values[3]
-            self._sensor_cache["roll"] = values[4]
-
-            self._sensor_cache["thrusters"] = list(values[5:])
+            message = Message(MessageType.SENSORS)
+            data = cast(SensorsData, message.unpack(raw_data))
+            self._sensor_cache["status"] = {"LED": data.led}
+            self._sensor_cache["depth"] = data.depth
+            self._sensor_cache["yaw"] = data.yaw
+            self._sensor_cache["pitch"] = data.pitch
+            self._sensor_cache["roll"] = data.roll
+            self._sensor_cache["thrusters"] = list(data.motors)
 
         except struct.error as e:
             print(f"Unpack error: {e}")
 
     def _serial_controller_payload(self):
-        # Keybindings:
-        # LStick - Axis 0 (Horizontal): Shift the ROV sideways
-        # LStick - Axis 1 (Vertical): Move forward/ backward
-        # RStick - Axis 2 (Horizontal): Rotate sideways about vertical axis
-        # RStick - Axis 3 (Vertical): Tilt up or down
-        # L2 - Axis 4 (+1 then /2): descend
-        # R2 - Axis 5 (+1 then / 2): climb
-        # Climb total value: R2 - L2
-
         joy = self._joystick
         control_word = int(self._toggles_cache["LED"]) << 0
 
@@ -197,21 +167,20 @@ class CommunicationManager:
         control_word |= int(joy.get_gpinput(GamepadButton.DPAD_UP)) << 3
         control_word |= int(joy.get_gpinput(GamepadButton.DPAD_DOWN)) << 4
 
-        payload = [
-            0xFF,
-            0x01,
-            control_word,
-            -joy.get_gpinput(GamepadStick.LEFT_Y),
-            joy.get_gpinput(GamepadStick.LEFT_X),
-            joy.get_gpinput(GamepadTrigger.LEFT_TRIGGER)
+        payload = CommandData(
+            control=control_word,
+            x=-joy.get_gpinput(GamepadStick.LEFT_Y),
+            y=joy.get_gpinput(GamepadStick.LEFT_X),
+            z=joy.get_gpinput(GamepadTrigger.LEFT_TRIGGER)
             - joy.get_gpinput(GamepadTrigger.RIGHT_TRIGGER),
-            joy.get_gpinput(GamepadStick.RIGHT_X),
-            joy.get_gpinput(GamepadStick.RIGHT_Y),
-            joy.get_gpinput(GamepadButton.RIGHT_SHOULDER)
+            roll=joy.get_gpinput(GamepadStick.RIGHT_X),
+            pitch=joy.get_gpinput(GamepadStick.RIGHT_Y),
+            yaw=joy.get_gpinput(GamepadButton.RIGHT_SHOULDER)
             - joy.get_gpinput(GamepadButton.LEFT_SHOULDER),
-        ]
+        )
         # print(payload)
-        return struct.pack(MessageFormat.COMMAND_MESSAGE, *payload)
+        message = Message(MessageType.COMMAND)
+        return message.pack(payload)
 
     def __del__(self):
         self._killswitch = True

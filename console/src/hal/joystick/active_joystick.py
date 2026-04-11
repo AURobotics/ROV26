@@ -1,10 +1,10 @@
 import threading
 import weakref
 
-from lib.joystick.joystick import Joystick
+from hal.joystick.joystick import Joystick
 from typing import TYPE_CHECKING, Callable
 
-from lib.joystick.listeners import CallbackFactory
+from hal.joystick.listeners import CallbackFactory
 
 
 class _ActiveJoystick:

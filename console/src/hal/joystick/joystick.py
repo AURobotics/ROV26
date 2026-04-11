@@ -6,17 +6,17 @@ from annotated_types import Ge, Le
 if TYPE_CHECKING:
     # only use the following in type hints
     # use [Joystick]._manager in expressions
-    from lib.joystick.manager import JoystickManager
+    from hal.joystick.manager import JoystickManager
     import pygame
 
-from lib.joystick.inputs import (
+from hal.joystick.inputs import (
     GamepadButton,
     GamepadStick,
     GamepadTrigger,
     HatDirection,
 )
 
-from lib.joystick.exceptions import NotAGamepadError, UnsupportedFeatureError
+from hal.joystick.exceptions import NotAGamepadError, UnsupportedFeatureError
 
 
 class Joystick:
