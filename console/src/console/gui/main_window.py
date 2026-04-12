@@ -28,6 +28,56 @@ class MainWindow(QMainWindow):
         cam3 = VideoStream(pipelines[2])
 
         
-        self.pilot_tab = PilotTab2(cam1, cam2, cam3, comms)
+        self._pilot_tab = PilotTab2(cam1, cam2, cam3, comms)
+        self._cv_tab = CVTab(cam1)
+        self._float_tab = FloatTab()
 
-        self.setCentralWidget(self.pilot_tab)
+        self._stack.addWidget(self._pilot_tab)
+        self._stack.addWidget(self._cv_tab)
+        self._stack.addWidget(self._float_tab)
+
+        self.setCentralWidget(self._stack)
+
+        self._sidebar = QToolBar()
+        self._sidebar.setMovable(False)
+        self._sidebar.setStyleSheet("""
+            QToolBar {
+                background-color: #2b2b2b;
+                border-right: 1px solid #444444;
+                spacing: 10px;
+                padding: 5px;
+            }
+
+            QToolButton {
+                color: white;
+                width: 24px;
+                background-color: transparent;
+                border-radius: 4px;
+                padding: 8px;
+            }
+            
+            QToolButton:hover {
+                background-color: #3d3d3d;
+            }
+
+            QToolButton:checked {
+                background-color: #0078d7;
+                font-weight: bold;
+            }
+        """)
+        self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self._sidebar)
+
+        self._sidebar_actions = QActionGroup(self)
+        self._sidebar_actions.setExclusive(True)
+
+        for i, name in enumerate(["Pilot", "CV", "Float"]):
+            self._setup_action(i, name)
+
+    def _setup_action(self, idx, name):
+        action = QAction(name, self, checkable=True)
+        action.setData(idx)
+        self._sidebar_actions.addAction(action)
+        self._sidebar.addAction(action)
+        action.triggered.connect(lambda _:self._stack.setCurrentIndex(action.data()))
+        if idx == 0:
+            action.setChecked(True)
