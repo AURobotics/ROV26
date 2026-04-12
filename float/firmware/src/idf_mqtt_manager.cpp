@@ -154,3 +154,13 @@ bool IDFMQTTManager::publishFileChunkedOverTopics(const char *topic, const char 
     Serial.println("File publish failed after all retries");
     return false;
 }
+
+void IDFMQTTManager::disconnect()
+{
+    if (_mqttClient != nullptr)
+    {
+        _mqttClient->end();
+        delete _mqttClient;
+        _mqttClient = nullptr;
+    }
+}
