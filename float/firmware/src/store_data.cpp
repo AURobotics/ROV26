@@ -30,8 +30,8 @@ bool store_data_setup()
     file.close();
     Serial.println("Log file created");
   }
-  return true;
   startSequence();
+  return true;
 }
 
 void store_data_loop()
