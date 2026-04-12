@@ -116,3 +116,15 @@ class PilotTab2(QWidget):
             | QDockWidget.DockWidgetFeature.DockWidgetFloatable
         )
         return dock
+    
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        for dock in self.findChildren(QDockWidget):
+            if dock.isFloating():
+                dock.hide()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        for dock in self.findChildren(QDockWidget):
+            if dock.isFloating():
+                dock.show()
