@@ -8,6 +8,8 @@
 #include "idf_mqtt_manager.h"
 #include <ms5611.h>
 
+#define COMPANY_NUMBER "AU Robotics"
+
 // WiFi credentials
 const char *WIFI_SSID = "";
 const char *WIFI_PASSWORD = "";
@@ -28,9 +30,8 @@ bool initAccessPoint(const char *ssid, const char *password);
 // ArduinoMqttManager MqttManager;
 IDFMQTTManager MqttManager;
 
-// depths values for testing
-// float testDepth = 0.0;
-// float depthIncrement = 0.1;
+// depths values for testing ######################################
+float depthIncrement = 0.1;
 
 // Flag to ensure MQTT setup is done only once
 bool wifiState = false;
@@ -58,27 +59,55 @@ void setup()
     // setupOTA();
 
     // @attention - Logic to change state is not implemented yet
-    while (currentState == IDLE)
-    {
-        // Wait for sequence to complete
-        delay(50);
-    }
+    // COMMENTING OUT WAITING LOGIC FOR TESTING WITHOUT SENSOR ############################
+    // while (currentState == IDLE)
+    // {
+    //     // Wait for sequence to complete
+    //     delay(50);
+    // }
 
     // setup and calibrate pressure sensor
-    if (!pressureSensor.begin())
-    {
-        Serial.println("Failed to initialize MS5611 sensor!");
-        delay(1000);
-        ESP.restart();
-    }
+    // COMMENTING OUT SENSOR LOGIC FOR TESTING WITHOUT SENSOR ############################
+    // if (!pressureSensor.begin())
+    // {
+    //     Serial.println("Failed to initialize MS5611 sensor!");
+    //     delay(1000);
+    //     if(!pressureSensor.begin()) // try again before restarting
+    //     {
+    //         ESP.restart();
+    //     }
+    //     else
+    //     {
+    //         Serial.println("MS5611 sensor initialized successfully on second attempt");
+    //     }
+    // }
 
     // Start the sequence
     if (!store_data_setup())
     {
         Serial.println("Failed to setup data storage!");
         delay(1000);
-        ESP.restart();
+        if (!store_data_setup()) // try again before restarting
+        {
+            ESP.restart();
+        }
+        else
+        {
+            Serial.println("Data storage setup successful on second attempt");
+        }
     }
+
+    connectToNetwork();
+    MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+    MqttManager.loop(); // checks for mqtt connection and reconnects if needed
+    Serial.println("sending: \"Device started and about to collect data\"");
+    MqttManager.publish("float/status", "Device started and about to collect data");
+    Serial.println("sent initial status message to MQTT broker");
+    MqttManager.disconnect();
+    WiFi.disconnect();
+
+    // for testing without sensor, start sequence immediately
+    currentState = COLLECTING; // ###########################################################
 }
 
 void loop()
@@ -88,44 +117,47 @@ void loop()
 
     if (currentState == COLLECTING)
     {
+        Serial.println("Collecting data...");
+
         // To store depth per time
         store_data_loop();
 
-        // depth = testDepth;
-        depth = pressureSensor.getDepth();
-        setDepth(depth);
-
-        if (isComplete())
-        {
-            currentState = UPLOADING;
-        }
-
-        // // For testing depth changes without sensor
-        // if (abs(depth - getCurrentTarget()) < 0.05)
-        // {
-        //     Serial.println("At target depth, holding...");
-        //     setDepth(depth);
-        //     delay(500); // Wait for 30 seconds
-        //     setDepth(depth);
-        //     delay(500);
-        //     setDepth(depth);
-        // }
-        // else if (depth > getCurrentTarget())
-        // {
-        //     depth -= depthIncrement; // Move slightly below target
-        // }
-        // else
-        // {
-        //     depth += depthIncrement;
-        // }
+        // COMMENTING OUT SENSOR LOGIC FOR TESTING WITHOUT SENSOR ############################
+        // depth = pressureSensor.getDepth();
         // setDepth(depth);
+
+        // For testing depth changes without sensor #################################
+        if (abs(depth - getCurrentTarget()) < 0.05)
+        {
+            Serial.println("At target depth, holding...");
+            setDepth(depth);
+            delay(500); // Wait for 30 seconds
+            setDepth(depth);
+            delay(500);
+            setDepth(depth);
+        }
+        else if (depth > getCurrentTarget())
+        {
+            depth -= depthIncrement; // Move slightly below target
+        }
+        else
+        {
+            depth += depthIncrement;
+        }
+        setDepth(depth);
 
         Serial.print("Current Target: ");
         Serial.println(getCurrentTarget());
         Serial.print("Current Depth: ");
         Serial.println(depth);
 
-        // delay(500);
+        delay(500); // fot testing, in real scenario this would be based on sensor reading frequency ############################################
+
+        if (isComplete())
+        {
+            Serial.println("Data collection complete. Transitioning to UPLOADING state...");
+            currentState = UPLOADING;
+        }
     }
     else if (currentState == UPLOADING) // keep sending data to MQTT broker every 5 seconds till shutdown
     {
@@ -175,11 +207,12 @@ void loop()
             // Handle MQTT communication
             MqttManager.loop(); // checks for mqtt connection and reconnects if needed
 
-            Serial.println("sending data to mqtt");
+            Serial.println("sending Company Number and file to mqtt");
 
             Serial.print("Mqtt connection is: ");
             Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
 
+            MqttManager.publish("float/data/credential", COMPANY_NUMBER);
             MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
             delay(5000); // Send data every 5 seconds
         }

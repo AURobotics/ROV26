@@ -24,6 +24,7 @@ public:
     bool subscribe(const char *topic, int qos = 1);
     bool publishFileChunkedOverTopics(const char *topic, const char *path, const char *name);
     bool isConnected() const { return _mqttClient && _mqttClient->isConnected(); }
+    void disconnect();
 
 private:
     IDFMQTTClient *_mqttClient;
