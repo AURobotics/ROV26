@@ -47,5 +47,4 @@ class DemoWindow(QMainWindow):
         self.setCentralWidget(tabs)
 
         # demo: push a few messages after startup
-        QTimer.singleShot(800,  lambda: self._viewer.post_message("System initialised.", "OK"))
-        QTimer.singleShot(1600, lambda: self._viewer.post_message("Waiting for incoming CSV stream…", "INFO"))
+        QTimer.singleShot(800,  lambda: self._viewer.post_message("System initialised.", "INFO"))
