@@ -126,3 +126,11 @@ class LeakageDisplay(QWidget):
                         border-radius: 4px;
                         background-color: ''' + self._colour2 + ';}'
                                             )
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self._timer.stop()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._timer.start(100)
