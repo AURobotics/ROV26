@@ -29,7 +29,7 @@ class MainWindow(QMainWindow):
 
         
         self._pilot_tab = PilotTab2(cam1, cam2, cam3, comms)
-        self._cv_tab = CVTab(cam1)
+        self._cv_tab = CVTab()
         self._float_tab = FloatTab()
 
         self._stack.addWidget(self._pilot_tab)
