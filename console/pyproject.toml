@@ -26,6 +26,7 @@ dependencies = [
     "gstreamer-plugins>=1.28.1 ; sys_platform != 'linux'",
     "gstreamer-plugins-restricted>=1.28.1 ; sys_platform != 'linux'",
     "paho-mqtt==2.1.0",
+    "pygithub>=2.9.1",
 ]
 
 

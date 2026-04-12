@@ -44,7 +44,7 @@ class MainWindow(QMainWindow):
         self._stack = QStackedWidget()
 
         self._pilot_tab = PilotTab(cam1, cam2, cam3, comms)
-        self._cv_tab = CVTab()
+        self._cv_tab = CVTab(cam1)
         self._serial_tab = SerialTab(stm)
         self._joystick_tab = JoystickTab(active_joystick)
         self._settings_tab = SettingsTab()
