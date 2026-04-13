@@ -44,6 +44,12 @@ class Stm32:
                     self._ser.disconnect()
                 self._ser = None
 
+    def connect(self, port: str) -> None:
+        self.port = port
+
+    def disconnect(self) -> None:
+        self.port = None
+
     def reset(self) -> None:
         with self._programmer_lock:
             if self.programmer is None or not self.programmer.exists():

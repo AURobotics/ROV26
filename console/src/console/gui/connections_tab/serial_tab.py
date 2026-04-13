@@ -11,8 +11,10 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
 )
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSize, Qt, Slot
 
+from console.comms.stm32 import Stm32
+from core.concurrent.callback_worker import CallbackWorker
 from hal.serial.serial_device import list_ports
 
 
@@ -56,9 +58,9 @@ class PortComboLabelDelegate(QStyledItemDelegate):
 
 
 class SerialTab(QWidget):
-    def __init__(self, stm_holder):
+    def __init__(self, stm: Stm32):
         super().__init__()
-        self.stm = stm_holder
+        self.stm = stm
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setSpacing(15)
@@ -74,13 +76,15 @@ class SerialTab(QWidget):
         port_form = QFormLayout(port_group)
         self.port_selector = QComboBox()
         self.port_selector.setItemDelegate(PortComboLabelDelegate())
+        self.port_selector.textActivated.connect(self.select_port)
         port_form.addRow("Port:", self.port_selector)
         self.dfu_btn = QPushButton("Enter DFU Mode")
-        self.disc_btn = QPushButton("Disconnect")
+        self.disconnect_button = QPushButton("Disconnect")
+        self.disconnect_button.pressed.connect(self.deselect_port)
         self.dfu_btn.setFixedWidth(120)
-        self.disc_btn.setFixedWidth(120)
+        self.disconnect_button.setFixedWidth(120)
         port_form.addWidget(self.dfu_btn)
-        port_form.addWidget(self.disc_btn)
+        port_form.addWidget(self.disconnect_button)
         utils_hbox.addWidget(port_group)
 
         flash_group = QGroupBox()
@@ -98,6 +102,36 @@ class SerialTab(QWidget):
 
         self.refresh_ports()
 
+    @Slot(str)
+    def select_port(self, port: str) -> None:
+        if self.stm.port == port:
+            return
+        try:
+            worker = CallbackWorker(
+                lambda: self.stm.connect(port), self.on_port_selection_change
+            )
+            worker.run()
+        except:
+            pass
+
+    @Slot()
+    def deselect_port(self) -> None:
+        if not self.stm.port:
+            return
+        try:
+            worker = CallbackWorker(
+                self.stm.disconnect, self.on_port_selection_change
+            )
+            worker.run()
+        except:
+            pass
+
+    def on_port_selection_change(self) -> None:
+        if self.stm.port:
+            self.port_selector.setCurrentText(self.stm.port)
+        else:
+            self.port_selector.setCurrentIndex(-1)
+
     def refresh_ports(self):
         self.port_selector.clear()
 
@@ -107,3 +141,5 @@ class SerialTab(QWidget):
             self.port_selector.setItemData(
                 last_idx, p.description, Qt.ItemDataRole.UserRole
             )
+
+        self.port_selector.setCurrentIndex(-1) # TODO: handle port already selected
