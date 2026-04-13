@@ -1,28 +1,15 @@
 from PySide6.QtCore import Slot, Signal
-from PySide6.QtWidgets import QInputDialog, QLineEdit, QMenuBar, QWidget
+from PySide6.QtWidgets import QMenuBar, QWidget
 from PySide6.QtGui import QAction
 from hal.joystick.active_joystick import ActiveJoystick
-from hal.serial.stm32 import STM32
 from hal.joystick.manager import JoystickManager
 
 
 class MenuBar(QMenuBar):
     _joysticks_changed = Signal()
 
-    def __init__(
-        self, parent: QWidget, active_joystick: ActiveJoystick, serial_device: STM32
-    ):
+    def __init__(self, parent: QWidget, active_joystick: ActiveJoystick):
         super().__init__(parent=parent)
-        self._serial_menu = self.addMenu("Serial Port")
-        self._serial_menu_sep = self._serial_menu.addSeparator()
-        self._serial_menu_add_custom = self._serial_menu.addAction("Custom Port")
-        self._serial_menu_no_serial = QAction("No Serial Ports")
-        self._serial_menu_no_serial.setEnabled(False)
-        self._displayed_ports: dict[str, QAction] = {}
-        self._custom_port: tuple[str, QAction] | None = None
-        self._serial_menu.aboutToShow.connect(self.update_serial_ports)
-        self._serial = serial_device
-
         self._active_joystick = active_joystick
         self._joystick_menu = self.addMenu("Joystick")
         self._no_joystick_action = QAction(
@@ -42,8 +29,6 @@ class MenuBar(QMenuBar):
         parent = action.parent()
         if parent == self._joystick_menu:
             self._on_joystick_action(action)
-        elif parent == self._serial_menu:
-            self._on_serial_port_action(action)
 
     def _on_joystick_action(self, action: QAction):
         for j_id, a in self._displayed_joysticks.items():
@@ -54,28 +39,9 @@ class MenuBar(QMenuBar):
                     self._active_joystick.selected = self._joyman.joystick_by_id(j_id)
                 return
 
-    def _on_serial_port_action(self, action: QAction):
-        if action == self._serial_menu_add_custom:
-            self.manual_port_selection()
-            return
-        if self._custom_port is not None and action == self._custom_port[1]:
-            if self._custom_port[1].isChecked():
-                self._serial.disconnect()
-            else:
-                self._serial.connect(self._custom_port[0])
-            return
-        for port, a in self._displayed_ports.items():
-            if a == action:
-                if not action.isChecked():
-                    self._serial.disconnect()
-                else:
-                    self._serial.connect(port)
-                return
-
     @Slot()
     def refresh(self):
         self.update_joysticks()
-        self.update_serial_ports()
 
     @Slot(object)
     def update_joysticks(self):
@@ -114,57 +80,3 @@ class MenuBar(QMenuBar):
                 action.setCheckable(True)
                 self._displayed_joysticks[joystick.id] = action
             action.setChecked(self._active_joystick.selected == joystick)
-
-    @Slot()
-    def update_serial_ports(self):
-        ports = self._serial.available_ports
-        new_ports = set(ports)
-        old_ports = set(self._displayed_ports.keys())
-        to_remove = old_ports.difference(new_ports)
-        to_add = new_ports.difference(old_ports)
-        connected_port: str | None = (
-            self._serial.port if self._serial.connected else None
-        )
-
-        for port, action in self._displayed_ports.items():
-            if port in to_remove:
-                self._displayed_ports.pop(port)
-                self._serial_menu.removeAction(action)
-
-        for port in ports:
-            action: QAction
-            if port not in to_add:
-                action = self._displayed_ports[port]
-            else:
-                action = QAction(port, self._serial_menu)
-                self._serial_menu.insertAction(self._serial_menu_sep, action)
-                action.setCheckable(True)
-                self._displayed_ports[port] = action
-            action.setChecked(port == connected_port)
-
-        if (
-            connected_port is None or connected_port not in ports
-        ) and self._custom_port is not None:
-            self._serial_menu.removeAction(self._custom_port[1])
-            self._custom_port = None
-
-        elif connected_port is not None:
-            if self._custom_port is not None:
-                action = self._custom_port[1]
-                action.setText(connected_port)
-                self._custom_port = (connected_port, action)
-            else:
-                action = QAction(connected_port, self._serial_menu)
-                self._custom_port = (connected_port, action)
-                self._serial_menu.addAction(action)
-
-    def manual_port_selection(self):
-        text, ok = QInputDialog.getText(
-            self,
-            "Custom Port",
-            "Port Name (RFC2217 NOT FULLY SUPPORTED):",
-            QLineEdit.EchoMode.Normal,
-            "COM",
-        )
-        if ok:
-            self._serial.connect(text)

@@ -1,20 +1,22 @@
 from PySide6.QtWidgets import QMainWindow, QStackedWidget, QToolBar
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QActionGroup, QAction
+from console.comms.stm32 import Stm32
+from console.gui.connections_tab import ConnectionsTab
 from hal.camera.camera import VideoStream
 from console.gui.menubar import MenuBar
 from hal.joystick.active_joystick import ActiveJoystick
-from console.gui.pilot_tab_new import PilotTab2
+from console.gui.pilot_tab import PilotTab
 from console.gui.cv_tab import CVTab
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, serial_device, active_joystick: ActiveJoystick, comms):
+    def __init__(self, stm: Stm32, active_joystick: ActiveJoystick, comms):
         super().__init__()
 
         self.setWindowTitle("ROV Console")
 
-        menubar = MenuBar(self, active_joystick, serial_device)
+        menubar = MenuBar(self, active_joystick)
         self.setMenuBar(menubar)
         ports = [5000, 5002, 5004]
         pipelines = [
@@ -33,11 +35,13 @@ class MainWindow(QMainWindow):
 
         self._stack = QStackedWidget()
 
-        self._pilot_tab = PilotTab2(cam1, cam2, cam3, comms)
+        self._pilot_tab = PilotTab(cam1, cam2, cam3, comms)
         self._cv_tab = CVTab()
+        self._connections_tab = ConnectionsTab(active_joystick, stm)
 
         self._stack.addWidget(self._pilot_tab)
         self._stack.addWidget(self._cv_tab)
+        self._stack.addWidget(self._connections_tab)
 
         self.setCentralWidget(self._stack)
 
@@ -48,7 +52,7 @@ class MainWindow(QMainWindow):
         self._group = QActionGroup(self)
         self._group.setExclusive(True)
 
-        for i, name in enumerate(["Pilot", "CV"]):
+        for i, name in enumerate(["Pilot", "CV", "Conn."]):
             self._setup_action(i, name)
 
     def _setup_action(self, idx, name):
