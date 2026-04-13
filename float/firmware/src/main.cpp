@@ -26,6 +26,7 @@ bool AS_ACCESS_POINT = false;
 void connectToNetwork();
 bool connectToWiFi(const char *ssid, const char *password);
 bool initAccessPoint(const char *ssid, const char *password);
+void myDelay(unsigned long);
 
 // ArduinoMqttManager MqttManager;
 IDFMQTTManager MqttManager;
