@@ -63,7 +63,7 @@ void setup()
     // while (currentState == IDLE)
     // {
     //     // Wait for sequence to complete
-    //     delay(50);
+    //     myDelay(50);
     // }
 
     // setup and calibrate pressure sensor
@@ -71,7 +71,7 @@ void setup()
     // if (!pressureSensor.begin())
     // {
     //     Serial.println("Failed to initialize MS5611 sensor!");
-    //     delay(1000);
+    //     myDelay(1000);
     //     if(!pressureSensor.begin()) // try again before restarting
     //     {
     //         ESP.restart();
@@ -86,7 +86,7 @@ void setup()
     if (!store_data_setup())
     {
         Serial.println("Failed to setup data storage!");
-        delay(1000);
+        myDelay(1000);
         if (!store_data_setup()) // try again before restarting
         {
             ESP.restart();
@@ -131,9 +131,9 @@ void loop()
         {
             Serial.println("At target depth, holding...");
             setDepth(depth);
-            delay(500); // Wait for 30 seconds
+            myDelay(1000); // Wait for 1 second
             setDepth(depth);
-            delay(500);
+            myDelay(1000);
             setDepth(depth);
         }
         else if (depth > getCurrentTarget())
@@ -151,7 +151,7 @@ void loop()
         Serial.print("Current Depth: ");
         Serial.println(depth);
 
-        delay(500); // fot testing, in real scenario this would be based on sensor reading frequency ############################################
+        myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency ############################################
 
         if (isComplete())
         {
@@ -178,7 +178,7 @@ void loop()
             wifiRetryCount++;
             Serial.println("WiFi connection lost. Reconnecting...");
             WiFi.reconnect();
-            delay(500);
+            myDelay(500);
 
             if (WiFi.status() == WL_CONNECTED)
             {
@@ -189,7 +189,7 @@ void loop()
             else if (wifiRetryCount >= MAX_WIFI_RETRY_COUNT)
             {
                 Serial.println("Failed to reconnect after multiple attempts. Restarting network...");
-                delay(5000);
+                myDelay(5000);
                 WiFi.disconnect();
                 connectToNetwork();
 
@@ -214,7 +214,7 @@ void loop()
 
             MqttManager.publish("float/data/credential", COMPANY_NUMBER);
             MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
-            delay(5000); // Send data every 5 seconds
+            myDelay(5000); // Send data every 5 seconds
         }
     }
 }
@@ -253,7 +253,7 @@ bool connectToWiFi(const char *ssid, const char *password)
 
         while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts)
         {
-            delay(500);
+            myDelay(500);
             Serial.print(".");
             attempts++;
         }
@@ -271,16 +271,27 @@ bool connectToWiFi(const char *ssid, const char *password)
         Serial.printf("\nConnection failed. Retry %d of %d...\n", retryCount, maxRetries);
 
         WiFi.disconnect();
-        delay(1000);
+        myDelay(1000);
         WiFi.mode(WIFI_OFF);
-        delay(500);
+        myDelay(500);
         WiFi.mode(WIFI_STA);
-        delay(500);
+        myDelay(500);
         WiFi.begin(ssid, password); // restart for next retry
     }
 
     Serial.println("\nWiFi connection failed after all retries!");
     return false;
+}
+
+void myDelay(unsigned long ms)
+{
+    unsigned long start = millis();
+    while (millis() - start < ms)
+    {
+        // Handle OTA updates during delay
+        // otaupdate();
+        delay(100); // Short delay to prevent watchdog timer reset
+    }
 }
 
 bool initAccessPoint(const char *ssid, const char *password)
@@ -318,7 +329,7 @@ bool initAccessPoint(const char *ssid, const char *password)
         Serial.println("FAILED!");
         if (attempt < maxAttempts)
         {
-            delay(1000);
+            myDelay(1000);
         }
     }
 
