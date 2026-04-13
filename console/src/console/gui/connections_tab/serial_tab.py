@@ -79,12 +79,13 @@ class SerialTab(QWidget):
         self.port_selector.activated.connect(self.refresh_ports)
         self.port_selector.textActivated.connect(self.select_port)
         port_form.addRow("Port:", self.port_selector)
-        self.dfu_btn = QPushButton("Enter DFU Mode")
+        self.dfu_button = QPushButton("Enter DFU Mode")
+        self.dfu_button.clicked.connect(self.stm.enter_dfu)
         self.disconnect_button = QPushButton("Disconnect")
         self.disconnect_button.pressed.connect(self.deselect_port)
-        self.dfu_btn.setFixedWidth(120)
+        self.dfu_button.setFixedWidth(120)
         self.disconnect_button.setFixedWidth(120)
-        port_form.addWidget(self.dfu_btn)
+        port_form.addWidget(self.dfu_button)
         port_form.addWidget(self.disconnect_button)
         utils_hbox.addWidget(port_group)
 
@@ -92,14 +93,17 @@ class SerialTab(QWidget):
         flash_group.setTitle("STM32 Programmer")
         flash_form = QFormLayout(flash_group)
         self.usb_selector = QComboBox()
-        self.reset_btn = QPushButton("Reset Device")
-        self.flash_btn = QPushButton("Flash Firmware")
+        self.usb_selector.activated.connect(self.refresh_usb)
+        self.reset_button = QPushButton("Reset Device")
+        self.flash_button = QPushButton("Flash Firmware")
         flash_form.addRow("Target:", self.usb_selector)
-        flash_form.addWidget(self.reset_btn)
-        flash_form.addWidget(self.flash_btn)
+        flash_form.addWidget(self.reset_button)
+        flash_form.addWidget(self.flash_button)
         utils_hbox.addWidget(flash_group)
 
         self.main_layout.addLayout(utils_hbox)
+
+        self.refresh_usb()
 
     @Slot(str)
     def select_port(self, port: str) -> None:
@@ -130,6 +134,29 @@ class SerialTab(QWidget):
         else:
             self.port_selector.setCurrentIndex(-1)
 
+    @Slot()
+    def refresh_usb(self) -> None:
+        devices = self.stm.programmable_devices
+        if not self.stm.programmer_present or not devices:
+            self.usb_selector.clear()
+            self.reset_button.setEnabled(False)
+            self.flash_button.setEnabled(False)
+            return
+        selected = self.usb_selector.currentText()
+        self.usb_selector.clear()
+        for port, description in devices:
+            self.usb_selector.addItem(port)
+            last_idx = self.usb_selector.count() - 1
+            self.port_selector.setItemData(
+                last_idx, description, Qt.ItemDataRole.UserRole
+            )
+            if selected == port:
+                self.usb_selector.setCurrentIndex(last_idx)
+
+        if self.usb_selector.currentIndex() == -1:
+            self.usb_selector.setCurrentIndex(0)
+
+    @Slot()
     def refresh_ports(self) -> None:
         self.port_selector.clear()
 
@@ -140,7 +167,10 @@ class SerialTab(QWidget):
                 last_idx, p.description, Qt.ItemDataRole.UserRole
             )
 
-        if self.stm.port is None:
+        connected = self.stm.port is not None
+        self.dfu_button.setEnabled(connected)
+        self.disconnect_button.setEnabled(connected)
+        if not connected:
             self.port_selector.setCurrentIndex(-1)
             return
         for i in range(self.port_selector.count()):

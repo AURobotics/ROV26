@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 
 from PySide6.QtWidgets import QApplication, QMainWindow
@@ -5,7 +6,6 @@ from PySide6.QtCore import Signal
 from console.comms.stm32 import Stm32
 from hal.joystick.manager import JoystickManager
 from hal.joystick.active_joystick import ActiveJoystick
-from hal.serial.serial_device import SerialDevice
 from console.comms.comms import CommunicationManager
 from console.gui.main_window import MainWindow
 
@@ -35,7 +35,11 @@ class ConsoleApplication(QApplication):
         if len(joysticks) > 0:
             self._active_joystick.selected = joysticks[0]
         self._splash_screen.update_progress("Initializing serial system", 40)
-        self._stm32 = Stm32("")
+        try:
+            programmer_path = next(Path("stm/bin/").glob("STM32_Programmer_CLI"))
+        except StopIteration:
+            programmer_path = None
+        self._stm32 = Stm32(programmer_path)
         self._splash_screen.update_progress("Initializing communication system", 60)
         self._comms_manager = CommunicationManager(self._stm32, self._active_joystick)
         self._splash_screen.update_progress("Starting GUI", 80)
@@ -45,10 +49,9 @@ class ConsoleApplication(QApplication):
         self._splash_screen.hide()
         self._splash_screen = None
         self._main_window.show()
-        
+
         # start float subscriptions
         self._comms_manager.float_communication_setup(self._main_window._float_tab)
-
 
     def _shutdown(self):
         self._main_window = None
