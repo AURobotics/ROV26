@@ -213,6 +213,7 @@ int main() {
     uint32_t now = HAL_GetTick();
 
     float forces[6]; // Fx Fy Fz Froll Fpitch Fyaw
+    float * motors_buffer;
     // if control bit = 1 setpoint hatetba3at makan
     // el force fa will use this array as setpoint too
     float controller_output[6]; // surge sway depth roll pitch yaw
@@ -350,13 +351,13 @@ int main() {
 
         fetch_sensor_data(sensor_data);
     
-        if (test_state == TEST_STATE::OFF) // Normal mode
+        if (test_state == Test_state::OFF) // Normal mode
         {
             if(msg_type == COMMAND_MESSAGE)
             {
-                const unsigned char control_byte = msg.control_byte;
+                const unsigned char control_byte = msg.data.command_msg.control_byte;
                 for (int i = 0; i < 6; i++)
-                    forces[i] = msg.forces[i]*4;
+                    forces[i] = msg.data.command_msg.forces[i]*4;
 
                 prev = now;
                 now = HAL_GetTick();
@@ -399,6 +400,10 @@ int main() {
                        DCV_2_Pin,
                        (control_byte & 1 << 2)?GPIO_PIN_SET:GPIO_PIN_RESET);
             }
+
+            apply_pseudo_inverse(controller_output,motors_buffer);
+            Motor::move_array(motors,motors_buffer);
+            }
         
         // HAL_GPIO_WritePin(DCV_1_GPIO_Port,
         //                DCV_1_Pin,
@@ -422,55 +427,82 @@ int main() {
         // HAL_Delay(2000);
 
 
-        // else { // Testing mode
-        //     if (last_received_msg_type == TUNING_MESSAGE && test_state == Test_state::OFF) {
-        //         test_axis = tuning_msg.axis;
-        //         if (test_axis == 3)
-        //             start_yaw = sensor_data[test_axis].value();
-        //         test_state = Test_state::STEPPING;
-        //     }
-        //
-        //     if (test_state == Test_state::STEPPING) {
-        //         for (float& i : controller_output)
-        //             i = 0; // make sure that other axes are off
-        //         controller_output[test_axis + 2] = 0.4; // any constant value
-        //
-        //         if (test_axis == 3) { // yaw
-        //             if (angle_diff(sensor_data[test_axis].value(), start_yaw) >=
-        //                 max_testing[test_axis]) {
-        //                 controller_output[test_axis + 2] = 0;
-        //                 test_state = Test_state::DONE;
-        //             }
-        //         }
-        //         else if (sensor_data[test_axis].value() >= max_testing[test_axis]) {
-        //             controller_output[test_axis + 2] = 0;
-        //             test_state = Test_state::DONE;
-        //         }
-        //     }
-        //
-        //     if (test_state == Test_state::DONE &&
-        //         last_received_msg_type == Message_Type::PARAMETERS_MESSAGE) {
-        //         if (param_msg.pid_type) // angle pid
-        //             controller[test_axis].set_angle_pid(param_msg.Kp, param_msg.ki,
-        //             param_msg.kd);
-        //         else // rate pid
-        //             controller[test_axis].set_rate_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
-        //
-        //         test_state = Test_state::OFF;
-        //     }
-        // }
-        //
+        else { // Testing mode
+            Controller_response_msg response;
+            if (last_received_msg_type == TUNING_MESSAGE && test_state == Test_state::OFF) {
+                test_axis = tuning_msg.axis;
+                if (test_axis == 3)
+                    start_yaw = sensor_data[test_axis].value();
+                test_state = Test_state::STEPPING;
+            }
+
+            if (test_state == Test_state::STEPPING) {
+                for (float& i : controller_output)
+                    i = 0; // make sure that other axes are off
+                controller_output[test_axis + 2] = 0.4; // any constant value
+
+                if (test_axis) {
+                    if (angle_diff(sensor_data[test_axis*2].value(), start_yaw) >=
+                        max_testing[test_axis]) {
+                        controller_output[test_axis + 2] = 0;
+                        test_state = Test_state::DONE;
+                        }
+                    response.sync_byte = 0xFF;
+                    response.type = 6;
+                    // response.timestamp=
+                    response.angle = sensor_data[test_axis*2].value();
+                    response.angle_rate = sensor_data[(test_axis *2) +1].value();
+                    // cdc.write_msg()
+                }
+                else if (!test_axis) {
+                    if (sensor_data[test_axis*2].value() >= max_testing[test_axis]) {
+                        response.sync_byte = 0xFF;
+                        response.type = 6;
+                        response.angle = sensor_data[test_axis*2].value();
+                        response.angle_rate = NULL;
+                        // response.timestamp
+                        // cdc.write_msg()
+                    }
+                }
+
+                if (sensor_data[test_axis*2].value() >= max_testing[test_axis]) {
+                    controller_output[test_axis + 2] = 0;
+                    test_state = Test_state::DONE;
+                }
+            }
+
+            if (test_state == Test_state::DONE &&
+                last_received_msg_type == Message_Type::PARAMETERS_MESSAGE) {
+                if (param_msg.pid_type) // angle pid
+                    controller[test_axis].set_angle_pid(param_msg.Kp, param_msg.ki,
+                    param_msg.kd);
+                else // rate pid
+                    controller[test_axis].set_rate_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
+
+                test_state = Test_state::OFF;
+            }
+        }
+
 
         ///////////////////send data to GUI/////////////////////
+        TxPacket feedback_pkt;
+        if (HAL_GetTick()- last_send_time>=20) {
+            // motor telemetry
+            feedback_pkt.sync_byte = 0xFF;
+            feedback_pkt.type = 4;
+            feedback_pkt.status = loadStatus();
+            feedback_pkt.depth=sensor_data[0].value();
+            feedback_pkt.pitch=sensor_data[4].value();
+            feedback_pkt.roll=sensor_data[2].value();
+            feedback_pkt.yaw=sensor_data[6].value();
 
+               for (int i = 0; i < 8; i++) {
+                   feedback_pkt.motor_speeds[i] = motors_buffer[i] * 255.0f;
+               }
 
-        // motor telemetry
-        //    for (int i = 0; i < 8; i++) {
-        //        feedback_pkt.motor_speeds[i] = clamped_motors[i] * 255.0f;
-        //    }
-
-        // cdc.write_msg(&feedback_pkt);
-
+            cdc.write_msg(&feedback_pkt);
+            last_send_time = HAL_GetTick();
+        }
 
         // }
     }

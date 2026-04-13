@@ -91,7 +91,7 @@ Message_Type Cdc_driver::read_msg(GenericMessage& msg) {
     return msg.type;
 }
 
-bool Cdc_driver::write_msg(TxPacket* tx) {
-    auto result = CDC_Transmit_FS(reinterpret_cast<uint8_t*>(tx), sizeof(TxPacket));
+bool Cdc_driver::write_msg(GenericMessage* msg) {
+    auto result = CDC_Transmit_FS(reinterpret_cast<uint8_t*>(msg), sizeof(GenericMessage));
     return result == USBD_OK;
 }
