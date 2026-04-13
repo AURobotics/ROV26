@@ -3,6 +3,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QActionGroup, QAction
 from console.comms.stm32 import Stm32
 from console.gui.connections_tab import ConnectionsTab
+from console.gui.float_tab.container import FloatTab
 from hal.camera.camera import VideoStream
 from console.gui.menubar import MenuBar
 from hal.joystick.active_joystick import ActiveJoystick
@@ -38,10 +39,12 @@ class MainWindow(QMainWindow):
         self._pilot_tab = PilotTab(cam1, cam2, cam3, comms)
         self._cv_tab = CVTab()
         self._connections_tab = ConnectionsTab(active_joystick, stm)
+        self._float_tab = FloatTab()
 
         self._stack.addWidget(self._pilot_tab)
         self._stack.addWidget(self._cv_tab)
         self._stack.addWidget(self._connections_tab)
+        self._stack.addWidget(self._float_tab)
 
         self.setCentralWidget(self._stack)
 
@@ -52,7 +55,7 @@ class MainWindow(QMainWindow):
         self._group = QActionGroup(self)
         self._group.setExclusive(True)
 
-        for i, name in enumerate(["Pilot", "CV", "Conn."]):
+        for i, name in enumerate(["Pilot", "CV", "Conn.", "Float"]):
             self._setup_action(i, name)
 
     def _setup_action(self, idx, name):
