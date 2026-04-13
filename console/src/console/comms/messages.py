@@ -8,8 +8,8 @@ from typing import Annotated, Self
 from annotated_types import Ge, Le
 
 
-class Constants(IntEnum):
-    SYNC_BYTE = 255
+class Constants(bytes, Enum):
+    SYNC_BYTE = b"xFFFF"
 
 
 type NormalizedFloat = Annotated[float, Ge(-1.0), Le(1.0)]
@@ -18,11 +18,11 @@ type Word = Annotated[int, Ge(0), Le(65535)]
 
 
 @dataclass(frozen=True, slots=True)
-class PayloadType(ABC): ...
+class Payload(ABC): ...
 
 
 @dataclass(frozen=True, slots=True)
-class CommandData(PayloadType):
+class CommandData(Payload):
     control: Word
     x: NormalizedFloat
     y: NormalizedFloat
@@ -33,7 +33,7 @@ class CommandData(PayloadType):
 
 
 @dataclass(frozen=True, slots=True)
-class SensorsData(PayloadType):
+class SensorsData(Payload):
     status: Byte
     depth: NormalizedFloat
     yaw: NormalizedFloat
@@ -47,22 +47,26 @@ class SensorsData(PayloadType):
 
 
 @dataclass(frozen=True, slots=True)
-class OperationModeData(PayloadType): ...
+class OperationModeData(Payload): ...
 
 
 @dataclass(frozen=True, slots=True)
-class ParametersData(PayloadType): ...
+class ParametersData(Payload): ...
 
 
 @dataclass(frozen=True, slots=True)
-class ReadyData(PayloadType): ...
+class ReadyData(Payload): ...
+
+
+@dataclass(frozen=True, slots=True)
+class DfuData(Payload): ...
 
 
 @dataclass(frozen=True, slots=True)
 class Frame:
     type_id: int
     format: str
-    payload_cls: type[PayloadType]
+    payload_cls: type[Payload]
 
 
 class MessageType(Enum):
@@ -71,13 +75,14 @@ class MessageType(Enum):
     PARAMETERS = Frame(2, "", ParametersData)
     OPERATION_MODE = Frame(3, "", OperationModeData)
     SENSORS = Frame(4, "B12f", SensorsData)
+    DFU = Frame(7, "", DfuData)
 
     @property
     def type_id(self) -> int:
         return self.value.type_id
 
     @property
-    def payload_cls(self) -> type[PayloadType]:
+    def payload_cls(self) -> type[Payload]:
         return self.value.payload_cls
 
     @property
@@ -95,10 +100,18 @@ class MessageType(Enum):
                 return member
         raise ValueError(f"Unknown message type value {type_id}")
 
+    @classmethod
+    def from_payload(cls, payload: Payload) -> Self:
+        for member in cls:
+            if isinstance(payload, member.value.payload_cls):
+                return member
+        raise ValueError(f"Unknown payload type {type(payload)}")
+
 
 class Message:
     @staticmethod
-    def encode(type: MessageType, payload: PayloadType) -> bytes:
+    def encode(payload: Payload) -> bytes:
+        type = MessageType.from_payload(payload)
         flat_values = []
         for f in fields(payload):
             val = getattr(payload, f.name)
@@ -110,7 +123,7 @@ class Message:
         return struct.pack(header_fmt, Constants.SYNC_BYTE, type.type_id, *flat_values)
 
     @staticmethod
-    def decode(type: MessageType, content: bytes) -> PayloadType:
+    def decode(type: MessageType, content: bytes) -> Payload:
         raw_values = list(struct.unpack(f"<{type.format}", content))
 
         final_args = []

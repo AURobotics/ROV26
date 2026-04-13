@@ -37,6 +37,10 @@ class ExponentialFilter:
         self.setting_percent = setting_percent  # validates percent
 
     @property
+    def value(self) -> float:
+        return self._value_prev
+
+    @property
     def setting_percent(self) -> Annotated[float, Ge(0.0), Lt(100.0)]:
         return 100 - 100 * self._epsilon
 

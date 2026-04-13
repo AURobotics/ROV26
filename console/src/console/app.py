@@ -2,9 +2,10 @@ from typing import Optional
 
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Signal
+from console.comms.stm32 import Stm32
 from hal.joystick.manager import JoystickManager
 from hal.joystick.active_joystick import ActiveJoystick
-from hal.serial.stm32 import STM32
+from hal.serial.serial_device import SerialDevice
 from console.comms.comms import CommunicationManager
 from console.gui.main_window import MainWindow
 
@@ -19,7 +20,7 @@ class ConsoleApplication(QApplication):
         self._splash_screen: Optional[LoadingSplash] = None
         self._joystick_manager: Optional[JoystickManager]
         self._active_joystick = ActiveJoystick()
-        self._serial_device: Optional[STM32] = None
+        self._stm32: Optional[Stm32] = None
         self._comms_manager: Optional[CommunicationManager] = None
         self._main_window: Optional[QMainWindow] = None
         self.aboutToQuit.connect(self._shutdown)
@@ -34,14 +35,12 @@ class ConsoleApplication(QApplication):
         if len(joysticks) > 0:
             self._active_joystick.selected = joysticks[0]
         self._splash_screen.update_progress("Initializing serial system", 40)
-        self._serial_device = STM32(115200)
+        self._stm32 = Stm32("")
         self._splash_screen.update_progress("Initializing communication system", 60)
-        self._comms_manager = CommunicationManager(
-            self._serial_device, self._active_joystick
-        )
+        self._comms_manager = CommunicationManager(self._stm32, self._active_joystick)
         self._splash_screen.update_progress("Starting GUI", 80)
         self._main_window = MainWindow(
-            self._serial_device, self._active_joystick, self._comms_manager
+            self._stm32, self._active_joystick, self._comms_manager
         )
         self._splash_screen.hide()
         self._splash_screen = None
@@ -54,8 +53,8 @@ class ConsoleApplication(QApplication):
         self._active_joystick.selected = None
         if self._joystick_manager is not None:
             self._joystick_manager.shutdown()
-        if self._serial_device is not None:
-            self._serial_device.disconnect()
+        if self._stm32 is not None:
+            self._stm32.port = None
 
 
 def run():

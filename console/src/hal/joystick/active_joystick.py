@@ -12,12 +12,14 @@ class _ActiveJoystick:
     _on_select_listeners: list[weakref.WeakMethod | weakref.ReferenceType]
     _listeners_lock: threading.RLock
     _dispatch_worker_thread: threading.Thread
+    _selection_lock: threading.RLock
     _fallback_joystick: Joystick | None
 
     def __init__(self, joystick: Joystick | None = None, strict_mode: bool = False):
         self._selected_joystick = joystick
         self._on_select_listeners = []
         self._listeners_lock = threading.RLock()
+        self._selection_lock = threading.RLock()
         if not strict_mode:
             self._fallback_joystick = Joystick(None, None, None)  # type: ignore
             self._fallback_joystick._connected = False
@@ -30,7 +32,8 @@ class _ActiveJoystick:
 
     @selected.setter
     def selected(self, joy: Joystick | None) -> None:
-        self._selected_joystick = joy
+        with self._selection_lock:
+            self._selected_joystick = joy
         thread = threading.Thread(target=self._dispatch_listeners, daemon=True)
         thread.start()
 
@@ -63,8 +66,10 @@ class _ActiveJoystick:
                 self._on_select_listeners.append(listener)
 
     def __getattr__(self, name):
-        if self._selected_joystick:
-            return getattr(self._selected_joystick, name)
+        with self._selection_lock:
+            joy = self._selected_joystick
+        if joy:
+            return getattr(joy, name)
         elif self._fallback_joystick:
             return getattr(self._fallback_joystick, name)
         else:

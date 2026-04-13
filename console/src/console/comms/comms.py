@@ -1,18 +1,15 @@
-import struct
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from time import sleep
-from typing import Any, Annotated, cast
+from typing import Any, cast
+from console.comms.stm32 import Stm32
 from core.math.exponential_filter import ExponentialFilter
-from hal.serial.stm32 import STM32
 from hal.joystick.inputs import GamepadButton, GamepadStick, GamepadTrigger
 from hal.joystick.joystick import Joystick
 from hal.joystick.active_joystick import ActiveJoystick
 from console.comms.messages import (
     CommandData,
     MessageType,
-    Constants,
-    Message,
     SensorsData,
 )
 
@@ -24,19 +21,7 @@ ToggleButtons = {
 
 
 @dataclass(slots=True)
-class SensorCache:
-    led: bool = False
-    gripper: bool = False
-    arm: bool = False
-    yaw: float = 0.0
-    pitch: float = 0.0
-    roll: float = 0.0
-    depth: float = 0.0
-    thrusters: Annotated[list[float], 8] = field(default_factory=lambda: [0.0] * 8)
-
-
-@dataclass(slots=True)
-class CommandStateCache:
+class CommandState:
     led: bool = False
     gripper: bool = False
     arm: bool = False
@@ -48,127 +33,97 @@ class CommandStateCache:
     roll: ExponentialFilter = ExponentialFilter(setting_time=0.5)
 
     def __setitem__(self, key, value):
-        self.__setattr__(key, value)
+        setattr(self, key, value)
 
     def __getitem__(self, key) -> Any:
-        return self.__getattribute__(key)
+        return getattr(self, key)
+
+
+_empty_sensors = SensorsData(0, 0, 0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0])
 
 
 class CommunicationManager:
-    _serial: STM32
+    _stm: Stm32
     _joystick: ActiveJoystick
-    _sensor_cache: SensorCache
-    _command_cache: CommandStateCache
+    _sensor_cache: SensorsData
+    _command_cache: CommandState
     _data_ready_event: threading.Event
     _killswitch: bool
-    _serial_incoming_thread: threading.Thread
-    _serial_outgoing_thread: threading.Thread
+    _incoming_thread: threading.Thread
+    _outgoing_thread: threading.Thread
 
-    def __init__(self, serial: STM32, joystick: ActiveJoystick):
-        self._serial = serial
+    def __init__(self, stm: Stm32, joystick: ActiveJoystick):
+        self._stm = stm
         self._joystick = joystick
-        self._sensor_cache = SensorCache()
-        self._command_cache = CommandStateCache()
+        self._sensor_cache = _empty_sensors
+        self._command_cache = CommandState()
         self._data_ready_event = threading.Event()
         self._killswitch = False
-        self._serial_incoming_thread = threading.Thread(
-            target=self._serial_incoming_loop, daemon=True
+        self._incoming_thread = threading.Thread(
+            target=self._incoming_loop, daemon=True
         )
-        self._serial_incoming_thread.start()
-        self._serial_outgoing_thread = threading.Thread(
-            target=self._serial_outgoing_loop, daemon=True
+        self._incoming_thread.start()
+        self._outgoing_thread = threading.Thread(
+            target=self._outgoing_loop, daemon=True
         )
-        self._serial_outgoing_thread.start()
+        self._outgoing_thread.start()
         if self._joystick.selected:
-            self._set_button_listeners()
-        self._joystick.add_on_select_listener(self._set_button_listeners)
+            self._register_button_listeners()
+        self._joystick.add_on_select_listener(self._register_button_listeners)
 
-    def _set_button_listeners(self):
+    def _register_button_listeners(self):
         for btn in ToggleButtons.keys():
-            self._joystick.add_gamepad_button_listener(self._controller_toggles, btn)
+            self._joystick.add_gamepad_button_listener(self._on_joystick_button, btn)
 
-    def _controller_toggles(self, _: Joystick, button: GamepadButton, is_pressed: bool):
-        if self._serial.serial_ready:
+    def _on_joystick_button(self, _: Joystick, button: GamepadButton, is_pressed: bool):
+        if self._stm.connected:
             if is_pressed:
                 toggle: str = ToggleButtons[button]
                 self._command_cache[toggle] = not self._command_cache[toggle]
 
     @property
-    def sensor_cache(self) -> SensorCache:
+    def sensor_cache(self) -> SensorsData:
         return self._sensor_cache
 
-    def _serial_outgoing_loop(self):
+    def _outgoing_loop(self):
         while not self._killswitch:
             self._data_ready_event.wait()
-            if self._serial.serial_ready and self._joystick.selected:
+            if self._stm.has_incoming and self._joystick.selected:
                 print("Sending")
-                payload = self._serial_controller_payload()
-                self._serial.send(payload)
+                payload = self._controller_payload()
+                self._stm.send(payload)
                 self._data_ready_event.clear()
 
-    def _serial_incoming_loop(self):
-        synced = False
-        detected_rx = None
-
+    def _incoming_loop(self):
         while not self._killswitch:
             sleep(0.015)
 
-            if not self._serial.serial_ready:
-                # Reset the transient part of the cache
-                # Non-transient keys include: controller['leds_and_valves']
-                self._sensor_cache = SensorCache()
-                synced = False
-                detected_rx = None
+            if not self._stm.connected:
+                self._sensor_cache = _empty_sensors
                 continue
 
-            if not self._serial.incoming:
-                continue
-            if not synced:
-                byte = self._serial.recieve(1)
-                if byte and byte[0] == Constants.SYNC_BYTE:
-                    synced = True
+            if not self._stm.has_incoming:
                 continue
 
-            if detected_rx is None:
-                byte = self._serial.recieve(1)
-                if not byte:
-                    synced = False
-                    continue
-                msg_type = byte[0]
-                try:
-                    detected_rx = MessageType.from_type(msg_type)
-                except ValueError:
-                    synced = False
-                    continue
-            if detected_rx == MessageType.READY:
+            incoming = self._stm.receive()
+            if not incoming:
+                continue
+
+            message_type = MessageType.from_payload(incoming)
+            if message_type == MessageType.READY:
                 self._data_ready_event.set()
-            elif detected_rx == MessageType.SENSORS:
-                raw = self._serial.recieve(MessageType.SENSORS.size)
-                if raw and len(raw) == MessageType.SENSORS.size:
-                    self._parse_incoming(raw)
+            elif message_type == MessageType.SENSORS:
+                incoming = cast(SensorsData, incoming)
+                self._sensor_cache = incoming
 
-            synced = False
-            detected_rx = None
-
-    def _parse_incoming(self, raw_data: bytes):
-        try:
-            data = cast(SensorsData, Message.decode(MessageType.SENSORS, raw_data))
-            self._sensor_cache.led = data.led
-            self._sensor_cache.depth = data.depth
-            self._sensor_cache.yaw = data.yaw
-            self._sensor_cache.pitch = data.pitch
-            self._sensor_cache.roll = data.roll
-            self._sensor_cache.thrusters = list(data.thrusters)
-
-        except struct.error as e:
-            print(f"Decode error: {e}")
-
-    def _serial_controller_payload(self):
-        joy = self._joystick
+    def _controller_payload(self):
+        # Toggle-based controls
         control_word = int(self._command_cache.led) << 0
-
         control_word |= int(self._command_cache.gripper) << 1
         control_word |= int(self._command_cache.arm) << 2
+
+        # Event-based controls
+        joy = self._joystick
         control_word |= int(joy.get_gpinput(GamepadButton.DPAD_UP)) << 3
         control_word |= int(joy.get_gpinput(GamepadButton.DPAD_DOWN)) << 4
         force_x = self._command_cache.force_x.filter_step(
@@ -202,11 +157,11 @@ class CommunicationManager:
             yaw=yaw,
         )
         print(payload)
-        return Message.encode(MessageType.COMMAND, payload)
+        return payload
 
     def __del__(self):
         self._killswitch = True
-        if self._serial_incoming_thread.is_alive():
-            self._serial_incoming_thread.join()
-        if self._serial_outgoing_thread.is_alive():
-            self._serial_outgoing_thread.join()
+        if self._incoming_thread.is_alive():
+            self._incoming_thread.join()
+        if self._outgoing_thread.is_alive():
+            self._outgoing_thread.join()
