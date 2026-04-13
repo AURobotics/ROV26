@@ -1,4 +1,4 @@
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QHideEvent, QShowEvent
 from PySide6.QtWidgets import (
     QGroupBox,
     QStyle,
@@ -22,8 +22,8 @@ class PortComboLabelDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         painter.save()
 
-        main_text = index.data(Qt.ItemDataRole.DisplayRole)
-        sub_text = index.data(Qt.ItemDataRole.UserRole)
+        sub_text = index.data(Qt.ItemDataRole.DisplayRole)  # device name
+        main_text = index.data(Qt.ItemDataRole.UserRole)  # hardware description
 
         option.widget.style().drawControl(
             QStyle.ControlElement.CE_ItemViewItem, option, painter
@@ -76,6 +76,7 @@ class SerialTab(QWidget):
         port_form = QFormLayout(port_group)
         self.port_selector = QComboBox()
         self.port_selector.setItemDelegate(PortComboLabelDelegate())
+        self.port_selector.activated.connect(self.refresh_ports)
         self.port_selector.textActivated.connect(self.select_port)
         port_form.addRow("Port:", self.port_selector)
         self.dfu_btn = QPushButton("Enter DFU Mode")
@@ -100,8 +101,6 @@ class SerialTab(QWidget):
 
         self.main_layout.addLayout(utils_hbox)
 
-        self.refresh_ports()
-
     @Slot(str)
     def select_port(self, port: str) -> None:
         if self.stm.port == port:
@@ -119,20 +118,19 @@ class SerialTab(QWidget):
         if not self.stm.port:
             return
         try:
-            worker = CallbackWorker(
-                self.stm.disconnect, self.on_port_selection_change
-            )
+            worker = CallbackWorker(self.stm.disconnect, self.on_port_selection_change)
             worker.run()
         except:
             pass
 
+    @Slot()
     def on_port_selection_change(self) -> None:
         if self.stm.port:
             self.port_selector.setCurrentText(self.stm.port)
         else:
             self.port_selector.setCurrentIndex(-1)
 
-    def refresh_ports(self):
+    def refresh_ports(self) -> None:
         self.port_selector.clear()
 
         for p in list_ports():
@@ -142,4 +140,22 @@ class SerialTab(QWidget):
                 last_idx, p.description, Qt.ItemDataRole.UserRole
             )
 
-        self.port_selector.setCurrentIndex(-1) # TODO: handle port already selected
+        if self.stm.port is None:
+            self.port_selector.setCurrentIndex(-1)
+            return
+        for i in range(self.port_selector.count()):
+            if self.stm.port == self.port_selector.itemText(i):
+                self.port_selector.setCurrentIndex(i)
+                return
+
+        self.port_selector.setCurrentIndex(-1)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        self.refresh_ports()
+        return
+
+    def hideEvent(self, event: QHideEvent) -> None:
+        super().hideEvent(event)
+        self.port_selector.clear()
+        return
