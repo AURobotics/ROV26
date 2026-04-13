@@ -45,6 +45,10 @@ class ConsoleApplication(QApplication):
         self._splash_screen.hide()
         self._splash_screen = None
         self._main_window.show()
+        
+        # start float subscriptions
+        self._comms_manager.float_communication_setup(self._main_window._float_tab)
+
 
     def _shutdown(self):
         self._main_window = None

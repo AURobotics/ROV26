@@ -2,6 +2,11 @@ import threading
 from dataclasses import dataclass
 from time import sleep
 from typing import Any, cast
+from console.comms.float_messages import CompanyNumberHandler, MQTTSignalBridge, StatusHandler
+from console.comms.float_mqtt.file_receiver import file_receiver
+from console.comms.float_mqtt.mqtt import mqtt, topic
+from .float_mqtt.main import MAIN_TOPIC_NAME, SECONDARY_TOPIC_NAME
+from PySide6.QtCore import QTimer
 from console.comms.stm32 import Stm32
 from core.math.exponential_filter import ExponentialFilter
 from hal.joystick.inputs import GamepadButton, GamepadStick, GamepadTrigger
@@ -51,6 +56,7 @@ class CommunicationManager:
     _killswitch: bool
     _incoming_thread: threading.Thread
     _outgoing_thread: threading.Thread
+    _mqtt_client: mqtt # mqtt client for float communication
 
     def __init__(self, stm: Stm32, joystick: ActiveJoystick):
         self._stm = stm
@@ -70,6 +76,7 @@ class CommunicationManager:
         if self._joystick.selected:
             self._register_button_listeners()
         self._joystick.add_on_select_listener(self._register_button_listeners)
+        self._mqtt_client = mqtt('localhost', 1883)
 
     def _register_button_listeners(self):
         for btn in ToggleButtons.keys():
@@ -158,6 +165,40 @@ class CommunicationManager:
         )
         print(payload)
         return payload
+    
+    def float_communication_setup(self, float_tab):
+        # Create bridge in main thread BEFORE MQTT handlers
+        bridge = MQTTSignalBridge()
+
+        # Connect bridge signals to float_tab slots
+        bridge.status_signal.connect(lambda msg: float_tab.post_message(msg, "OK"))
+        bridge.company_number_signal.connect(lambda msg: float_tab.post_message(msg, "OK"))
+        bridge.file_complete_signal.connect(lambda: float_tab.post_message("CSV file received", "OK"))
+        bridge.file_complete_signal.connect(lambda: float_tab.load_csv("log.csv"))
+
+        # Create handlers with bridge reference
+        status_handler = StatusHandler(bridge)
+        company_handler = CompanyNumberHandler(bridge)
+
+        # Subscribe to topics
+        float_status_topic = topic(SECONDARY_TOPIC_NAME, self._mqtt_client)
+        float_status_topic.subscribe(status_handler)
+
+        float_company_number_topic = topic("float/data/credential", self._mqtt_client)
+        float_company_number_topic.subscribe(company_handler)
+
+        file_receiver_instance = file_receiver(self._mqtt_client, MAIN_TOPIC_NAME, crc32=False)
+
+        # File polling timer (runs in main thread)
+        _file_poll_timer = QTimer()
+
+        def _check_file_complete():
+            if file_receiver_instance.is_complete:
+                _file_poll_timer.stop()
+                bridge.file_complete_signal.emit()
+
+        _file_poll_timer.timeout.connect(_check_file_complete)
+        _file_poll_timer.start(5000)
 
     def __del__(self):
         self._killswitch = True
