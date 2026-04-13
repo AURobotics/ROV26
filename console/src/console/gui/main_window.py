@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QMainWindow, QStackedWidget, QToolBar
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QActionGroup, QAction
-from console.core.vision.camera import VideoStream
+from hal.camera.camera import VideoStream
 from console.gui.menubar import MenuBar
 from hal.joystick.active_joystick import ActiveJoystick
 from console.gui.pilot_tab_new import PilotTab2
@@ -24,14 +24,15 @@ class MainWindow(QMainWindow):
             "h264parse ! "
             "avdec_h264 ! "
             "videoconvert ! "
-            "appsink" for port in ports
+            "appsink"
+            for port in ports
         ]
         cam1 = VideoStream(pipelines[0])
         cam2 = VideoStream(pipelines[1])
         cam3 = VideoStream(pipelines[2])
 
         self._stack = QStackedWidget()
-        
+
         self._pilot_tab = PilotTab2(cam1, cam2, cam3, comms)
         self._cv_tab = CVTab()
 
@@ -55,6 +56,6 @@ class MainWindow(QMainWindow):
         action.setData(idx)
         self._group.addAction(action)
         self._toolbar.addAction(action)
-        action.triggered.connect(lambda _:self._stack.setCurrentIndex(action.data()))
+        action.triggered.connect(lambda _: self._stack.setCurrentIndex(action.data()))
         if idx == 0:
             action.setChecked(True)
