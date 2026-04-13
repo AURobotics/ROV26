@@ -34,6 +34,7 @@ if ! check_gst_requirements; then
     else
         echo "Please install the equivalent packages using your system's package manager: ${GST_PACKAGES_UBUNTU[@]}"
         exit 1
+    fi
 fi
 
 echo "Setting up /opt/gstreamer..."
