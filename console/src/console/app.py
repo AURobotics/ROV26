@@ -5,10 +5,11 @@ from PySide6.QtCore import Signal
 from hal.joystick.manager import JoystickManager
 from hal.joystick.active_joystick import ActiveJoystick
 from hal.serial.stm32 import STM32
-from console.comms.comms.comms import CommunicationManager
+from console.comms.comms import CommunicationManager
 from console.gui.main_window import MainWindow
 
 from console.gui.splash_screen import LoadingSplash
+
 
 class ConsoleApplication(QApplication):
     startup_progress = Signal(str, int)
@@ -35,7 +36,9 @@ class ConsoleApplication(QApplication):
         self._splash_screen.update_progress("Initializing serial system", 40)
         self._serial_device = STM32(115200)
         self._splash_screen.update_progress("Initializing communication system", 60)
-        self._comms_manager = CommunicationManager(self._serial_device, self._active_joystick)
+        self._comms_manager = CommunicationManager(
+            self._serial_device, self._active_joystick
+        )
         self._splash_screen.update_progress("Starting GUI", 80)
         self._main_window = MainWindow(
             self._serial_device, self._active_joystick, self._comms_manager

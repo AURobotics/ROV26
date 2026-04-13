@@ -1,21 +1,15 @@
 from __future__ import annotations
 from abc import ABC
-from dataclasses import dataclass, fields
-from enum import Enum, IntEnum, auto
+from dataclasses import dataclass, field, fields
+from enum import Enum, IntEnum
 import struct
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Self
 
 from annotated_types import Ge, Le
 
 
 class Constants(IntEnum):
     SYNC_BYTE = 255
-
-
-class Direction(Enum):
-    INCOMING = auto()
-    OUTGOING = auto()
-    BIDIRECTIONAL = INCOMING | OUTGOING
 
 
 type NormalizedFloat = Annotated[float, Ge(-1.0), Le(1.0)]
@@ -45,7 +39,7 @@ class SensorsData(PayloadType):
     yaw: NormalizedFloat
     pitch: NormalizedFloat
     roll: NormalizedFloat
-    motors: Annotated[list[NormalizedFloat], 8]
+    thrusters: list[NormalizedFloat] = field(metadata={"size": 8}, default_factory=list)
 
     @property
     def led(self) -> bool:
@@ -61,26 +55,29 @@ class ParametersData(PayloadType): ...
 
 
 @dataclass(frozen=True, slots=True)
+class ReadyData(PayloadType): ...
+
+
+@dataclass(frozen=True, slots=True)
 class Frame:
     type_id: int
     format: str
-    direction: Direction
-    payload_cls: type[PayloadType] | None = None
+    payload_cls: type[PayloadType]
 
 
 class MessageType(Enum):
-    READY = Frame(0, "", Direction.INCOMING)
-    COMMAND = Frame(1, "BH6f", Direction.OUTGOING, CommandData)
-    PARAMETERS = Frame(2, "", Direction.OUTGOING, ParametersData)
-    OPERATION_MODE = Frame(3, "", Direction.OUTGOING, OperationModeData)
-    SENSORS = Frame(4, "Bffff8f", Direction.INCOMING, SensorsData)
+    READY = Frame(0, "", ReadyData)
+    COMMAND = Frame(1, "H6f", CommandData)
+    PARAMETERS = Frame(2, "", ParametersData)
+    OPERATION_MODE = Frame(3, "", OperationModeData)
+    SENSORS = Frame(4, "B12f", SensorsData)
 
     @property
     def type_id(self) -> int:
         return self.value.type_id
 
     @property
-    def payload_cls(self) -> type[PayloadType] | None:
+    def payload_cls(self) -> type[PayloadType]:
         return self.value.payload_cls
 
     @property
@@ -91,10 +88,6 @@ class MessageType(Enum):
     def format(self) -> str:
         return self.value.format
 
-    @property
-    def direction(self) -> Direction:
-        return self.value.direction
-
     @classmethod
     def from_type(cls, type_id: int) -> Self:
         for member in cls:
@@ -104,24 +97,33 @@ class MessageType(Enum):
 
 
 class Message:
-    type_id: int
-    format: str
-    sync: int | None = 255
-    endian: Literal["<"] | Literal[">"] = "<"
-    payload_cls: type[PayloadType] | None = None
+    @staticmethod
+    def encode(type: MessageType, payload: PayloadType) -> bytes:
+        flat_values = []
+        for f in fields(payload):
+            val = getattr(payload, f.name)
+            if isinstance(val, list):
+                flat_values.extend(val)
+            else:
+                flat_values.append(val)
+        header_fmt = f"<BB{type.format}"
+        return struct.pack(header_fmt, Constants.SYNC_BYTE, type.type_id, *flat_values)
 
-    def __init__(self, message_type: MessageType) -> None:
-        self.type_id = message_type.type_id
-        self.format = message_type.format
-        self.payload_cls = message_type.payload_cls
+    @staticmethod
+    def decode(type: MessageType, content: bytes) -> PayloadType:
+        raw_values = list(struct.unpack(f"<{type.format}", content))
 
-    def pack(self, payload: PayloadType) -> bytes:
-        data_values = [getattr(payload, f.name) for f in fields(payload)]
-        header_fmt = f"<BB{self.format}"
-        return struct.pack(header_fmt, Constants.SYNC_BYTE, self.type_id, *data_values)
+        final_args = []
+        i = 0
 
-    def unpack(self, content: bytes) -> PayloadType | tuple[Any, ...]:
-        raw_values = struct.unpack(f"<{self.format}", content)
-        if self.payload_cls:
-            return self.payload_cls(*raw_values)
-        return raw_values
+        for f in fields(type.payload_cls):
+            size = f.metadata.get("size")
+
+            if size is not None:
+                final_args.append(raw_values[i : i + size])
+                i += size
+            else:
+                final_args.append(raw_values[i])
+                i += 1
+
+        return type.payload_cls(*final_args)
