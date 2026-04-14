@@ -31,17 +31,15 @@ void Motor::setup() const {
 
 int Motor::move(float speed) {
     if (std::abs(speed) <= FLT_EPSILON) {
-        this->setup();
         __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, 0);
         __HAL_TIM_SET_COMPARE(pwm_2.htim, pwm_2.channel, 0);
         return 0;
     }
+
     speed = std::clamp(speed, -1.0f, 1.0f);
     float abs_speed = std::fabs(speed);
-    float mapped_speed = m_safezone + abs_speed * (1.0f - m_safezone);
+    float mapped_speed = m_starting_speed + abs_speed * (1.0f - m_starting_speed);
     const auto duty = static_cast<uint16_t>(mapped_speed * 1000.0f);
-
-
 
     if (speed > 0) {
         __HAL_TIM_SET_COMPARE(pwm_1.htim, pwm_1.channel, duty);
