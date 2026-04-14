@@ -10,11 +10,6 @@
 
 float constrain(const float x, const float a, const float b) { return x > b ? b : x < a ? a : x; }
 
-template <typename T>
-T map_float(T x, T in_min, T in_max, T out_min, T out_max) {
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
 
 // Motor::Motor(PWM& p1, PWM& p2) : pwm1(p1), pwm2(p2) {}
 // Motor::Motor(std::function<void(float)> customHandler) : handler(std::move(customHandler)) {}
