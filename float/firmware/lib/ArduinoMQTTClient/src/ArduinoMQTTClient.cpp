@@ -1,5 +1,5 @@
 
-#include "ArduinoMqttClient.h"
+#include "ArduinoMQTTClient.h"
 
 ArduinoMqttClient::ArduinoMqttClient(
     const char *mqtt_server,

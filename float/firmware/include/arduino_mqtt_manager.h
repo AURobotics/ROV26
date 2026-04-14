@@ -3,7 +3,7 @@
 #define ARDUINO_MQTT_MANAGER_H
 
 #include <Arduino.h>
-#include <ArduinoMqttClient.h>
+#include <ArduinoMQTTClient.h>
 
 extern const char *startingIP;
 extern const char *IP2;
