@@ -5,10 +5,14 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QWidget,
+    QWidget,
+    QMainWindow,
+    QSizePolicy,
+    QDockWidget,
 )
 from PySide6.QtCore import Qt
-
 from console.gui.camera_display import CameraDisplay
+from console.gui.analysis_view import AnalysisView
 
 
 class CVTab(GuiTab):
@@ -39,7 +43,7 @@ class CVTab(GuiTab):
         )
         self.dock_host.setCentralWidget(self._cam)
 
-        self._analysis_view = QWidget()  # Placeholder for analysis view
+        self._analysis_view = AnalysisView()  # Placeholder for analysis view
         self._analysis_view.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )

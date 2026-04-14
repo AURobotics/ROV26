@@ -86,7 +86,7 @@ class CameraDisplay(QWidget):
         return
 
     def update_view(self):
-        frame: cv2.Mat | ndarray[Any, dtype[integer[Any] | floating[Any]]] | None = self._camera_device.frame
+        frame: cv2.Mat | ndarray[Any, dtype[integer[Any] | floating[Any]]] | None = self._camera_device.frame # type: ignore
         if frame is None:
             return
         frame = frame.copy()
