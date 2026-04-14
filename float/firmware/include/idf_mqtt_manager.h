@@ -3,7 +3,7 @@
 #define IDF_MQTT_MANAGER_H
 
 #include <Arduino.h>
-#include <IDFMqttClient.h>
+#include <IDFMQTTClient.h>
 
 extern const char *IDF_startingIP;
 extern const char *IDF_IP2;

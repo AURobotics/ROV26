@@ -1,5 +1,5 @@
 #include "arduino_mqtt_manager.h"
-#include <ArduinoMqttClient.h>
+#include <ArduinoMQTTClient.h>
 #include <LittleFS.h>
 #include <rom/crc.h>
 
