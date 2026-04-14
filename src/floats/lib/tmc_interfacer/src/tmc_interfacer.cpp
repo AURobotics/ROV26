@@ -1,10 +1,9 @@
-#include <global_functions.h>
+#include <tmc_interfacer.h>
 
-//TODO fix stop motor on going backwards
-
-TMC_interfacer::TMC_interfacer(int ms, float max_rotations){
+TMC_interfacer::TMC_interfacer(int ms, float max_rotations, float max_motor_velocity){
     this->ms = ms;
     this->max_rotations = max_rotations;
+    this->max_motor_velocity = MPS2SPS(max_motor_velocity);
 }
 
 float TMC_interfacer::VACTUAL2SPS(uint32_t VACTUAL){
@@ -15,6 +14,9 @@ float TMC_interfacer::VACTUAL2SPS(uint32_t VACTUAL){
 uint32_t TMC_interfacer::SPS2VACTUAL(int steps){
     return steps * this->ms / this->oscillator_multiplier;
     // return steps / this->oscillator_multiplier;
+}
+float TMC_interfacer::MPS2SPS(float velocity){
+    return velocity / (POWER_SCREW_SIZE  * 0.001) * STEPS;
 }
 void TMC_interfacer::stop_motor(bool shutdown){
     Serial.println("stopping motor...");
@@ -148,40 +150,37 @@ void TMC_interfacer::measure_position(){
         }
         prev_sequencer = current_sequencer - remainder;
     }
-    // Serial.print("s:");
-    // Serial.println(current_sequencer);
-    // Serial.print("prev sequencer: ");
-    // Serial.println(prev_sequencer);
-    // Serial.print("step_difference: ");
-    // Serial.println(step_difference);
-    // Serial.print("remainder: ");
-    // Serial.println(remainder);
-    // Serial.print("r:");
-    // Serial.println(rotations);
-    // Serial.print("time: ");
-    // Serial.println(time);
-
-
-
-
-    // if(rotations - prev_rotations >= 1){
-    //     Serial.print("r: ");
-    //     Serial.println(rotations);
-    //     prev_rotations = rotations;
-    // }
-    if (rotations >= 10){
-      Serial.println("DONE 10 ROTATIONS!");
-    //   stop_motor(true);
-    //   delay(10000);
+    if(!motor_stopped){ //make sure motor does not exceed the max rotations allowed
+        if(going_forward && (rotations - max_rotations < 1)){
+            stop_motor(false);
+        }
+        else if(!going_forward && (rotations < 1)){
+            stop_motor(false);
+        }
     }
 }
 
 bool TMC_interfacer::set_velocity(double velocity){
-    if(rotations - max_rotations < 1){ //1 rotation is a threshhold
-        stop_motor(false);
-        return false;
+    bool safe_to_move = false;
+    if(motor_stopped){ 
+        if((going_forward && velocity < 0) || (!going_forward && velocity > 0)){ //motor reached max position in one direction and now wants to switch
+            safe_to_move = true;
+            motor_stopped = false;
+            going_forward = !going_forward;
+        }
     }
-    float SPS = velocity / (POWER_SCREW_SIZE  * 0.001) / STEPS;
-    driver.VACTUAL(SPS2VACTUAL(SPS));
-    return true;
+    else{
+        safe_to_move = true;
+    }
+    if(safe_to_move){
+        float SPS = MPS2SPS(velocity);
+        Serial.print("SPS: ");
+        Serial.println(SPS);
+        if(SPS > this->max_motor_velocity)
+            SPS = max_motor_velocity; //make sure to not exceed max motor velocity
+        driver.VACTUAL(SPS2VACTUAL(SPS));
+        return true;
+    }
+    else
+        return false;
 }

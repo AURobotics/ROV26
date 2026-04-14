@@ -1,5 +1,5 @@
-#ifndef GLOBAL_FUNCTIONS_H
-#define GLOBAL_FUNCTIONS_H    
+#ifndef TMC_INTERFACER_H
+#define TMC_INTERFACER_H    
 #include <Arduino.h>
 #include <TMCStepper.h>
 #include <HardwareSerial.h>
@@ -12,7 +12,7 @@
 
 class TMC_interfacer{
     public:
-        TMC_interfacer(int ms, float max_rotations);
+        TMC_interfacer(int ms, float max_rotations, float max_motor_velocity);
         uint16_t micro_steps = 0;
         float rotations = 0;
         float prev_rotations = 0;
@@ -20,8 +20,10 @@ class TMC_interfacer{
         int prev_sequencer = 0;
         int ms;
         float max_rotations;
+        float max_motor_velocity;
         float oscillator_multiplier = 0.715;
         bool going_forward = true; //false if rotating the other direction
+        bool motor_stopped = false;
         TMC2208Stepper driver = TMC2208Stepper(&Serial2, R_SENSE);
         void normal_setup(int rms_current, int steps_per_second);
         void readSerialAndRespond();
@@ -33,6 +35,7 @@ class TMC_interfacer{
         void calibrate();
         void calibration_loop();
         bool set_velocity(double velocity);
+        float MPS2SPS(float velocity);
 
 };
 
