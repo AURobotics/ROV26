@@ -1,7 +1,13 @@
-from PySide6.QtWidgets import QMainWindow, QStackedWidget, QToolBar
+from PySide6.QtWidgets import (
+    QMainWindow,
+    QSizePolicy,
+    QStackedWidget,
+    QToolBar,
+    QWidget,
+)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QActionGroup, QAction
-from console.comms.stm32 import Stm32
+from console.comms.rov.stm32 import Stm32
 from console.gui.connections_tab import ConnectionsTab
 from console.gui.float_tab.container import FloatTab
 from hal.camera.camera import VideoStream
@@ -40,11 +46,13 @@ class MainWindow(QMainWindow):
         self._cv_tab = CVTab()
         self._connections_tab = ConnectionsTab(active_joystick, stm)
         self._float_tab = FloatTab()
+        self._settings_tab = CVTab()
 
         self._stack.addWidget(self._pilot_tab)
         self._stack.addWidget(self._cv_tab)
         self._stack.addWidget(self._connections_tab)
         self._stack.addWidget(self._float_tab)
+        self._stack.addWidget(self._settings_tab)
 
         self.setCentralWidget(self._stack)
 
@@ -55,8 +63,24 @@ class MainWindow(QMainWindow):
         self._group = QActionGroup(self)
         self._group.setExclusive(True)
 
-        for i, name in enumerate(["Pilot", "CV", "Conn.", "Float"]):
+        for i, name in enumerate(["Pilot", "CV", "Conn.", "Float", "Settings"]):
             self._setup_action(i, name)
+
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        self._toolbar.insertWidget(self._toolbar.actions()[-1], spacer)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        hide_action = self._toolbar.toggleViewAction()
+        hide_action.setText("Hide sidebar")
+        hide_action.setShortcut("Ctrl+B")
+        hide_action.triggered.connect(
+            lambda: hide_action.setText(
+                f"{'Show' if self._toolbar.isHidden() else 'Hide'} sidebar"
+            )
+        )
+        self._toolbar.setToolTip("Toggle visibility with Ctrl+B")
+        self.menuBar().addAction(hide_action)
+        # self._toolbar.setVisible(False)
 
     def _setup_action(self, idx, name):
         action = QAction(name, self, checkable=True)

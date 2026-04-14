@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC
 from dataclasses import dataclass, field, fields
-from enum import Enum, IntEnum
+from enum import Enum
 import struct
 from typing import Annotated, Self
 

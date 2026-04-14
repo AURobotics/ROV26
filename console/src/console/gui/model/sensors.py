@@ -1,4 +1,4 @@
-from console.comms.comms import CommunicationManager
+from console.comms.manager import CommunicationManager
 
 
 class Sensors:

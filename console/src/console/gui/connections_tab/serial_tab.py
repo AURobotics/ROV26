@@ -12,8 +12,8 @@ from PySide6.QtWidgets import (
     QFormLayout,
 )
 from PySide6.QtCore import QSize, Qt, Slot
-
-from console.comms.stm32 import Stm32
+from string import Template
+from console.comms.rov.stm32 import Stm32
 from core.concurrent.callback_worker import CallbackWorker
 from hal.serial.serial_device import list_ports
 
@@ -58,17 +58,26 @@ class PortComboLabelDelegate(QStyledItemDelegate):
 
 
 class SerialTab(QWidget):
+    _DISCONNECTED_STATUS = "Not connected to STM32"
+    _DISCONNECTED_HINT = "Please choose a serial device below"
+    _CONNECTED_STATUS = Template("Connected to $name")
+    _CONNECTED_HINT = Template("Port: $port")
+
     def __init__(self, stm: Stm32):
         super().__init__()
         self.stm = stm
 
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setSpacing(15)
-
-        self.status_label = QLabel("Connected to STM32")
+        self.main_layout.addStretch()
+        self.status_label = QLabel(self._DISCONNECTED_STATUS)
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.main_layout.addWidget(self.status_label)
+        self.hint_label = QLabel(self._DISCONNECTED_HINT)
+        self.hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.hint_label.setStyleSheet("font-size: 12px;")
+        self.main_layout.addWidget(self.hint_label)
+        self.main_layout.addStretch()
 
         utils_hbox = QHBoxLayout()
         port_group = QGroupBox()
@@ -131,7 +140,15 @@ class SerialTab(QWidget):
     def on_port_selection_change(self) -> None:
         if self.stm.port:
             self.port_selector.setCurrentText(self.stm.port)
+            self.status_label.setText(
+                self._CONNECTED_STATUS.safe_substitute(name=self.stm.name)
+            )
+            self.hint_label.setText(
+                self._CONNECTED_HINT.safe_substitute(port=self.stm.port)
+            )
         else:
+            self.status_label.setText(self._DISCONNECTED_STATUS)
+            self.hint_label.setText(self._DISCONNECTED_HINT)
             self.port_selector.setCurrentIndex(-1)
 
     @Slot()

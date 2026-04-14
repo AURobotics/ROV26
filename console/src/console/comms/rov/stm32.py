@@ -3,9 +3,9 @@ import subprocess
 import re
 import threading
 
-from console.comms.messages import Constants, DfuData, Message, MessageType, Payload
+from console.comms.rov.messages import Constants, DfuData, Message, MessageType, Payload
 from hal.joystick.manager import Path
-from hal.serial.serial_device import SerialDevice
+from hal.serial.serial_device import SerialDevice, list_ports
 
 
 class Stm32:
@@ -46,6 +46,14 @@ class Stm32:
                     self._ser.disconnect()
                 self._ser = None
 
+    @property
+    def name(self) -> str | None:
+        port = self.port
+        if port is not None:
+            for p in list_ports():
+                if port == p.device:
+                    return p.description
+        return None
     def connect(self, port: str) -> None:
         self.port = port
 

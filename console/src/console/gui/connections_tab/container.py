@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from console.comms.stm32 import Stm32
+from console.comms.rov.stm32 import Stm32
 from console.gui.connections_tab.serial_tab import SerialTab
 from hal.joystick.active_joystick import ActiveJoystick
 

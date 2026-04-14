@@ -3,10 +3,10 @@ from typing import Optional
 
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Signal
-from console.comms.stm32 import Stm32
+from console.comms.rov.stm32 import Stm32
 from hal.joystick.manager import JoystickManager
 from hal.joystick.active_joystick import ActiveJoystick
-from console.comms.comms import CommunicationManager
+from console.comms.manager import CommunicationManager
 from console.gui.main_window import MainWindow
 
 from console.gui.splash_screen import LoadingSplash
@@ -49,8 +49,6 @@ class ConsoleApplication(QApplication):
         self._splash_screen.hide()
         self._splash_screen = None
         self._main_window.show()
-
-        # start float subscriptions
         self._comms_manager.float_communication_setup(self._main_window._float_tab)
 
     def _shutdown(self):
