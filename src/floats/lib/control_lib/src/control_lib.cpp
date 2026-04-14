@@ -5,13 +5,17 @@ PID::PID(float Kp, float Ki, float Kd, float max_motor_output){
     this->Kp = Kp;
     this->Ki = Ki;
     this->Kd = Kd;
-    float max_clearance = 0.98; //better practice to assume the motor cant reach 100% output, this variable is used for windup checking
-    this->max_motor_output = max_motor_output * max_clearance;
+    this->max_motor_output = max_motor_output;
 }
 
 float PID::calculate_error(float current_reading){
-    return this->set_point - current_reading;
+    return this->current_set_point - current_reading;
 }
+
+void PID::set_reference_time(float time){
+    this->prev_time = time;
+}
+
 float PID::calculate_PID(float error, float time_stamp){
     float P = this->Kp * error;
     this->current_integral += error * (time_stamp - this->prev_time);
@@ -42,9 +46,11 @@ float PID::calculate_PID(float error, float time_stamp){
         PID = -this->max_motor_output;
     }
     //TODO REMOVE PRINTS:
-    Serial.println("P, I, D: ");
-    Serial.println(P);
-    Serial.println(I);
+    Serial.print("P, I, D: ");
+    Serial.print(P);
+    Serial.print(", ");
+    Serial.print(I);
+    Serial.print(", ");
     Serial.println(D);
     return PID;
 }
@@ -69,13 +75,17 @@ float get_height(){
     return height;
 }
 
-double PID::control_loop() {
+double PID::control_loop(float height) {
   if(hold_position && (millis() - Time > holding_time)){ //if we have been holding position for 30 seconds, we flip direction
-    this->set_point = -2.5 - this->set_point; //flip motor direction after being stable for 30 seconds
-    this->current_integral = 0; //reset integral to help change direction faster
+    if(current_set_point == set_point1){ //flip motor direction after being stable for 30 seconds
+        current_set_point = set_point2;
+    }
+    else{
+        current_set_point = set_point1;
+    }
+    // this->current_integral = 0; //reset integral to help change direction faster
     hold_position = false;
   }
-  float height = get_height(); //get height from pressure sensor
   float error = this->calculate_error(height);
   if(!hold_position && error < 0.3){ //error less than 30 cm
     hold_position = true; //start holding position
@@ -83,4 +93,10 @@ double PID::control_loop() {
   }
   float signal = this->calculate_PID(error, millis());
   return signal;
+}
+
+double getDepth(){
+    int reading = analogRead(39);
+    double depth = 0.000833333 * reading;
+    return depth;
 }
