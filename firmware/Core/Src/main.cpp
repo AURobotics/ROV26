@@ -16,6 +16,7 @@ extern "C" {
 #include <cmath>
 #include <optional>
 #include "Kinematics.h"
+#include "Madgwick_filter.h"
 #include "array"
 #include "main.h"
 #include "usbd_cdc_if.h"
@@ -29,7 +30,6 @@ enum class Test_state { OFF, TUNING_MODE, DONE };
             (_regs_)[addr] = (_data_);                                                                                 \
     while (0)
 
-MPU9250 mpu(&hi2c3);
 MS5611 ms5611(&hi2c3);
 Cdc_driver cdc(20); /*need to set timeout*/
 
@@ -45,17 +45,36 @@ void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
         data[1] = std::nullopt;
     }
 
-    if (HAL_GetTick() - mpu.last_read_time > 10) {
-        mpu.update();
-        vec_3 angles{}, rates{};
-        mpu.getEulerAngles(angles);
-        mpu.getBodyRates(rates);
-        data[2] = angles.x();
-        data[3] = rates.x();
-        data[4] = angles.y();
-        data[5] = rates.y();
-        data[6] = angles.z();
-        data[7] = rates.z();
+    u_long _now = HAL_GetTick();
+    static u_long _last_time = _now;
+    if (_now - _last_time >= 5) {
+        _last_time = _now;
+        get_mpu_data();
+        get_ak_data();
+    }
+
+    _now = HAL_GetTick();
+    static auto last_filter_time = static_cast<float>(_now);
+    float dt = static_cast<float>(_now) - last_filter_time;
+    if (dt >= 1) {
+        last_filter_time = _now;
+        MadgwickAHRSupdate(dt * 0.001f,
+                           MPU9250.gx,
+                           MPU9250.gy,
+                           MPU9250.gz,
+                           MPU9250.ax,
+                           MPU9250.ay,
+                           MPU9250.az,
+                           MPU9250.my,
+                           MPU9250.mx,
+                           -1.0f * MPU9250.mz);
+        computeAngles();
+        data[2] = roll;
+        data[3] = MPU9250.gx;
+        data[4] = pitch;
+        data[5] = MPU9250.gy;
+        data[6] = yaw;
+        data[7] = MPU9250.gz;
     }
 }
 
@@ -241,8 +260,8 @@ int main() {
 
     Generic_msg received_msg{};
 
-    mpu.init();
     ms5611.begin();
+    MPU9250_init();
 
     Ready_msg ready_msg{.sync_byte = 255, .type = READY_MESSAGE};
 

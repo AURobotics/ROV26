@@ -18,7 +18,7 @@ const int16_t tZ[3] = {0, 0, -1};
 
 struct _MPU9250 MPU9250;
 extern int GYRO_CALIB = true;
-extern int MAG_CALIB = true;
+extern int MAG_CALIB = false;
 
 /*
  * Function: max
