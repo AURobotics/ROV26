@@ -24,7 +24,7 @@ static constexpr float A_inv[8][6] = {{0.25, -0.25, 0.0, 0.0, 0.0, -0.25},
 
 
 // buffer must be of size 8
-void apply_pseudo_inverse(const float v[6], float* buffer) {
+void apply_pseudo_inverse(const float v[6], float buffer[8]) {
     for (int i = 0; i < 8; i++) {
         buffer[i] = 0.0f;
         for (int j = 0; j < 6; j++)

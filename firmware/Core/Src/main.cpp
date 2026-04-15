@@ -237,9 +237,9 @@ int main() {
     uint32_t now = HAL_GetTick();
 
     float forces[6]; // Fx Fy Fz Froll Fpitch Fyaw
-    float* motors_buffer{};
 
     float controller_output[6];
+    float motors_buffer[8]= {};
     float last_received_setpoints[4]; // depth roll pitch yaw
 
     /*Initialize all controllers: depth roll pitch yaw*/
@@ -266,8 +266,8 @@ int main() {
 
     Generic_msg received_msg{};
 
-    ms5611.begin();
-    MPU9250_init();
+    // ms5611.begin();
+    // MPU9250_init();
 
     Ready_msg ready_msg{.sync_byte = 255, .type = READY_MESSAGE};
 
@@ -280,7 +280,7 @@ int main() {
     while (true) {
         if (cdc.available()) {
             cdc.read_msg(received_msg);
-            // might require delay here
+            HAL_Delay(1);
             cdc.write_msg(ready_msg);
         }
 
@@ -294,6 +294,19 @@ int main() {
             }
         }
 
+        for (int i = 0; i < 5; i++) {
+            forces[i] = received_msg.data.command_msg.forces[i] * 4;
+        }
+        apply_pseudo_inverse(forces, motors_buffer);
+        normalize_thrusters(motors_buffer);
+
+        for (int i = 0; i < 8; i++) {
+            if (i == 7) continue;
+            motors[i].move(motors_buffer[i]);
+        }
+
+
+        continue;
         if (cdc.last_received_msg_type == OPERATION_MESSAGE)
             test_state = received_msg.data.operation_msg.operation_mode ? Test_state::TUNING_MODE : Test_state::OFF;
 
