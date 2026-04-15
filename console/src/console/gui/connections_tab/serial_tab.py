@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QFormLayout,
 )
-from PySide6.QtCore import QSize, QTimer, Qt, Slot
+from PySide6.QtCore import QSize, QTimer, Qt, Slot, Signal
 from string import Template
 from console.comms.rov.stm32 import Stm32
 from console.core.relative_path import get_base_path
@@ -64,10 +64,14 @@ class SerialTab(QWidget):
     _DISCONNECTED_HINT = "Please choose a serial device below"
     _CONNECTED_STATUS = Template("Connected to $name")
     _CONNECTED_HINT = Template("Port: $port")
+    _usb_process_done_signal = Signal()
+    _port_process_done_signal = Signal()
 
     def __init__(self, stm: Stm32):
         super().__init__()
         self.stm = stm
+        self._usb_process_done_signal.connect(self.on_usb_process_done)
+        self._port_process_done_signal.connect(self.on_port_process_done)
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addStretch()
@@ -117,7 +121,6 @@ class SerialTab(QWidget):
         self.main_layout.addLayout(utils_hbox)
 
         self.refresh_timer = QTimer()
-        self.refresh_timer.setInterval(100)
         self.refresh_timer.timeout.connect(self.refresh_all)
 
     @Slot()
@@ -132,7 +135,7 @@ class SerialTab(QWidget):
         usb = self.usb_selector.currentText()
         try:
             worker = CallbackWorker(
-                lambda: self.stm.reset(usb), self.on_usb_process_done
+                lambda: self.stm.reset(usb), self._usb_process_done_signal.emit
             )
             worker.run()
             self.begin_usb_process()
@@ -154,7 +157,8 @@ class SerialTab(QWidget):
         usb = self.usb_selector.currentText()
         try:
             worker = CallbackWorker(
-                lambda: self.stm.flash(usb, file_path), self.on_usb_process_done
+                lambda: self.stm.flash(usb, file_path),
+                self._usb_process_done_signal.emit,
             )
             worker.run()
             self.begin_usb_process()
@@ -182,7 +186,7 @@ class SerialTab(QWidget):
             return
         try:
             worker = CallbackWorker(
-                lambda: self.stm.connect(port), self.on_port_process_done
+                lambda: self.stm.connect(port), self._port_process_done_signal.emit
             )
             worker.run()
             self.begin_port_process()
@@ -194,7 +198,9 @@ class SerialTab(QWidget):
         if not self.stm.port:
             return
         try:
-            worker = CallbackWorker(self.stm.disconnect, self.on_port_process_done)
+            worker = CallbackWorker(
+                self.stm.disconnect, self._port_process_done_signal.emit
+            )
             worker.run()
             self.begin_port_process()
         except:
@@ -205,7 +211,9 @@ class SerialTab(QWidget):
         if not self.stm.port:
             return
         try:
-            worker = CallbackWorker(self.stm.enter_dfu, self.on_port_process_done)
+            worker = CallbackWorker(
+                self.stm.enter_dfu, self._port_process_done_signal.emit
+            )
             worker.run()
             self.begin_port_process()
         except:
@@ -236,9 +244,6 @@ class SerialTab(QWidget):
             )
             if selected == port:
                 self.usb_selector.setCurrentIndex(last_idx)
-
-        if self.usb_selector.currentIndex() == -1:
-            self.usb_selector.setCurrentIndex(0)
 
         self.reset_button.setEnabled(True)
         self.flash_button.setEnabled(True)
@@ -281,6 +286,7 @@ class SerialTab(QWidget):
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
         self.refresh_timer.start()
+        self.refresh_timer.setInterval(100)
         return
 
     def hideEvent(self, event: QHideEvent) -> None:
