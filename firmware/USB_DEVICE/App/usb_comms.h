@@ -34,7 +34,7 @@ enum Control_byte_bit_mask {
     ROT_GRP_DIR = 8,
 };
 
-inline uint16_t word_read(const uint16_t word, const Control_byte_bit_mask mask) {
+inline uint16_t word_read(const uint16_t word, const int mask) {
     return word & 1 << (15 - mask);
 }
 
