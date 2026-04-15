@@ -8,3 +8,7 @@ if [ -n $VIRTUALIZED_UDEV ]; then
     echo "export VIRTUALIZED_UDEV=1" >> .venv/bin/activate
 fi
 uv sync
+MAJOR=$(uv run python -c "import sys; sys.stdout.write(f'{sys.version_info.major}')")
+MINOR=$(uv run python -c "import sys; sys.stdout.write(f'{sys.version_info.minor}')")
+rm -rf ./.venv/lib/python$MAJOR.$MINOR/site-packages/cv2
+ln -s /usr/lib/python3/dist-packages/cv2.cpython-$MAJOR$MINOR.*.so .venv/lib/python$MAJOR.$MINOR/site-packages/cv2.so
