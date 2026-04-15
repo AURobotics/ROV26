@@ -57,6 +57,7 @@ extern "C" {
 extern volatile uint32_t dfu_flag;
 /* USER CODE END EXPORTED_DEFINES */
 
+
 /**
  * @}
  */

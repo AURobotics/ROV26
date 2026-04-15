@@ -240,6 +240,60 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length) {
     /* USER CODE END 5 */
 }
 
+void delay_us(uint32_t us) {
+    uint32_t count = us * (SystemCoreClock / 1000000) / 5;
+    while(count--) {
+        __NOP();
+    }
+}
+
+uint8_t i2c_bus_recovery_ISR(GPIO_TypeDef* scl_port, uint16_t scl_pin,
+                             GPIO_TypeDef* sda_port, uint16_t sda_pin) {
+
+    GPIO_InitTypeDef gpio_init = {0};
+
+    // 1. Force Peripheral Reset (instead of just DeInit)
+    // This is often more effective inside an ISR
+    __HAL_RCC_I2C3_FORCE_RESET();
+    delay_us(10);
+    __HAL_RCC_I2C3_RELEASE_RESET();
+
+    // 2. Configure Pins as Output Open-Drain
+    gpio_init.Mode = GPIO_MODE_OUTPUT_OD;
+    gpio_init.Pull = GPIO_PULLUP;
+    gpio_init.Speed = GPIO_SPEED_FREQ_HIGH;
+    gpio_init.Pin = scl_pin;
+    HAL_GPIO_Init(scl_port, &gpio_init);
+
+    gpio_init.Pin = sda_pin;
+    HAL_GPIO_Init(sda_port, &gpio_init);
+
+    // 3. Clock pulses to release SDA
+    // We send up to 9 pulses (Standard I2C recovery)
+    uint8_t recovered = 0;
+    for (int i = 0; i < 9; i++) {
+        HAL_GPIO_WritePin(scl_port, scl_pin, GPIO_PIN_RESET);
+        delay_us(5);
+        HAL_GPIO_WritePin(scl_port, scl_pin, GPIO_PIN_SET);
+        delay_us(5);
+
+        if (HAL_GPIO_ReadPin(sda_port, sda_pin) == GPIO_PIN_SET) {
+            recovered = 1;
+            break;
+        }
+    }
+
+    // 4. Generate a manual STOP condition
+    HAL_GPIO_WritePin(sda_port, sda_pin, GPIO_PIN_RESET);
+    delay_us(5);
+    HAL_GPIO_WritePin(scl_port, scl_pin, GPIO_PIN_SET);
+    delay_us(5);
+    HAL_GPIO_WritePin(sda_port, sda_pin, GPIO_PIN_SET); // SDA rising while SCL is high = STOP
+    delay_us(5);
+
+    return recovered;
+}
+
 /**
  * @brief  Data received over USB OUT endpoint are sent over CDC interface
  *         through this function.
@@ -260,11 +314,14 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t* Len) {
 
     if (Buf[0] == 0xFF /*start byte*/ && Buf[1] == 0x07 /*msg type*/) {
         dfu_flag = MAGIC_DFU;
+        // HAL_NVIC_SetPriority(OTG_FS_IRQn, 10, 0);
+        // HAL_NVIC_SetPriority(OTG_FS_WKUP_IRQn, 10,0);
+        for (volatile int i = 0; i < 10000; i= i + 1 ){}
         NVIC_SystemReset();
     }
 
     on_cdc_isr(Buf, *Len);
-    
+
     USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
     USBD_CDC_ReceivePacket(&hUsbDeviceFS);
     return (USBD_OK);
