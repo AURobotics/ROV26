@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QToolBar,
     QWidget,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QActionGroup, QAction, QIcon
 from console.assets import get_asset
 from console.comms.stm32 import Stm32
@@ -58,7 +58,32 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self._stack)
 
         self._toolbar = QToolBar()
+        self._toolbar.setIconSize(QSize(24, 24))
         self._toolbar.setMovable(False)
+        self._toolbar.setStyleSheet("""
+            QToolBar {
+                background-color: #2b2b2b;
+                border-right: 1px solid #555555;
+                spacing: 10px;
+                padding: 5px;
+            }
+
+            QToolButton {
+                color: white;
+                background-color: transparent;
+                border-radius: 4px;
+                padding: 8px;
+            }
+            
+            QToolButton:hover {
+                background-color: #3d3d3d;
+            }
+
+            QToolButton:checked {
+                background-color: #0078d7;
+                font-weight: bold;
+            }
+        """)
         self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self._toolbar)
 
         self._group = QActionGroup(self)
