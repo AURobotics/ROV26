@@ -1,7 +1,6 @@
 from string import Template
 
-from PySide6.QtCore import QTimer, Qt, Signal, Slot
-from PySide6.QtGui import QShowEvent
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
@@ -14,7 +13,7 @@ from PySide6.QtWidgets import (
 from console.gui.common.combobox import ClickableComboBox
 from console.gui.common.tab import GuiTab
 from hal.joystick.active_joystick import ActiveJoystick
-from hal.joystick.manager import Joystick, JoystickManager
+from hal.joystick.manager import JoystickManager
 
 
 class JoystickTab(GuiTab):
