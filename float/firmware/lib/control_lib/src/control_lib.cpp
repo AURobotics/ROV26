@@ -45,35 +45,16 @@ float PID::calculate_PID(float error, float time_stamp){
     else if(PID < -this->max_motor_output){
         PID = -this->max_motor_output;
     }
-    //TODO REMOVE PRINTS:
-    Serial.print("P, I, D: ");
+    // TODO REMOVE PRINTS:
+    Serial.print("PID:");
     Serial.print(P);
-    Serial.print(", ");
+    Serial.print(",");
     Serial.print(I);
-    Serial.print(", ");
+    Serial.print(",");
     Serial.println(D);
     return PID;
 }
 
-
-float get_height(){
-    Serial.print("h1:");
-    while(Serial.available() <= 0)
-        delay(10);
-    char receivedChar = Serial.read();
-    char h1_c[1] = {receivedChar};
-    int h1 = atoi(h1_c);
-    Serial.print("h2:");
-    while(Serial.available() <= 1){
-        delay(10);
-    }
-    char c1 = Serial.read();
-    char c2 = Serial.read();
-    char h2_c[2] = {c1, c2};
-    int h2 = atoi(h2_c);
-    float height = h1 + (0.01 * h2);
-    return height;
-}
 
 double PID::control_loop(float height) {
   if(hold_position && (millis() - Time > holding_time)){ //if we have been holding position for 30 seconds, we flip direction
@@ -97,6 +78,6 @@ double PID::control_loop(float height) {
 
 double getDepth(){
     int reading = analogRead(39);
-    double depth = 0.000833333 * reading;
+    double depth = 0.001210352 * reading;
     return depth;
 }
