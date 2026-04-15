@@ -29,14 +29,12 @@ class TMC_interfacer{
         void readSerialAndRespond();
         void measure_position();
         void stop_motor(bool shutdown);
-        void manual_ramp();
         float VACTUAL2SPS(uint32_t VACTUAL);
         uint32_t SPS2VACTUAL(int steps);
-        void calibrate();
-        void calibration_loop();
         bool set_velocity(double velocity);
         float MPS2SPS(float velocity);
-
+        void manual_ramp();
+        void disable_motor();
 };
 
 #endif
