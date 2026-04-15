@@ -1,3 +1,5 @@
+from typing import cast
+
 from PySide6.QtWidgets import (
     QMainWindow,
     QSizePolicy,
@@ -6,12 +8,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QActionGroup, QAction
-from console.comms.rov.stm32 import Stm32
-from console.gui.connections_tab import ConnectionsTab
-from console.gui.float_tab.container import FloatTab
+from PySide6.QtGui import QActionGroup, QAction, QIcon
+from console.assets import get_asset
+from console.comms.stm32 import Stm32
+from console.gui.common.tab import GuiTab
+from console.gui.joystick_tab.container import JoystickTab
+from console.gui.serial_tab import SerialTab
+from console.gui.settings_tab.container import SettingsTab
 from hal.camera.camera import VideoStream
-from console.gui.menubar import MenuBar
 from hal.joystick.active_joystick import ActiveJoystick
 from console.gui.pilot_tab import PilotTab
 from console.gui.cv_tab import CVTab
@@ -22,9 +26,6 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("ROV Console")
-
-        menubar = MenuBar(self, active_joystick)
-        self.setMenuBar(menubar)
         ports = [5000, 5002, 5004]
         pipelines = [
             f"udpsrc address=239.1.1.1 port={port} ! "
@@ -44,14 +45,14 @@ class MainWindow(QMainWindow):
 
         self._pilot_tab = PilotTab(cam1, cam2, cam3, comms)
         self._cv_tab = CVTab()
-        self._connections_tab = ConnectionsTab(active_joystick, stm)
-        self._float_tab = FloatTab()
-        self._settings_tab = CVTab()
+        self._serial_tab = SerialTab(stm)
+        self._joystick_tab = JoystickTab(active_joystick)
+        self._settings_tab = SettingsTab()
 
         self._stack.addWidget(self._pilot_tab)
         self._stack.addWidget(self._cv_tab)
-        self._stack.addWidget(self._connections_tab)
-        self._stack.addWidget(self._float_tab)
+        self._stack.addWidget(self._serial_tab)
+        self._stack.addWidget(self._joystick_tab)
         self._stack.addWidget(self._settings_tab)
 
         self.setCentralWidget(self._stack)
@@ -63,7 +64,7 @@ class MainWindow(QMainWindow):
         self._group = QActionGroup(self)
         self._group.setExclusive(True)
 
-        for i, name in enumerate(["Pilot", "CV", "Conn.", "Float", "Settings"]):
+        for i, name in enumerate(["Pilot", "Crab", "Serial", "Joystick", "Settings"]):
             self._setup_action(i, name)
 
         spacer = QWidget()
@@ -80,13 +81,22 @@ class MainWindow(QMainWindow):
         )
         self._toolbar.setToolTip("Toggle visibility with Ctrl+B")
         self.menuBar().addAction(hide_action)
-        # self._toolbar.setVisible(False)
 
     def _setup_action(self, idx, name):
         action = QAction(name, self, checkable=True)
         action.setData(idx)
+        action.setIcon(QIcon(get_asset(f"tabs/{name}.svg")))
         self._group.addAction(action)
         self._toolbar.addAction(action)
+        tab = self._stack.widget(idx)
+        if tab:
+            tab = cast(GuiTab, tab)
+            tab.attention_needed.connect(
+                lambda alert, a=action: a.setIcon(
+                    QIcon(get_asset(f"tabs/{name + ('_alert' if alert else '')}.svg"))
+                )
+            )
+            tab.attention_needed.emit(tab.needs_attention)
         action.triggered.connect(lambda _: self._stack.setCurrentIndex(action.data()))
         if idx == 0:
             action.setChecked(True)

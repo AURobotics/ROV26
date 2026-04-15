@@ -4,7 +4,6 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QStyle,
     QStyledItemDelegate,
-    QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
@@ -13,9 +12,10 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import QSize, QTimer, Qt, Slot, Signal
 from string import Template
-from console.comms.rov.stm32 import Stm32
+from console.comms.stm32 import Stm32
 from console.core.relative_path import get_base_path
 from console.gui.common.combobox import ClickableComboBox
+from console.gui.common.tab import GuiTab
 from core.concurrent.callback_worker import CallbackWorker
 from hal.serial.serial_device import list_ports
 
@@ -59,7 +59,7 @@ class PortComboLabelDelegate(QStyledItemDelegate):
         return QSize(option.rect.width(), 45)
 
 
-class SerialTab(QWidget):
+class SerialTab(GuiTab):
     _DISCONNECTED_STATUS = "Not connected to STM32"
     _DISCONNECTED_HINT = "Please choose a serial device below"
     _CONNECTED_STATUS = Template("Connected to $name")
@@ -117,11 +117,27 @@ class SerialTab(QWidget):
         flash_form.addWidget(self.reset_button)
         flash_form.addWidget(self.flash_button)
         utils_hbox.addWidget(flash_group)
+        self.refresh_timer = QTimer()
+        self.refresh_timer.timeout.connect(self.refresh_all)
+        self.refresh_timer.setInterval(100)
+        self.refresh_timer.start()
+
+        self._needs_attention = False
 
         self.main_layout.addLayout(utils_hbox)
 
+    @property
+    def needs_attention(self) -> bool:
+        return self._needs_attention
+
     @Slot()
     def refresh_all(self) -> None:
+        if not self._needs_attention and self.stm.port is None:
+            self._needs_attention = True
+            self.attention_needed.emit(True)
+        elif self._needs_attention and self.stm.port is not None:
+            self._needs_attention = False
+            self.attention_needed.emit(False)
         self.refresh_ports()
         self.refresh_usb()
 
@@ -282,7 +298,6 @@ class SerialTab(QWidget):
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
-        self.refresh_all()
         return
 
     def hideEvent(self, event: QHideEvent) -> None:

@@ -1,7 +1,7 @@
-from PySide6.QtWidgets import QMainWindow
+from console.gui.common.tab import GuiTab
 
 
-class SettingsTab(QMainWindow):
+class SettingsTab(GuiTab):
     def __init__(self):
         super().__init__()
         ...  # Placeholder for SettingsTab implementation

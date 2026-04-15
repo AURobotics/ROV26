@@ -1,9 +1,8 @@
-from pathlib import Path
 from typing import Optional
 
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Signal
-from console.comms.rov.stm32 import Stm32
+from console.comms.stm32 import Stm32
 from hal.joystick.manager import JoystickManager
 from hal.joystick.active_joystick import ActiveJoystick
 from console.comms.manager import CommunicationManager
@@ -48,7 +47,6 @@ class ConsoleApplication(QApplication):
         self._splash_screen.hide()
         self._splash_screen = None
         self._main_window.show()
-        self._comms_manager.float_communication_setup(self._main_window._float_tab)
 
     def _shutdown(self):
         self._main_window = None

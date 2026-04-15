@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from console.gui.camera_display import CameraDisplay
+from console.gui.common.tab import GuiTab
 from console.gui.leakage_display import LeakageDisplay
 from console.gui.model.orientation_data import OrientationData
 from console.gui.model.sensors import Sensors
@@ -17,7 +18,7 @@ from console.gui.status_widget import StatusWidget
 from console.gui.auto_control_input import AutoControlInput
 
 
-class PilotTab(QWidget):
+class PilotTab(GuiTab):
     def __init__(self, cam1, cam2, cam3, comms):
         super().__init__()
         self._comms = comms

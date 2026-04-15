@@ -3,19 +3,19 @@ from abc import ABC
 from dataclasses import dataclass, field, fields
 from enum import Enum
 import struct
-from typing import Annotated, Self
+from typing import Annotated, Self, TypeAlias
 
 from annotated_types import Ge, Le
 
 
 class Constants:
-    SYNC_BYTE = b"\xFF"
+    SYNC_BYTE = b"\xff"
     SYNC_INT = 255
 
 
-type NormalizedFloat = Annotated[float, Ge(-1.0), Le(1.0)]
-type Byte = Annotated[int, Ge(0), Le(255)]
-type Word = Annotated[int, Ge(0), Le(65535)]
+NormalizedFloat: TypeAlias = Annotated[float, Ge(-1.0), Le(1.0)]
+Byte: TypeAlias = Annotated[int, Ge(0), Le(255)]
+Word: TypeAlias = Annotated[int, Ge(0), Le(65535)]
 
 
 @dataclass(frozen=True, slots=True)

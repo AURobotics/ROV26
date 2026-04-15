@@ -3,7 +3,7 @@ import subprocess
 import re
 import threading
 
-from console.comms.rov.messages import Constants, DfuData, Message, MessageType, Payload
+from console.comms.messages import Constants, DfuData, Message, MessageType, Payload
 from hal.joystick.manager import Path
 from hal.serial.serial_device import SerialDevice, list_ports
 
