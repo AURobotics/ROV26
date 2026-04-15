@@ -120,9 +120,6 @@ class SerialTab(QWidget):
 
         self.main_layout.addLayout(utils_hbox)
 
-        self.refresh_timer = QTimer()
-        self.refresh_timer.timeout.connect(self.refresh_all)
-
     @Slot()
     def refresh_all(self) -> None:
         self.refresh_ports()
@@ -285,13 +282,11 @@ class SerialTab(QWidget):
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
-        self.refresh_timer.start()
-        self.refresh_timer.setInterval(100)
+        self.refresh_all()
         return
 
     def hideEvent(self, event: QHideEvent) -> None:
         super().hideEvent(event)
-        self.refresh_timer.stop()
         self.port_selector.clear()
         self.usb_selector.clear()
         return
