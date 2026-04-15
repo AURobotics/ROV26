@@ -260,6 +260,16 @@ int main() {
     for (auto& motor : motors)
         motor.setup();
 
+    for (int i = 4; i < 8; i++) {
+        if (i==6) continue;
+        motors[i].move(1);
+    }
+
+    HAL_Delay(2000);
+    for (int i = 4; i < 8; i++) {
+        motors[i].move(0);
+    }
+
 
     std::array<std::optional<float>, 8> sensor_data;
 
