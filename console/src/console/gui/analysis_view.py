@@ -1,14 +1,22 @@
 from PySide6.QtWidgets import (
-    QWidget, QSizePolicy, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QFrame, QStackedLayout
+    QWidget,
+    QSizePolicy,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QFrame,
+    QStackedLayout,
 )
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtCore import Qt
+from console.core.relative_path import get_base_path
 from ultralytics import YOLO
 import numpy as np
 import cv2
 
-model = YOLO("crab-counting-v1.0.pt") 
+model = YOLO(get_base_path() / "models" / "crab-counting-v1.0.pt")
+
 
 def count_crabs(frame):
     results = model(frame)
@@ -18,7 +26,12 @@ def count_crabs(frame):
             name = model.names[int(cls)]
             if name in counts:
                 counts[name] += 1
-    return counts["green crab"], counts["red crab"], counts["brown crab"], results[0].plot()
+    return (
+        counts["green crab"],
+        counts["red crab"],
+        counts["brown crab"],
+        results[0].plot(),
+    )
 
 
 def to_cv2(pixmap: QPixmap) -> np.ndarray:
@@ -30,7 +43,9 @@ def to_cv2(pixmap: QPixmap) -> np.ndarray:
 def to_pixmap(frame: np.ndarray) -> QPixmap:
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     h, w, ch = rgb.shape
-    return QPixmap.fromImage(QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888))
+    return QPixmap.fromImage(
+        QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
+    )
 
 
 class AnalysisView(QWidget):
@@ -42,28 +57,35 @@ class AnalysisView(QWidget):
         self._build()
         self.setVisible(False)
 
-
     def _build(self):
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
         container = QWidget()
-        container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        container.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         stack = QStackedLayout(container)
         stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
 
         self._frame_view = QLabel()
         self._frame_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._frame_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self._frame_view.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self._frame_view.setStyleSheet("background: #111;")
-        
+
         self._frame_view.setMinimumSize(1, 1)  # Allow shrinking to almost nothing
-        self._frame_view.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+        self._frame_view.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored
+        )
         stack.addWidget(self._frame_view)
 
         overlay = QWidget()
-        overlay.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        overlay.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         ol = QVBoxLayout(overlay)
         ol.setContentsMargins(0, 0, 8, 8)
         ol.addStretch()
@@ -72,7 +94,7 @@ class AnalysisView(QWidget):
         btn_col = QVBoxLayout()
         btn_col.setSpacing(4)
 
-        self._run_btn    = QPushButton("▶ Run")
+        self._run_btn = QPushButton("▶ Run")
         self._accept_btn = QPushButton("✔ Accept")
         self._reject_btn = QPushButton("✘ Reject")
         self._accept_btn.setEnabled(False)
@@ -161,7 +183,7 @@ class AnalysisView(QWidget):
                 self._displayed_pixmap.scaled(
                     self._frame_view.size(),
                     Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
+                    Qt.TransformationMode.SmoothTransformation,
                 )
             )
 
