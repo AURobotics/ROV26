@@ -11,8 +11,8 @@ Rectangle {
     property real roll: rov ? rov.roll : 0
     property real pitchFOV: rov ? rov.pitchFOV : 90
 
-    width: 300
-    height: 300
+    width: 240
+    height: 240
     antialiasing: true
     color: palette.window
 

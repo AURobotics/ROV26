@@ -11,7 +11,7 @@ Rectangle {
     property real maxDepth: rov ? rov.max_depth : 1
 
     width: 42
-    height: 300
+    height: 240
     color: palette.window
 
     Rectangle {

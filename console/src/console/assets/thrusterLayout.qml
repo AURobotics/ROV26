@@ -7,8 +7,8 @@ pragma ComponentBehavior: Bound
 
 Rectangle {
     id: root
-    width: 300
-    height: 300
+    width: 480
+    height: 240
     antialiasing: true
     color: palette.window
 

@@ -90,28 +90,27 @@ class PilotTab(GuiTab):
 
         # 4.3 Initial Layout Positioning
         self.dock_host.addDockWidget(
-            Qt.DockWidgetArea.LeftDockWidgetArea, self.leak_dock
-        )
-
-        self.dock_host.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea, self.thruster_dock
-        )
-
-        self.dock_host.addDockWidget(
-            Qt.DockWidgetArea.RightDockWidgetArea, self.depth_dock
+            Qt.DockWidgetArea.BottomDockWidgetArea, self.auto_input_dock
         )
 
         self.dock_host.splitDockWidget(
-            self.thruster_dock, self.compass_dock, Qt.Orientation.Horizontal
+            self.auto_input_dock, self.thruster_dock, Qt.Orientation.Horizontal
+        )
+
+        self.dock_host.splitDockWidget(
+            self.thruster_dock, self.depth_dock, Qt.Orientation.Horizontal
+        )
+
+        self.dock_host.splitDockWidget(
+            self.depth_dock, self.compass_dock, Qt.Orientation.Horizontal
+        )
+
+        self.dock_host.splitDockWidget(
+            self.depth_dock, self.leak_dock, Qt.Orientation.Vertical
         )
 
         self.dock_host.splitDockWidget(
             self.compass_dock, self.pitch_dock, Qt.Orientation.Horizontal
-        )
-
-        self.dock_host.tabifyDockWidget(
-            self.compass_dock,
-            self.auto_input_dock,
         )
 
     def _create_dock(self, title, widget):
