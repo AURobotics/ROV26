@@ -34,4 +34,4 @@ requires = ["uv_build>=0.10.2,<0.11.0"]
 build-backend = "uv_build"
 
 [project.scripts]
-console = "console.app:run"
+console = "console.core.app:start_console"

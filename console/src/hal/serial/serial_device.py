@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import cast, Self
+from dataclasses import dataclass
+from typing import cast, TYPE_CHECKING
 
 import serial
 import threading
@@ -19,26 +20,81 @@ else:
         return [port for port in ports if port.device in devices]
 
 
-class SerialDevice:
-    _registry: dict[str, SerialDevice] = {}
+@dataclass(slots=True)
+class _RegistryEntry:
+    serial: serial.Serial
+    usage_counter: int
+
+
+class _SerialDevice:
+    _registry: dict[str, _RegistryEntry] = {}
     _connection_lock: threading.RLock = threading.RLock()
+    _fallback_serial: serial.Serial = serial.Serial()
 
-    _serial: serial.Serial
-    _port: str
-    _baudrate: int
+    _serial: serial.Serial | None
+    _settings: dict
 
-    def __new__(cls, port: str, **kwargs) -> Self:
-        with cls._connection_lock:
-            if sys.platform != "win32":
-                port = str(Path(port).resolve())
-            if port not in cls._registry:
-                instance = super().__new__(cls)
-                cls._registry[port] = instance
-            else:
-                instance = cls._registry[port]
-            return cast(Self, instance)
+    def __init__(self, *args, **kwargs) -> None:
+        if args:
+            port: str | None = args[0]
+            args = args[1:]
 
-    def __init__(self, port: str, baudrate: int = 9600, timeout: float | None = None):
+        else:
+            port: str | None = kwargs.get("port")
+        if not port:
+            settings = serial.Serial(*args, **kwargs).get_settings()
+            settings.pop("port", None)
+            self._settings = settings
+            self._serial = None
+            return
+        with self._connection_lock:
+            try:
+                self._serial = self._acquire_port(port, *args, **kwargs)
+                settings = self._serial.get_settings()
+                settings.pop("port", None)
+                self._settings = settings
+            except:
+                self._release_port(port)
+                raise
+
+    @property
+    def is_open(self) -> bool:
+        with self._connection_lock:
+            if not self._serial or not self._serial.is_open:
+                return False
+            try:
+                self._serial.write(b"")
+                return True
+            except:
+                return False
+
+    @property
+    def port(self) -> str | None:
+        if not self._serial:
+            return None
+        if not self.is_open:
+            self._release_port(self._serial.port)
+            self._serial = None
+            return None
+        return self._serial.port
+
+    @port.setter
+    def port(self, port: str | None):
+        if port == self.port:
+            return
+        with self._connection_lock:
+            if self._serial:
+                self._release_port(self._serial.port)
+                self._serial = None
+            if port:
+                self._serial = self._acquire_port(port, **self._settings)
+
+    def open(self) -> None:
+        if self._serial and not self.is_open:
+            self.port = self._serial.port
+
+    @classmethod
+    def _acquire_port(cls, port: str, *args, **kwargs) -> serial.Serial:
         available_ports = [port.device for port in list_ports()]
         if sys.platform != "win32":
             port_path = Path(port).resolve()
@@ -47,113 +103,43 @@ class SerialDevice:
             port = str(port_path)
         if port not in available_ports:
             raise ValueError(f"Provided device {port} is not a serial port")
-
-        self._port = port
-        if not self._check_alive() or (
-            hasattr(self, "_baudrate") and self._baudrate != baudrate
-        ):
-            with self._connection_lock:
-                try:
-                    self._serial = serial.Serial(
-                        port=port, baudrate=baudrate, timeout=timeout
-                    )
-                except:
-                    self._unregister_port(port)
-        self._baudrate = baudrate
-
-    def _check_alive(self) -> bool:
-        if not hasattr(self, "_serial"):
-            return False
-        try:
-            self._serial.write(b"")
-            return True
-        except:
-            return False
-
-    @property
-    def connected(self) -> bool:
-        if not self._check_alive():
-            self.disconnect()
-            return False
-        return True
-
-    @property
-    def port(self) -> str:
-        if not self.connected:
-            return "Disconnected"
-        return self._port
-
-    @property
-    def has_incoming(self) -> bool:
-        try:
-            if self.connected:
-                return self._serial.in_waiting > 0
+        with cls._connection_lock:
+            if port not in cls._registry:
+                instance = serial.Serial(port=port, *args, **kwargs)
+                cls._registry[port] = _RegistryEntry(instance, 1)
             else:
-                return False
-        except:
-            return False
+                settings = serial.Serial(*args, **kwargs).get_settings()
+                entry = cls._registry[port]
+                instance = entry.serial
+                prev_settings = instance.get_settings()
+                prev_settings.pop("port", None)
+                if prev_settings != settings:
+                    instance.apply_settings(settings)
+                entry.usage_counter += 1
 
-    def flush(self) -> None:
-        try:
-            if self.connected:
-                self._serial.reset_input_buffer()
-                self._serial.reset_output_buffer()
-        except:
-            return
-
-    def flush_in(self) -> None:
-        try:
-            if self.connected:
-                self._serial.reset_input_buffer()
-        except:
-            return
-
-    def flush_out(self) -> None:
-        try:
-            if self.connected:
-                self._serial.reset_output_buffer()
-        except:
-            return
+            return cast(serial.Serial, instance)
 
     @classmethod
-    def _unregister_port(cls, port) -> None:
+    def _release_port(cls, port) -> None:
         with cls._connection_lock:
-            if port in cls._registry:
+            entry = cls._registry.get(port)
+            if not entry:
+                return
+            entry.usage_counter -= 1
+            if entry.usage_counter == 0:
+                entry.serial.close()
                 cls._registry.pop(port)
 
-    def disconnect(self):
-        if hasattr(self, "_serial") and self._serial.is_open:
-            try:
-                self._serial.close()
-            except:
-                pass
-        self._unregister_port(self._port)
+    def __getattr__(self, name):
+        with self._connection_lock:
+            if self._serial:
+                return getattr(self._serial, name)
+            else:
+                return getattr(self._fallback_serial, name)
 
-    def send(self, data) -> None:
-        if self.connected:
-            try:
-                self._serial.write(data)
-            except:
-                return
 
-    def read(self, size=1) -> bytes:
-        try:
-            if self.connected:
-                buf = self._serial.read(size)
-                if not buf:
-                    self.flush_in()
-                return buf
-        except:
-            pass
-        return bytes()
+if TYPE_CHECKING:
 
-    def read_until(self, byte: bytes) -> bytes:
-        try:
-            if self.connected:
-                buf = self._serial.read_until(byte)
-                if not buf:
-                    self.flush_in()
-                return buf
-        except:
-            pass
-        return bytes()
+    class SerialDevice(serial.Serial): ...
+else:
+    SerialDevice = _SerialDevice

@@ -8,8 +8,10 @@ from hal.joystick.manager import JoystickManager
 from hal.joystick.active_joystick import ActiveJoystick
 from console.comms.manager import CommunicationManager
 from console.gui.main_window import MainWindow
-
 from console.gui.splash_screen import LoadingSplash
+
+import console.core.settings as settings
+import console.core.relative_path as relative_path
 
 
 class ConsoleApplication(QApplication):
@@ -35,11 +37,8 @@ class ConsoleApplication(QApplication):
         if len(joysticks) > 0:
             self._active_joystick.selected = joysticks[0]
         self._splash_screen.update_progress("Initializing serial system", 40)
-        try:
-            programmer_path = next(Path("stm/bin/").glob("STM32_Programmer_CLI"))
-        except StopIteration:
-            programmer_path = None
-        self._stm32 = Stm32(programmer_path)
+        programmer_path = relative_path.resolve(settings.get("stm/programmer"))
+        self._stm32 = Stm32(programmer_executable=programmer_path)
         self._splash_screen.update_progress("Initializing communication system", 60)
         self._comms_manager = CommunicationManager(self._stm32, self._active_joystick)
         self._splash_screen.update_progress("Starting GUI", 80)
@@ -62,11 +61,7 @@ class ConsoleApplication(QApplication):
             self._stm32.port = None
 
 
-def run():
+def start_console():
     import sys
 
     sys.exit(ConsoleApplication().exec())
-
-
-if __name__ == "__main__":
-    run()

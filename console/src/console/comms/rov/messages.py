@@ -8,8 +8,9 @@ from typing import Annotated, Self
 from annotated_types import Ge, Le
 
 
-class Constants(bytes, Enum):
-    SYNC_BYTE = b"xFFFF"
+class Constants:
+    SYNC_BYTE = b"FFFF"
+    SYNC_INT = 255
 
 
 type NormalizedFloat = Annotated[float, Ge(-1.0), Le(1.0)]
@@ -120,7 +121,7 @@ class Message:
             else:
                 flat_values.append(val)
         header_fmt = f"<BB{type.format}"
-        return struct.pack(header_fmt, Constants.SYNC_BYTE, type.type_id, *flat_values)
+        return struct.pack(header_fmt, Constants.SYNC_INT, type.type_id, *flat_values)
 
     @staticmethod
     def decode(type: MessageType, content: bytes) -> Payload:

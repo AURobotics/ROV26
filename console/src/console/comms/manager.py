@@ -87,10 +87,13 @@ class CommunicationManager:
             self._joystick.add_gamepad_button_listener(self._on_joystick_button, btn)
 
     def _on_joystick_button(self, _: Joystick, button: GamepadButton, is_pressed: bool):
-        if self._stm.connected:
-            if is_pressed:
-                toggle: str = ToggleButtons[button]
-                self._command_cache[toggle] = not self._command_cache[toggle]
+        try:
+            if self._stm.connected:
+                if is_pressed:
+                    toggle: str = ToggleButtons[button]
+                    self._command_cache[toggle] = not self._command_cache[toggle]
+        except Exception as ex:
+            print(f"[WARN] | {ex}")
 
     @property
     def sensor_cache(self) -> SensorsData:
@@ -99,33 +102,37 @@ class CommunicationManager:
     def _outgoing_loop(self):
         while not self._killswitch:
             self._data_ready_event.wait()
-            if self._stm.has_incoming and self._joystick.selected:
-                print("Sending")
-                payload = self._controller_payload()
-                self._stm.send(payload)
-                self._data_ready_event.clear()
+            try:
+                if self._stm.has_incoming and self._joystick.selected:
+                    payload = self._controller_payload()
+                    self._stm.send(payload)
+                    self._data_ready_event.clear()
+            except Exception as ex:
+                print(f"[WARN] | {ex}")
 
     def _incoming_loop(self):
         while not self._killswitch:
             sleep(0.015)
+            try:
+                if not self._stm.connected:
+                    self._sensor_cache = _empty_sensors
+                    continue
 
-            if not self._stm.connected:
-                self._sensor_cache = _empty_sensors
-                continue
+                if not self._stm.has_incoming:
+                    continue
 
-            if not self._stm.has_incoming:
-                continue
+                incoming = self._stm.receive()
+                if not incoming:
+                    continue
 
-            incoming = self._stm.receive()
-            if not incoming:
-                continue
-
-            message_type = MessageType.from_payload(incoming)
-            if message_type == MessageType.READY:
-                self._data_ready_event.set()
-            elif message_type == MessageType.SENSORS:
-                incoming = cast(SensorsData, incoming)
-                self._sensor_cache = incoming
+                message_type = MessageType.from_payload(incoming)
+                if message_type == MessageType.READY:
+                    self._data_ready_event.set()
+                elif message_type == MessageType.SENSORS:
+                    incoming = cast(SensorsData, incoming)
+                    self._sensor_cache = incoming
+            except Exception as ex:
+                print(f"[WARN] | {ex}")
 
     def _controller_payload(self):
         # Toggle-based controls

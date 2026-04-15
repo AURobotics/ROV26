@@ -1,5 +1,6 @@
 from PySide6.QtGui import QFont, QHideEvent, QShowEvent
 from PySide6.QtWidgets import (
+    QFileDialog,
     QGroupBox,
     QStyle,
     QStyledItemDelegate,
@@ -8,12 +9,13 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QComboBox,
     QFormLayout,
 )
-from PySide6.QtCore import QSize, Qt, Slot
+from PySide6.QtCore import QSize, QTimer, Qt, Slot
 from string import Template
 from console.comms.rov.stm32 import Stm32
+from console.core.relative_path import get_base_path
+from console.gui.common.combobox import ClickableComboBox
 from core.concurrent.callback_worker import CallbackWorker
 from hal.serial.serial_device import list_ports
 
@@ -83,13 +85,13 @@ class SerialTab(QWidget):
         port_group = QGroupBox()
         port_group.setTitle("Manage Connection")
         port_form = QFormLayout(port_group)
-        self.port_selector = QComboBox()
+        self.port_selector = ClickableComboBox()
         self.port_selector.setItemDelegate(PortComboLabelDelegate())
-        self.port_selector.activated.connect(self.refresh_ports)
+        self.port_selector.triggered.connect(self.refresh_ports)
         self.port_selector.textActivated.connect(self.select_port)
         port_form.addRow("Port:", self.port_selector)
         self.dfu_button = QPushButton("Enter DFU Mode")
-        self.dfu_button.clicked.connect(self.stm.enter_dfu)
+        self.dfu_button.clicked.connect(self.enter_dfu)
         self.disconnect_button = QPushButton("Disconnect")
         self.disconnect_button.pressed.connect(self.deselect_port)
         self.dfu_button.setFixedWidth(120)
@@ -101,10 +103,12 @@ class SerialTab(QWidget):
         flash_group = QGroupBox()
         flash_group.setTitle("STM32 Programmer")
         flash_form = QFormLayout(flash_group)
-        self.usb_selector = QComboBox()
-        self.usb_selector.activated.connect(self.refresh_usb)
+        self.usb_selector = ClickableComboBox()
+        self.usb_selector.triggered.connect(self.refresh_usb)
         self.reset_button = QPushButton("Reset Device")
+        self.reset_button.clicked.connect(self.reset_usb)
         self.flash_button = QPushButton("Flash Firmware")
+        self.flash_button.clicked.connect(self.flash_usb)
         flash_form.addRow("Target:", self.usb_selector)
         flash_form.addWidget(self.reset_button)
         flash_form.addWidget(self.flash_button)
@@ -112,6 +116,64 @@ class SerialTab(QWidget):
 
         self.main_layout.addLayout(utils_hbox)
 
+        self.refresh_timer = QTimer()
+        self.refresh_timer.setInterval(100)
+        self.refresh_timer.timeout.connect(self.refresh_all)
+
+    @Slot()
+    def refresh_all(self) -> None:
+        self.refresh_ports()
+        self.refresh_usb()
+
+    @Slot()
+    def reset_usb(self) -> None:
+        if self.usb_selector.currentIndex() == -1:
+            return
+        usb = self.usb_selector.currentText()
+        try:
+            worker = CallbackWorker(
+                lambda: self.stm.reset(usb), self.on_usb_process_done
+            )
+            worker.run()
+            self.begin_usb_process()
+        except:
+            pass
+
+    @Slot(str)
+    def flash_usb(self) -> None:
+        if self.usb_selector.currentIndex() == -1:
+            return
+        file_path, _ = QFileDialog.getOpenFileName(
+            parent=self,
+            caption="Select Firmware File",
+            dir=str(get_base_path()),
+            filter="ELF Files (*.elf)",  # Separated by ;;
+        )
+        if not file_path:
+            return
+        usb = self.usb_selector.currentText()
+        try:
+            worker = CallbackWorker(
+                lambda: self.stm.flash(usb, file_path), self.on_usb_process_done
+            )
+            worker.run()
+            self.begin_usb_process()
+        except:
+            pass
+
+    def begin_usb_process(self) -> None:
+        self.usb_selector.setEnabled(False)
+        self.flash_button.setEnabled(False)
+        self.reset_button.setEnabled(False)
+
+    def begin_port_process(self) -> None:
+        self.port_selector.setEnabled(False)
+        self.dfu_button.setEnabled(False)
+        self.disconnect_button.setEnabled(False)
+
+    @Slot()
+    def on_usb_process_done(self) -> None:
+        self.usb_selector.setEnabled(True)
         self.refresh_usb()
 
     @Slot(str)
@@ -120,9 +182,10 @@ class SerialTab(QWidget):
             return
         try:
             worker = CallbackWorker(
-                lambda: self.stm.connect(port), self.on_port_selection_change
+                lambda: self.stm.connect(port), self.on_port_process_done
             )
             worker.run()
+            self.begin_port_process()
         except:
             pass
 
@@ -131,28 +194,32 @@ class SerialTab(QWidget):
         if not self.stm.port:
             return
         try:
-            worker = CallbackWorker(self.stm.disconnect, self.on_port_selection_change)
+            worker = CallbackWorker(self.stm.disconnect, self.on_port_process_done)
             worker.run()
+            self.begin_port_process()
         except:
             pass
 
     @Slot()
-    def on_port_selection_change(self) -> None:
-        if self.stm.port:
-            self.port_selector.setCurrentText(self.stm.port)
-            self.status_label.setText(
-                self._CONNECTED_STATUS.safe_substitute(name=self.stm.name)
-            )
-            self.hint_label.setText(
-                self._CONNECTED_HINT.safe_substitute(port=self.stm.port)
-            )
-        else:
-            self.status_label.setText(self._DISCONNECTED_STATUS)
-            self.hint_label.setText(self._DISCONNECTED_HINT)
-            self.port_selector.setCurrentIndex(-1)
+    def enter_dfu(self) -> None:
+        if not self.stm.port:
+            return
+        try:
+            worker = CallbackWorker(self.stm.enter_dfu, self.on_port_process_done)
+            worker.run()
+            self.begin_port_process()
+        except:
+            pass
+
+    @Slot()
+    def on_port_process_done(self) -> None:
+        self.port_selector.setEnabled(True)
+        self.refresh_ports()
 
     @Slot()
     def refresh_usb(self) -> None:
+        if self.usb_selector.view().isVisible():
+            return
         devices = self.stm.programmable_devices
         if not self.stm.programmer_present or not devices:
             self.usb_selector.clear()
@@ -164,7 +231,7 @@ class SerialTab(QWidget):
         for port, description in devices:
             self.usb_selector.addItem(port)
             last_idx = self.usb_selector.count() - 1
-            self.port_selector.setItemData(
+            self.usb_selector.setItemData(
                 last_idx, description, Qt.ItemDataRole.UserRole
             )
             if selected == port:
@@ -173,8 +240,13 @@ class SerialTab(QWidget):
         if self.usb_selector.currentIndex() == -1:
             self.usb_selector.setCurrentIndex(0)
 
+        self.reset_button.setEnabled(True)
+        self.flash_button.setEnabled(True)
+
     @Slot()
     def refresh_ports(self) -> None:
+        if self.port_selector.view().isVisible():
+            return
         self.port_selector.clear()
 
         for p in list_ports():
@@ -185,24 +257,35 @@ class SerialTab(QWidget):
             )
 
         connected = self.stm.port is not None
+
         self.dfu_button.setEnabled(connected)
         self.disconnect_button.setEnabled(connected)
         if not connected:
             self.port_selector.setCurrentIndex(-1)
+            self.status_label.setText(self._DISCONNECTED_STATUS)
+            self.hint_label.setText(self._DISCONNECTED_HINT)
             return
         for i in range(self.port_selector.count()):
-            if self.stm.port == self.port_selector.itemText(i):
+            if self.stm.port and self.stm.port == self.port_selector.itemText(i):
                 self.port_selector.setCurrentIndex(i)
+                self.port_selector.setCurrentText(self.stm.port)
+                self.status_label.setText(
+                    self._CONNECTED_STATUS.safe_substitute(name=self.stm.name)
+                )
+                self.hint_label.setText(
+                    self._CONNECTED_HINT.safe_substitute(port=self.stm.port)
+                )
                 return
-
         self.port_selector.setCurrentIndex(-1)
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
-        self.refresh_ports()
+        self.refresh_timer.start()
         return
 
     def hideEvent(self, event: QHideEvent) -> None:
         super().hideEvent(event)
+        self.refresh_timer.stop()
         self.port_selector.clear()
+        self.usb_selector.clear()
         return

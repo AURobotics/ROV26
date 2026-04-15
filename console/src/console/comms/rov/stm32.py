@@ -9,13 +9,26 @@ from hal.serial.serial_device import SerialDevice, list_ports
 
 
 class Stm32:
-    _ser: SerialDevice | None
+    _ser: SerialDevice
     _serial_lock: threading.RLock
     _programmer_lock: threading.RLock
     programmer: Path | None
 
-    def __init__(self, programmer_executable: os.PathLike | str | None = None) -> None:
-        self._ser = None
+    def __init__(
+        self,
+        read_timeout: float = 0.005,
+        write_timeout: float = 0.1,
+        continuity_timeout: float = 0.005,
+        programmer_executable: os.PathLike | str | None = None,
+    ) -> None:
+        self._ser = SerialDevice(
+            timeout=read_timeout,
+            write_timeout=write_timeout,
+            inter_byte_timeout=continuity_timeout,
+        )
+        self.read_timeout = read_timeout
+        self.write_timeout = write_timeout
+        self.continuity_timeout = continuity_timeout
         self.programmer = Path(programmer_executable) if programmer_executable else None
         self._ready = False
         self._serial_lock = threading.RLock()
@@ -24,36 +37,30 @@ class Stm32:
     @property
     def connected(self) -> bool:
         with self._serial_lock:
-            if self._ser:
-                return self._ser.connected
-            return False
+            return self._ser.is_open
 
     @property
     def port(self) -> str | None:
         with self._serial_lock:
-            if self._ser:
+            if self._ser.is_open:
                 return self._ser.port
-            else:
-                return None
+        return None
 
     @port.setter
     def port(self, value: str | None) -> None:
         with self._serial_lock:
-            if value is not None:
-                self._ser = SerialDevice(value)
-            else:
-                if self._ser:
-                    self._ser.disconnect()
-                self._ser = None
+            self._ser.port = value
 
     @property
     def name(self) -> str | None:
-        port = self.port
+        with self._serial_lock:
+            port = self.port
         if port is not None:
             for p in list_ports():
                 if port == p.device:
                     return p.description
         return None
+
     def connect(self, port: str) -> None:
         self.port = port
 
@@ -64,22 +71,28 @@ class Stm32:
         with self._programmer_lock:
             if not self.programmer_present:
                 return
-            subprocess.run([str(self.programmer), "-c", f"port={device}", "-s"])
+            subprocess.run(
+                [str(self.programmer), "-c", f"port={device}", "-s"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
 
     def enter_dfu(self) -> None:
         with self._serial_lock:
-            if not self._ser or not self._ser.connected:
+            if not self._ser.is_open:
                 return
-            self._ser.send(Message.encode(DfuData()))
+            self._ser.write(Message.encode(DfuData()))
 
     def flash(self, device: str, hex_file: os.PathLike | str):
         with self._programmer_lock:
             if not self.programmer_present:
                 return
-            if self._ser and self._ser.connected:
+            if self._ser.is_open:
                 self.enter_dfu()
             subprocess.run(
-                [str(self.programmer), "-c", f"port={device}", "-d", hex_file, "-s"]
+                [str(self.programmer), "-c", f"port={device}", "-d", hex_file, "-s"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
 
     @property
@@ -120,28 +133,28 @@ class Stm32:
     @property
     def has_incoming(self) -> bool:
         with self._serial_lock:
-            if self._ser:
-                return self._ser.has_incoming
+            if self._ser.is_open:
+                return self._ser.in_waiting > 0
             return False
 
     def send(self, payload: Payload) -> None:
         with self._serial_lock:
-            if not self._ser or not self._ser.connected:
+            if not self._ser.is_open:
                 return
-            self._ser.send(Message.encode(payload))
+            self._ser.write(Message.encode(payload))
 
     def receive(self) -> Payload | None:
         with self._serial_lock:
-            if not self._ser or not self._ser.connected:
+            if not self._ser.is_open:
                 return None
             sync_byte = self._ser.read_until(Constants.SYNC_BYTE)
-            if not sync_byte:
+            if not sync_byte or sync_byte[-1] != Constants.SYNC_INT:
                 return None
             type_byte = self._ser.read()
             if not type_byte:
                 return None
             message_type = MessageType.from_type(type_byte[0])
             data = self._ser.read(message_type.size)
-            if not data:
+            if len(data) != message_type.size:
                 return None
             return Message.decode(message_type, data)

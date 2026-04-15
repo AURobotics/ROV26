@@ -1,13 +1,7 @@
 import inspect
 import threading
 from typing import Callable
-import weakref
 
-def _create_weakref(func: Callable) -> weakref.WeakMethod | weakref.ReferenceType:
-    if inspect.ismethod(func) and not inspect.isbuiltin(func):
-        return weakref.WeakMethod(func)
-    else:
-        return weakref.ref(func)
 
 class CallbackWorker:
     def __init__(self, task: Callable, callback: Callable) -> None:
@@ -19,5 +13,9 @@ class CallbackWorker:
         self._thread.start()
 
     def _run(self) -> None:
-        self._task()
-        self._callback
+        try:
+            self._task()
+        except Exception as ex:
+            print(f"[WARN] | {ex}")
+        finally:
+            self._callback()
