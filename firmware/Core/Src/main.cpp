@@ -216,6 +216,12 @@ int main() {
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
 
+    HAL_NVIC_SetPriority(IRQn_Type::OTG_FS_IRQn, 1, 0);
+    HAL_NVIC_SetPriority(IRQn_Type::OTG_FS_WKUP_IRQn, 1, 0);
+    HAL_NVIC_SetPriority(IRQn_Type::I2C3_ER_IRQn, 1, 0);
+    HAL_NVIC_SetPriority(IRQn_Type::I2C3_EV_IRQn, 1, 0);
+    HAL_NVIC_SetPriority(IRQn_Type::SysTick_IRQn, 0, 0);
+
     HAL_Delay(2000);
 
     Test_state test_state{}; // normal mode
