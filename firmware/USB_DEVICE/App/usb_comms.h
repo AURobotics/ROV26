@@ -15,7 +15,7 @@ extern "C" {
 // sensor message: start, size , yaw pitch roll, 8 thrusters, led, grippers,
 
 
-typedef enum {
+enum Message_Type {
     READY_MESSAGE = 0,
     COMMAND_MESSAGE = 1, // Received from gui to control it
     PARAMETERS_MESSAGE = 2, // received from gui, used to set pid param
@@ -24,15 +24,25 @@ typedef enum {
     TUNING_MESSAGE = 5,
     CONTROLLER_RESPONSE = 6,
     DFU_mode = 7
-} Message_Type;
+};
 
+enum Control_byte_bit_mask {
+    CONTROL = 0,
+    LED = 4,
+    DCVS = 5,
+    ROT_GRP_EN = 7,
+    ROT_GRP_DIR = 8,
+};
+
+inline uint16_t word_read(const uint16_t word, const Control_byte_bit_mask mask) {
+    return word & 1 << (15 - mask);
+}
 
 typedef struct __attribute__((packed)) {
     uint8_t sync_byte;
     uint8_t type;
     uint16_t control_byte; // 4 control bits/ 1 led/ 2 grippers/ 1 toggle : 1 = move & 1 movement: 0
-                           // down , 1 up / 1 bit enable or disable water sensors / 1 bit enable//
-                           // disable limit switches
+                           // down , 1 up
     float forces[6];
 } Command_msg;
 
@@ -67,7 +77,7 @@ typedef struct __attribute__((packed)) {
     int16_t timestamp;
     float angle;
     float angle_rate;
-} Controller_response_msg;
+} Step_response_msg;
 
 typedef struct __attribute__((packed)) {
     uint8_t sync_byte;
@@ -78,18 +88,10 @@ typedef struct __attribute__((packed)) {
     float pitch;
     float roll;
     float motor_speeds[8];
-} TxPacket;
-
-extern volatile uint32_t last_receive_time;
-extern volatile Command_msg command_pkt;
-extern volatile uint8_t data_received_flag;
-extern volatile Operation_Mode_Msg operation_mode_msg;
-extern volatile Parameter_Msg param_msg;
-extern volatile Tuning_Msg tuning_msg;
-extern volatile Message_Type last_received_msg_type;
+} Sensor_msg;
 
 
-void load_tx(TxPacket* tx);
+void load_tx(Sensor_msg* tx);
 
 #ifdef __cplusplus
 }

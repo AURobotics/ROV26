@@ -1,7 +1,7 @@
-#ifndef FIRMWARE_USB_CDC_WRAPPER_H
-#define FIRMWARE_USB_CDC_WRAPPER_H
+#pragma once
 #include <sys/types.h>
 #include "usb_comms.h"
+#include "usbd_cdc_if.h"
 
 
 #ifdef __cplusplus
@@ -22,12 +22,13 @@ typedef struct {
         Operation_Mode_Msg operation_msg;
         Parameter_Msg param_msg;
         Tuning_Msg tuning_msg;
+        Step_response_msg response_msg;
     } data;
 
-} GenericMessage;
+} Generic_msg;
 
 typedef struct {
-    uint8_t data[sizeof(GenericMessage)];
+    uint8_t data[sizeof(Generic_msg)];
     uint32_t len;
 } RawData;
 
@@ -46,11 +47,19 @@ public:
     explicit constexpr Cdc_driver(uint32_t m_timeout) : m_timeout_ms(m_timeout) {}
     void setup();
     bool available();
-    bool write_msg(TxPacket* tx);
-    Message_Type read_msg(GenericMessage& msg);
-    void on_data_receive(uint8_t* buf, uint32_t len);
-    bool parse(uint8_t* buf, uint32_t len, GenericMessage& out);
-};
-#endif
 
-#endif // FIRMWARE_USB_CDC_WRAPPER_H
+    template <typename T>
+    bool write_msg(T& msg) {
+        return CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&msg), sizeof(msg));
+    }
+
+    Message_Type read_msg(Generic_msg& msg);
+    void on_data_receive(uint8_t* buf, uint32_t len);
+    bool parse(uint8_t* buf, uint32_t len, Generic_msg& out);
+
+
+    Message_Type last_received_msg_type{};
+    uint32_t last_received_time{};
+};
+
+#endif

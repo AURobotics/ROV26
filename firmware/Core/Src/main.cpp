@@ -21,16 +21,16 @@ extern "C" {
 #include "usbd_cdc_if.h"
 
 static constexpr int16_t LEAKAGE_THRESHOLD = 0;
-enum class Test_state { OFF, STEPPING, DONE };
+enum class Test_state { OFF, TUNING_MODE, DONE };
 
-#define WR_ALL_REGS(_regs_, _data_)                                                                \
-    do                                                                                             \
-        for (size_t addr = 0; addr < sizeof(_regs_) / sizeof((_regs_)[0]); addr++)                 \
-            (_regs_)[addr] = (_data_);                                                             \
+#define WR_ALL_REGS(_regs_, _data_)                                                                                    \
+    do                                                                                                                 \
+        for (size_t addr = 0; addr < sizeof(_regs_) / sizeof((_regs_)[0]); addr++)                                     \
+            (_regs_)[addr] = (_data_);                                                                                 \
     while (0)
 
 MPU9250 mpu(&hi2c3);
-// MS5611 ms5611(&hi2c3);
+MS5611 ms5611(&hi2c3);
 Cdc_driver cdc(20); /*need to set timeout*/
 
 extern "C" int _write(int file, char* ptr, int len) {
@@ -38,15 +38,24 @@ extern "C" int _write(int file, char* ptr, int len) {
     return len;
 }
 
-// yaw, angular yaw, pitch, angular pitch, roll, angular roll, depth, nullopt
+// depth, nullopt, roll, angular roll, pitch, angular pitch, yaw, angular yaw,
 void fetch_sensor_data(std::array<std::optional<float>, 8>& data) {
-    // if (HAL_GetTick() - ms5611.last_read_time > 50) {
-    //     data[0] = ms5611.getPressure();
-    //     data[1] = std::nullopt;
-    // }
+    if (HAL_GetTick() - ms5611.last_read_time > 100) {
+        data[0] = ms5611.getPressure();
+        data[1] = std::nullopt;
+    }
 
-    if (HAL_GetTick() - mpu.last_read_time > 50) {
+    if (HAL_GetTick() - mpu.last_read_time > 10) {
         mpu.update();
+        vec_3 angles{}, rates{};
+        mpu.getEulerAngles(angles);
+        mpu.getBodyRates(rates);
+        data[2] = angles.x();
+        data[3] = rates.x();
+        data[4] = angles.y();
+        data[5] = rates.y();
+        data[6] = angles.z();
+        data[7] = rates.z();
     }
 }
 
@@ -60,8 +69,8 @@ double normalize_angle(double angle) {
     return angle;
 }
 
-double angle_diff(double setpoint, double current) {
-    double diff = setpoint - current;
+float angle_diff(float setpoint, float current) {
+    float diff = setpoint - current;
     return normalize_angle(diff);
 }
 
@@ -108,19 +117,11 @@ static uint8_t loadStatus() {
     const auto leakage_adc2 = read_adc(LEAKAGE_ADC_CHANNEL_2);
     const bool leak_detected = leakage_adc1 > LEAKAGE_THRESHOLD || leakage_adc2 > LEAKAGE_THRESHOLD;
 
-
     if (ledState == GPIO_PIN_SET)
         statusByte |= (1 << 2);
 
     if (leak_detected)
         statusByte |= (1 << 3);
-
-    // if (gripper_safety_enabled)
-    //     statusByte |= (1 << 4);
-    //
-    // if (leakage_safety_enabled)
-    //     statusByte |= (1 << 5);
-
     return statusByte;
 }
 // End of gripper limit switch
@@ -149,8 +150,7 @@ static void checkCommsTimeout() {
         }
         if (now - BlinkTick >= BLINK_MS) {
             LedState = !LedState;
-            HAL_GPIO_WritePin(
-                LED_FLASHER_GPIO_Port, LED_FLASHER_Pin, LedState ? GPIO_PIN_SET : GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(LED_FLASHER_GPIO_Port, LED_FLASHER_Pin, LedState ? GPIO_PIN_SET : GPIO_PIN_RESET);
             BlinkTick = now;
         }
     }
@@ -197,27 +197,25 @@ int main() {
     MX_TIM5_Init();
     MX_USB_DEVICE_Init();
 
-    printf("code started\n");
+    HAL_Delay(2000);
 
-    Test_state test_state = Test_state::OFF; // normal mode
+    Test_state test_state{}; // normal mode
     //////Testing Mode////////
     float start_yaw = 0;
-    float max_testing[4] = {0.1, 30, 30, 90}; // need to set these
-    uint8_t test_axis = 0;
+    float max_testing[4] = {1, 40, 40, 90}; // need to set these
 
     /////sending to GUI/////
     uint32_t last_send_time = 0;
 
     //////Controller////
-    float prev{}; // to calculate dt
+    float prev_controller_time{}; // to calculate dt
     uint32_t now = HAL_GetTick();
 
     float forces[6]; // Fx Fy Fz Froll Fpitch Fyaw
-    float * motors_buffer;
-    // if control bit = 1 setpoint hatetba3at makan
-    // el force fa will use this array as setpoint too
-    float controller_output[6]; // surge sway depth roll pitch yaw
-    float hold[4]; // depth roll pitch yaw
+    float* motors_buffer{};
+
+    float controller_output[6];
+    float last_received_setpoints[4]; // depth roll pitch yaw
 
     /*Initialize all controllers: depth roll pitch yaw*/
     Controller controller[4] = {Controller(PID(0, 0, 0)),
@@ -234,273 +232,177 @@ int main() {
                       Motor({&htim4, TIM_CHANNEL_1}, {&htim4, TIM_CHANNEL_2}),
                       Motor({&htim5, TIM_CHANNEL_4}, {&htim2, TIM_CHANNEL_2})};
 
-    for (auto& motor : motors) {
+    for (auto& motor : motors)
         motor.setup();
-    }
 
-    while (true) {
-        for (auto& motor : motors) {
-            motor.move(1);
-        }
-        HAL_Delay(2000);
-        for (auto& motor : motors) {
-            motor.stop();
-        }
-        HAL_Delay(500);
-        for (auto& motor : motors) {
-            motor.move(-1);
-        }
-        HAL_Delay(2000);
-    }
-
-
-    while (1) {
-        motors[0].move(0.99f);
-        HAL_Delay(3000);
-        printf("\r\n%d", motors[0].move(-0.99f));
-        HAL_Delay(3000);
-        motors[1].move(0.99f);
-        HAL_Delay(3000);
-        printf("\r\n%d", motors[1].move(-0.99f));
-        HAL_Delay(3000);
-        motors[2].move(0.99f);
-        HAL_Delay(3000);
-        printf("\r\n%d", motors[2].move(-0.99f));
-        HAL_Delay(3000);
-        motors[3].move(0.99f);
-        HAL_Delay(3000);
-        printf("\r\n%d", motors[3].move(-0.99f));
-        HAL_Delay(3000);
-        motors[4].move(0.99f);
-        HAL_Delay(3000);
-        printf("\r\n%d", motors[4].move(-0.99f));
-        HAL_Delay(3000);
-        motors[5].move(0.99f);
-        HAL_Delay(3000);
-        printf("\r\n%d", motors[5].move(-0.99f));
-        HAL_Delay(3000);
-        motors[6].move(0.99f);
-        HAL_Delay(3000);
-        printf("\r\n%d", motors[6].move(-0.99f));
-        HAL_Delay(3000);
-        motors[7].move(0.99f);
-        HAL_Delay(3000);
-        printf("\r\n%d", motors[7].move(-0.99f));
-        HAL_Delay(3000);
-    }
 
     std::array<std::optional<float>, 8> sensor_data;
-    // TxPacket tx_pkt;
-    // tx_pkt.type = SENSOR_MESSAGE;
-    GenericMessage msg{};
-    // float clamped_motors[8] = {};
 
-    //__HAL_TIM_SET_COMPARE(&htim1,2,0);
+
+    Generic_msg received_msg{};
 
     mpu.init();
-    // ms5611.begin();
+    ms5611.begin();
+
+    Ready_msg ready_msg{.sync_byte = 255, .type = READY_MESSAGE};
+
+    while (!cdc.available()) {
+        cdc.write_msg(ready_msg);
+        HAL_Delay(100);
+    }
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
+        if (cdc.available()) {
+            cdc.read_msg(received_msg);
+            // might require delay here
+            cdc.write_msg(ready_msg);
+        }
 
-        // mpu.update();
-        // static u_long last_print_time = HAL_GetTick();
-        // const u_long _now = HAL_GetTick();
-        // if (_now - last_print_time >= 100) {
-        //     last_print_time = _now;
-        //     vec_3 angles{};
-        //     mpu.getEulerAngles(angles);
-        //     printf("\r\n%f", angles.z());
-        // }
-        // HAL_Delay(10);
+        if (HAL_GetTick() - cdc.last_received_time > 100) {
+            gripper_stop();
+            for (auto& motor : motors)
+                motor.stop();
+            while (!cdc.available()) {
+                cdc.write_msg(ready_msg);
+                HAL_Delay(100);
+            }
+        }
 
-        static Message_Type msg_type;
-         if (cdc.available()) {
-             msg_type = cdc.read_msg(msg);
-         }
-         if (msg_type == OPERATION_MESSAGE)
-             test_state =
-                 msg.data.operation_msg.operation_mode ? Test_state::STEPPING : Test_state::OFF;
-
-        //// for testing without controller/////
-        //  if (test_state == Test_state::OFF) {
-        //      if (msg_type == COMMAND_MESSAGE) {
-        //          for (int i = 0; i < 6; i++)
-        //              controller_output[i] = msg.data.command_msg.forces[i] * 4;
-        //          apply_pseudo_inverse(controller_output, clamped_motors);
-        //          Motor::move_motor(motors, clamped_motors);
-        //      }
-        //  }
-        //  int num = 6;
-        //  float arr[8] = {0.6, 0,0,0,0,0,0,0};
-        //  float v[num] = {1,0,0,0,0,0};
-        //  apply_pseudo_inverse(v,arr);
-
-        // Motor::move_motor(motors,arr);
-        // motors[2].move(-0.75);
-
-        //	for (int i = 0; i < 8; i ++) {
-        //		motors[i].move(0.75);
-        //		HAL_Delay(2500);
-        //		motors[i].move(-0.75);
-        //		HAL_Delay(2500);
-        //		motors[i].move(0);
-        // HAL_Delay(2500);
-        //}
-
+        if (cdc.last_received_msg_type == OPERATION_MESSAGE)
+            test_state = received_msg.data.operation_msg.operation_mode ? Test_state::TUNING_MODE : Test_state::OFF;
 
         fetch_sensor_data(sensor_data);
-    
+
         if (test_state == Test_state::OFF) // Normal mode
         {
-            if(msg_type == COMMAND_MESSAGE)
-            {
-                const unsigned char control_byte = msg.data.command_msg.control_byte;
-                for (int i = 0; i < 6; i++)
-                    forces[i] = msg.data.command_msg.forces[i]*4;
+            if (cdc.last_received_msg_type == COMMAND_MESSAGE) {
+                const auto control_byte = received_msg.data.command_msg.control_byte;
 
-                prev = now;
+                prev_controller_time = now;
                 now = HAL_GetTick();
-                float dt = (now - prev) / 1000.0; 
+                float dt = (now - prev_controller_time) / 1000.0;
 
                 for (int i = 0, j = 0; i < 8; i += 2, j++)
-                    if (control_byte & 1 << (7 - j)) { // setpoint
+                    if (control_byte & 1 << (15 - j)) { // setpoint
                         if (j > 0) // angle
-                            controller_output[j + 2] =
-                                controller[j].output(angle_diff(forces[j + 2],
-                                sensor_data[i].value()),
-                                                     0,
-                                                     dt,
-                                                     sensor_data[i + 1].value());
+                            controller_output[j + 2] = controller[j].output(
+                                angle_diff(forces[j + 2], sensor_data[i].value()), 0, dt, sensor_data[i + 1].value());
 
                         else // depth
                             controller_output[j + 2] = controller[j].output(
-                                forces[j + 2], sensor_data[i].value(), dt, sensor_data[i +
-                                1].value());
+                                forces[j + 2], sensor_data[i].value(), dt, sensor_data[i + 1].value());
                     }
                     else {
                         if (forces[j + 2] == 0) // hold position
                             controller_output[j + 2] = controller[j].output(
-                                hold[j], sensor_data[i].value(), dt, sensor_data[i + 1].value());
+                                last_received_setpoints[j], sensor_data[i].value(), dt, sensor_data[i + 1].value());
                         else { // pilot command
-                            controller_output[j + 2] = forces[j + 2];
-                            hold[j] = sensor_data[i].value();
+                            controller_output[j + 2] = forces[j + 2] * 4;
+                            last_received_setpoints[j] = sensor_data[i].value();
                         }
                     }
 
-                // surge
-                controller_output[0] = forces[0];
-                // sway
-                controller_output[1] = forces[1];
-                //grippers
-                HAL_GPIO_WritePin(DCV_1_GPIO_Port,
-                       DCV_1_Pin,
-                       (control_byte & 1 << 3)?GPIO_PIN_SET:GPIO_PIN_RESET);
+                // surge, x
+                controller_output[0] = forces[0] * 4;
+                // sway, y
+                controller_output[1] = forces[1] * 4;
+                // grippers
+                HAL_GPIO_WritePin(
+                    DCV_1_GPIO_Port, DCV_1_Pin, word_read(control_byte, DCVS) ? GPIO_PIN_SET : GPIO_PIN_RESET);
                 HAL_GPIO_WritePin(DCV_2_GPIO_Port,
-                       DCV_2_Pin,
-                       (control_byte & 1 << 2)?GPIO_PIN_SET:GPIO_PIN_RESET);
+                                  DCV_2_Pin,
+                                  word_read(control_byte, static_cast<Control_byte_bit_mask>(DCVS + 1))
+                                      ? GPIO_PIN_SET
+                                      : GPIO_PIN_RESET);
+
+                if (word_read(control_byte, ROT_GRP_EN))
+                    word_read(control_byte, ROT_GRP_EN)
+                        ? word_read(control_byte, ROT_GRP_DIR) ? gripper_up() : gripper_down()
+                        : gripper_stop();
+                else
+                    gripper_stop();
+
+                HAL_GPIO_WritePin(LED_FLASHER_GPIO_Port,
+                                  LED_FLASHER_Pin,
+                                  word_read(control_byte, LED) ? GPIO_PIN_SET : GPIO_PIN_RESET);
             }
 
-            apply_pseudo_inverse(controller_output,motors_buffer);
-            Motor::move_array(motors,motors_buffer);
-            }
-        
-        // HAL_GPIO_WritePin(DCV_1_GPIO_Port,
-        //                DCV_1_Pin,
-        //                GPIO_PIN_RESET);
-        //
-        //
-        //        HAL_GPIO_WritePin(DCV_2_GPIO_Port,
-        //                         DCV_2_Pin,
-        //                    GPIO_PIN_RESET);
-        //
-        //
-        //  HAL_Delay(2000);
-        //  HAL_GPIO_WritePin(DCV_1_GPIO_Port,
-        //              DCV_1_Pin,
-        //              GPIO_PIN_SET);
-        //
-        //
-        // HAL_GPIO_WritePin(DCV_2_GPIO_Port,
-        //                    DCV_2_Pin,
-        //                 GPIO_PIN_SET);
-        // HAL_Delay(2000);
-
+            apply_pseudo_inverse(controller_output, motors_buffer);
+            Motor::move_array(motors, motors_buffer);
+        }
 
         else { // Testing mode
-            Controller_response_msg response;
-            if (last_received_msg_type == TUNING_MESSAGE && test_state == Test_state::OFF) {
-                test_axis = tuning_msg.axis;
+            static uint8_t test_axis = 0;
+            if (cdc.last_received_msg_type == TUNING_MESSAGE) {
+                test_axis = received_msg.data.tuning_msg.axis;
                 if (test_axis == 3)
                     start_yaw = sensor_data[test_axis].value();
-                test_state = Test_state::STEPPING;
+                test_state = Test_state::TUNING_MODE;
             }
 
-            if (test_state == Test_state::STEPPING) {
+            if (test_state == Test_state::TUNING_MODE) {
+                Step_response_msg response{};
                 for (float& i : controller_output)
                     i = 0; // make sure that other axes are off
                 controller_output[test_axis + 2] = 0.4; // any constant value
 
                 if (test_axis) {
-                    if (angle_diff(sensor_data[test_axis*2].value(), start_yaw) >=
-                        max_testing[test_axis]) {
+                    if (angle_diff(sensor_data[test_axis * 2].value(), start_yaw) >= max_testing[test_axis]) {
                         controller_output[test_axis + 2] = 0;
                         test_state = Test_state::DONE;
-                        }
+                    }
                     response.sync_byte = 0xFF;
                     response.type = 6;
                     // response.timestamp=
-                    response.angle = sensor_data[test_axis*2].value();
-                    response.angle_rate = sensor_data[(test_axis *2) +1].value();
+                    response.angle = sensor_data[test_axis * 2].value();
+                    response.angle_rate = sensor_data[(test_axis * 2) + 1].value();
                     // cdc.write_msg()
                 }
                 else if (!test_axis) {
-                    if (sensor_data[test_axis*2].value() >= max_testing[test_axis]) {
+                    if (sensor_data[test_axis * 2].value() >= max_testing[test_axis]) {
                         response.sync_byte = 0xFF;
                         response.type = 6;
-                        response.angle = sensor_data[test_axis*2].value();
+                        response.angle = sensor_data[test_axis * 2].value();
                         response.angle_rate = NULL;
                         // response.timestamp
                         // cdc.write_msg()
                     }
                 }
 
-                if (sensor_data[test_axis*2].value() >= max_testing[test_axis]) {
+                if (sensor_data[test_axis * 2].value() >= max_testing[test_axis]) {
                     controller_output[test_axis + 2] = 0;
                     test_state = Test_state::DONE;
                 }
             }
 
-            if (test_state == Test_state::DONE &&
-                last_received_msg_type == Message_Type::PARAMETERS_MESSAGE) {
-                if (param_msg.pid_type) // angle pid
-                    controller[test_axis].set_angle_pid(param_msg.Kp, param_msg.ki,
-                    param_msg.kd);
+            if (test_state == Test_state::DONE && cdc.last_received_msg_type == Message_Type::PARAMETERS_MESSAGE) {
+                if (received_msg.data.param_msg.pid_type) // angle pid
+                    controller[test_axis].set_angle_pid(
+                        received_msg.data.param_msg.Kp, received_msg.data.param_msg.ki, received_msg.data.param_msg.kd);
                 else // rate pid
-                    controller[test_axis].set_rate_pid(param_msg.Kp, param_msg.ki, param_msg.kd);
-
+                    controller[test_axis].set_rate_pid(
+                        received_msg.data.param_msg.Kp, received_msg.data.param_msg.ki, received_msg.data.param_msg.kd);
                 test_state = Test_state::OFF;
             }
         }
 
 
         ///////////////////send data to GUI/////////////////////
-        TxPacket feedback_pkt;
-        if (HAL_GetTick()- last_send_time>=20) {
+        static Sensor_msg sensor_message{.sync_byte = 255, .type = Message_Type::SENSOR_MESSAGE}; // 3amlin enum zina
+
+        if (HAL_GetTick() - last_send_time >= 20) {
             // motor telemetry
-            feedback_pkt.sync_byte = 0xFF;
-            feedback_pkt.type = 4;
-            feedback_pkt.status = loadStatus();
-            feedback_pkt.depth=sensor_data[0].value();
-            feedback_pkt.pitch=sensor_data[4].value();
-            feedback_pkt.roll=sensor_data[2].value();
-            feedback_pkt.yaw=sensor_data[6].value();
+            sensor_message.status = loadStatus();
+            sensor_message.depth = sensor_data[0].value();
+            sensor_message.pitch = sensor_data[4].value();
+            sensor_message.roll = sensor_data[2].value();
+            sensor_message.yaw = sensor_data[6].value();
 
-               for (int i = 0; i < 8; i++) {
-                   feedback_pkt.motor_speeds[i] = motors_buffer[i] * 255.0f;
-               }
-
-            cdc.write_msg(&feedback_pkt);
+            for (int i = 0; i < 8; i++) {
+                sensor_message.motor_speeds[i] = motors_buffer[i];
+            }
+            cdc.write_msg(sensor_message);
             last_send_time = HAL_GetTick();
         }
 
@@ -537,8 +439,7 @@ void SystemClock_Config(void) {
 
     /** Initializes the CPU, AHB and APB buses clocks
      */
-    RCC_ClkInitStruct.ClockType =
-        RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
     RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
     RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
     RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -564,7 +465,6 @@ void SystemClock_Config(void) {
 void Error_Handler(void) {
     /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
-    printf("inside error handling");
     __disable_irq();
     while (1) {
     }

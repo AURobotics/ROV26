@@ -124,13 +124,7 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
  * @brief Private functions declaration.
  * @{
  */
-volatile uint32_t last_receive_time = 0;
-volatile Command_msg command_pkt = {0};
-volatile uint8_t data_received_flag = 0;
-volatile Operation_Mode_Msg operation_mode_msg = {0};
-volatile Parameter_Msg param_msg = {0};
-volatile Tuning_Msg tuning_msg = {0};
-volatile Message_Type last_received_msg_type = {};
+
 
 __attribute__((section(".noinit"))) volatile uint32_t dfu_flag = 0;
 static int8_t CDC_Init_FS(void);
@@ -269,8 +263,6 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t* Len) {
         NVIC_SystemReset();
     }
 
-    data_received_flag = 1;
-    last_receive_time = HAL_GetTick();
     on_cdc_isr(Buf, *Len);
     
     USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);

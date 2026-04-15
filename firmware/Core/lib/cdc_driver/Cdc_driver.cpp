@@ -5,7 +5,7 @@ Cdc_driver* g_cdc_driver = nullptr;
 extern "C" void on_cdc_isr(uint8_t* buf, uint32_t len) {
     if (g_cdc_driver != nullptr)
         g_cdc_driver->on_data_receive(buf, len);
- }
+}
 
 void Cdc_driver::setup() {
     if (g_cdc_driver == nullptr)
@@ -17,11 +17,12 @@ bool Cdc_driver::available() {
     return m_read_index != m_write_index;
 }
 
-bool Cdc_driver::parse(uint8_t* buf, uint32_t len, GenericMessage& out) {
+bool Cdc_driver::parse(uint8_t* buf, uint32_t len, Generic_msg& out) {
     if (len < 2 || buf[0] != 0xFF)
         return false;
 
     auto type = static_cast<Message_Type>(buf[1]);
+    last_received_msg_type = type;
 
     switch (type) {
     case READY_MESSAGE :
@@ -84,14 +85,11 @@ void Cdc_driver::on_data_receive(uint8_t* buf, uint32_t len) {
     m_write_index = (m_write_index + 1) % BUFFER_SIZE;
 }
 
-Message_Type Cdc_driver::read_msg(GenericMessage& msg) {
+Message_Type Cdc_driver::read_msg(Generic_msg& msg) {
     RawData& slot = m_slots[m_read_index];
-    parse(slot.data, slot.len, msg);      
+    parse(slot.data, slot.len, msg);
     m_read_index = (m_read_index + 1) % BUFFER_SIZE;
+    last_received_time = HAL_GetTick();
     return msg.type;
 }
 
-bool Cdc_driver::write_msg(GenericMessage* msg) {
-    auto result = CDC_Transmit_FS(reinterpret_cast<uint8_t*>(msg), sizeof(GenericMessage));
-    return result == USBD_OK;
-}

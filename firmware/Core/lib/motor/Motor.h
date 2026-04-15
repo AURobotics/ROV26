@@ -14,7 +14,6 @@ class Motor {
 public:
     int val{};
 
-
     explicit constexpr Motor(const pwm p1, const pwm p2) :
         handler_type(HandlerType::PWM), pwm_1(p1), pwm_2(p2) {}
     Motor(const Motor&) = delete;
