@@ -9,7 +9,7 @@ from annotated_types import Ge, Le
 
 
 class Constants:
-    SYNC_BYTE = b"FFFF"
+    SYNC_BYTE = b"FF"
     SYNC_INT = 255
 
 
