@@ -29,7 +29,6 @@ class _RegistryEntry:
 class _SerialDevice:
     _registry: dict[str, _RegistryEntry] = {}
     _connection_lock: threading.RLock = threading.RLock()
-    _fallback_serial: serial.Serial = serial.Serial()
 
     _serial: serial.Serial | None
     _settings: dict
@@ -132,10 +131,17 @@ class _SerialDevice:
 
     def __getattr__(self, name):
         with self._connection_lock:
-            if self._serial:
-                return getattr(self._serial, name)
-            else:
-                return getattr(self._fallback_serial, name)
+            try:
+                if self._serial:
+                    ret = getattr(self._serial, name)
+                    _ = self._serial.is_open
+                    return ret
+                else:
+                    return getattr(self._fallback_serial, name)
+            except:
+                if self._serial:
+                    self.port = None
+                raise
 
 
 if TYPE_CHECKING:
