@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QSize, QTimer, Qt, Slot, Signal
 from string import Template
 from console.comms.stm32 import Stm32
-from console.core.relative_path import get_base_path
+from console.settings.relative_path import get_base_path
 from console.gui.common.combobox import ClickableComboBox
 from console.gui.common.tab import GuiTab
 from core.concurrent.callback_worker import CallbackWorker

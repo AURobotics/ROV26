@@ -9,8 +9,8 @@ from console.comms.manager import CommunicationManager
 from console.gui.main_window import MainWindow
 from console.gui.splash_screen import LoadingSplash
 
-import console.core.settings as settings
-import console.core.relative_path as relative_path
+import console.settings as settings
+import console.settings.relative_path as relative_path
 
 
 class ConsoleApplication(QApplication):

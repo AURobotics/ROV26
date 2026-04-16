@@ -2,62 +2,25 @@
 
 ## Development Dependencies
 
-### uv: project management
-Make sure you install uv [\[official instructions\]](https://docs.astral.sh/uv/getting-started/installation/):
+### Pixi: project management
+Make sure you install Pixi [\[official instructions\]](https://pixi.prefix.dev/latest/installation/):
 
 Windows:
 ```ps1
-winget install --id astral-sh.uv
+winget install prefix-dev.pixi
 ```
 
 Linux/ MacOS:
 ```sh
-curl -LsSf https://astral.sh/uv/install.sh | sh
+curl -fsSL https://pixi.sh/install.sh | sh
 ```
 or
 ```sh
-wget -qO- https://astral.sh/uv/install.sh | sh
+wget -qO- https://pixi.sh/install.sh | sh
 ```
 
-### Github CLI
-
-If your platform has supported `opencv-python` wheels released under [releases](https://github.com/AURobotics/ROV26/releases), this step is necessary for the next section to automatically get the wheels for you.
-
-If you opt to manually download the suitable wheel under [wheels](./wheels/), you can skip this step and peep into your platform's `setup_venv` script under [scripts](./scripts) to remove all lines related to obtaining `opencv-python` wheels.
-
-Windows:
-```ps1
-winget install --id GitHub.cli
-```
 
 **Make sure to restart your shell or IDE to refresh any PATH updates**
-
-## Python Dependencies
-
-Due to how we handle `opencv-python` and `gstreamer` support, during the initial venv setup, you should follow the steps corresponding to your platform:
-
-### Windows
-
-```ps1
-Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-.\scripts\setup_venv.ps1
-```
-
-**If the repository is private** you must login with Github CLI at least once before running the setup_venv script
-```sh
-gh auth login
-```
-
-This gets opencv builds from the [releases](https://github.com/AURobotics/ROV26/releases)
-
-## Linux
-You must download `opencv-python` from your distribution's package repository along with the needed `gstreamer` plugins.
-
-The recommended workflow is setting up an `ubuntu:latest` container and installing the following packages:
-```sh
-apt install -y curl vim gcc g++ build-essential git \
-python3-opencv gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-vaapi  gstreamer1.0-tools libgstreamer1.0-dev
-```
 
 For `distrobox` users, here is an example of a good container setup for this project:
 ```sh
@@ -65,14 +28,10 @@ distrobox-create --image ubuntu:latest -n CUSTOM_NAME --home CUSTOM_HOME --addit
 ```
 you can optionally append `--nvidia` to the very end of the command for Nvidia GPU support
 
-After setting up the system, you must run:
-```sh
-./scripts/setup_venv.sh
-```
 
 ## IDE Setup
 
-Remember to choose your `.venv`'s interpreter or choose `uv` as the virtual environment manager in your IDE.
+Remember to choose your `.pixi/`'s interpreter or choose `pixi` as the virtual environment manager in your IDE.
 
 ### Visual Studio Code (recommended)
 You will find recommended extensions and settings loaded into your IDE if [.vscode](./.vscode/) is loaded (automatically by opening this specific project's folder).

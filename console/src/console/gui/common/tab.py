@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QWidget
 
 class GuiTab(QWidget):
     attention_needed = Signal(bool)
+    settings_changed = Signal()
 
     @property
     def needs_attention(self) -> bool:
