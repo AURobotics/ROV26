@@ -7,28 +7,32 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal, Slot
 
+from comms.comms import Comms
 from gui.pallete import PALETTE
 from gui.message_bar import MessageBarWidget
 from gui.graph_viewer import GraphWidget
 from gui.column_selector import ColumnSelector
 
 # for testing the float tab
-class DemoWindow(QMainWindow):
+class MainWindow(QMainWindow):
+    _sig_post_message = Signal(str, str)
+    _sig_load_csv     = Signal(str)
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Float")
         self.resize(1000, 680)
         self.setStyleSheet(f"background: {PALETTE['bg']};")
 
-        self._sig_post_message = Signal(str, str)
-        self._sig_load_csv     = Signal(str)
+        self.comms = Comms()
+
         self._csv_data: list[dict] = []
         self._columns: list[str] = []
         self._col_selector: ColumnSelector | None = None
         self._build_ui()
 
         QTimer.singleShot(800,  lambda: self.post_message("System initialised.", "INFO"))
-
+        
     # ── UI construction ───────────────────────────────────────────────────────
     def _build_ui(self):
         # 1. Setup Central Widget
@@ -102,6 +106,11 @@ class DemoWindow(QMainWindow):
         self._clear_btn.clicked.connect(self._on_clear_clicked)
         layout.addWidget(self._clear_btn)
 
+        self._end_comms_btn = self._tool_btn("End Comms", PALETTE["msg_warn"])
+        self._end_comms_btn.clicked.connect(self._on_end_comms_clicked)
+        layout.addWidget(self._end_comms_btn)
+
+
         return bar
 
     def _tool_btn(self, text: str, color: str) -> QPushButton:
@@ -126,6 +135,7 @@ class DemoWindow(QMainWindow):
             }}
         """)
         return btn
+        
 
     # ── CSV loading ───────────────────────────────────────────────────────────
     def _on_load_clicked(self):
@@ -195,6 +205,9 @@ class DemoWindow(QMainWindow):
             self._col_selector = None
             
         self.post_message("Data cleared.", "INFO")
+
+    def _on_end_comms_clicked(self):
+        self.comms.end_comms()
 
     # ── Message API ───────────────────────────────────────────────────────────
     @Slot(str, str)
