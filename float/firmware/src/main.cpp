@@ -38,25 +38,38 @@ float depthIncrement = 0.1;
 MS5611 pressureSensor = MS5611();
 float depth = 0.0f;
 
-enum State
+enum Led
 {
     RUNNING = 19,
-    UPLOADING = 5, // Collecting data and doing operations
-    ERROR = 18     // Uploading data to MQTT broker
+    UPLOADING = 5,  // Collecting data and doing operations
+    CONNECTION = 18 // Uploading data to MQTT broker
 };
+Led currentState;
+constexpr int GATE = 23; // pin set high to retain power, set low to shut down
 
 #define MAX_WIFI_RETRY_COUNT 5
+
+void initPins()
+{
+    pinMode(RUNNING, OUTPUT);
+    pinMode(UPLOADING, OUTPUT);
+    pinMode(CONNECTION, OUTPUT);
+    pinMode(GATE, OUTPUT);
+}
 
 void setup()
 {
     Serial.begin(115200);
+    initPins();
 
     if (!connectToNetwork())
     {
+        digitalWrite(CONNECTION, LOW); // turn off connection LED
         Serial.println("Failed to connect to network");
         delay(1000);
         ESP.restart();
     }
+    digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
 
     // OTA
     setupOTA();
@@ -66,19 +79,27 @@ void setup()
     {
         Serial.println("set up as Access Point unintentionally");
         otaupdate(); // Handle OTA updates
+
+        // flucctualting led if AP
+        digitalWrite(CONNECTION, HIGH);
         myDelay(1000);
+        digitalWrite(CONNECTION, LOW);
+
         if (connectToWiFi(WIFI_SSID, WIFI_PASSWORD)) // try to connect to WiFi once than pass through otupdate if false
         {
             break;
         }
     }
+    digitalWrite(RUNNING, HIGH); // turn on running LED to indicate device is running and connected to network
 
     // setup and calibrate pressure sensor
     // COMMENTING OUT SENSOR LOGIC FOR TESTING WITHOUT SENSOR ############################
     // if (!pressureSensor.begin())
     // {
-    //     Serial.println("Failed to initialize MS5611 sensor!");
-    //     myDelay(1000);
+    //     Serial.println("Failed to initialize MS5611 sensor!, if failed after 30 seconds, restarting...");
+    //     // Absoute ERROR - all LEDs on
+    //     digitalWrite(UPLOADING, HIGH);
+    //     myDelay(30000);
     //     if(!pressureSensor.begin()) // try again before restarting
     //     {
     //         ESP.restart();
@@ -92,8 +113,10 @@ void setup()
     // Start the sequence
     if (!store_data_setup())
     {
-        Serial.println("Failed to setup data storage!");
-        myDelay(1000);
+        Serial.println("Failed to setup data storage!, if failed after 30 seconds, restarting...");
+        // Absoute ERROR - all LEDs on
+        digitalWrite(UPLOADING, HIGH);
+        myDelay(30000);
         if (!store_data_setup()) // try again before restarting
         {
             ESP.restart();
@@ -103,6 +126,9 @@ void setup()
             Serial.println("Data storage setup successful on second attempt");
         }
     }
+    digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
+    digitalWrite(UPLOADING, LOW);   // turn on uploading LED to indicate device is collecting data and doing operations
+    currentState = RUNNING;
 
     MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
     MqttManager.loop(); // checks for mqtt connection and reconnects if needed
@@ -116,14 +142,19 @@ void loop()
 {
     if (WiFi.status() != WL_CONNECTED)
     {
+        digitalWrite(CONNECTION, LOW); // turn off connection LED
         Serial.println("WiFi connection lost. Reconnecting...");
         WiFi.reconnect();
+    }
+    else
+    {
+        digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
     }
 
     // Handle OTA updates
     otaupdate();
 
-    if (currentState == COLLECTING)
+    if (currentState == RUNNING)
     {
         Serial.println("Collecting data...");
 
@@ -175,6 +206,7 @@ void loop()
         // Ensure WiFi is still connected before checking MQTT state
         if (WiFi.status() != WL_CONNECTED)
         {
+            digitalWrite(CONNECTION, LOW); // turn off connection LED
             if (!WiFi.reconnect())
             {
                 WiFi.disconnect();
@@ -186,18 +218,26 @@ void loop()
                 }
             }
 
+            digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
+
             // if mode is AP and AS_ACCESS_POINT is false then there is a problem
             while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
             {
                 Serial.println("set up as Access Point unintentionally");
                 otaupdate(); // Handle OTA updates
+
+                // flucctualting led if AP
+                digitalWrite(CONNECTION, HIGH);
                 myDelay(1000);
+                digitalWrite(CONNECTION, LOW);
+
                 if (connectToWiFi(WIFI_SSID, WIFI_PASSWORD)) // try to connect to WiFi once than pass through otupdate if false
                 {
                     break;
                 }
             }
         }
+        digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
 
         // Handle MQTT communication
         MqttManager.loop(); // checks for mqtt connection and reconnects if needed
