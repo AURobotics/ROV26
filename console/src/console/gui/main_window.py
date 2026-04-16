@@ -62,7 +62,6 @@ class MainWindow(QMainWindow):
         self._toolbar.setMovable(False)
         self._toolbar.setStyleSheet("""
             QToolBar {
-                background-color: #2b2b2b;
                 border-right: 1px solid #555555;
                 spacing: 10px;
                 padding: 5px;
