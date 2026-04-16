@@ -11,6 +11,33 @@ from paho.mqtt import client as mqtt_client
 from paho.mqtt.enums import CallbackAPIVersion
 from paho.mqtt.client import MQTTMessage
 
+class mqtt_message(ABC):
+    def __init__(self):
+        self.args: Dict[str, Any] = {}
+
+    def add_variable(self, name: str, value: Any):
+        self.args[name] = value
+
+    def set_variable(self, name: str, value: Any):
+        if name in self.args:
+            self.args[name] = value
+        else:
+            raise KeyError(f"Variable '{name}' not found in message arguments.")
+
+    def encode(self):
+        """Encode topic data to a dictionary for MQTT payload"""
+        return json.dumps(self.args)  # SAFE - only encodes JSON serializable data
+    
+    def decode(self, message: MQTTMessage):
+        """Decode MQTT payload to topic data"""
+        # we assume the payload is a string representation of a dictionary because that's how we encode it
+        payload = message.payload.decode()
+        try:
+            self.args = json.loads(payload)  # SAFE - only parses JSON
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON payload: {e}, payload: {payload}")
+
+
 # class holding data for connection
 class mqtt():
     def __init__(self, address = 'localhost', port = 1883, client_id = None, username = None, password = None):
@@ -140,31 +167,6 @@ class topic():
         else:
             print(f"Handler not found for {self.topic}")
 
-class mqtt_message(ABC):
-    def __init__(self):
-        self.args: Dict[str, Any] = {}
-
-    def add_variable(self, name: str, value: Any):
-        self.args[name] = value
-
-    def set_variable(self, name: str, value: Any):
-        if name in self.args:
-            self.args[name] = value
-        else:
-            raise KeyError(f"Variable '{name}' not found in message arguments.")
-
-    def encode(self):
-        """Encode topic data to a dictionary for MQTT payload"""
-        return json.dumps(self.args)  # SAFE - only encodes JSON serializable data
-    
-    def decode(self, message: MQTTMessage):
-        """Decode MQTT payload to topic data"""
-        # we assume the payload is a string representation of a dictionary because that's how we encode it
-        payload = message.payload.decode()
-        try:
-            self.args = json.loads(payload)  # SAFE - only parses JSON
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON payload: {e}, payload: {payload}")
 
 
 """
