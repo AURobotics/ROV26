@@ -61,6 +61,7 @@ void setup()
 {
     initPins();
     digitalWrite(GATE, HIGH); // set high to retain power
+    subToMqttTopicToEndRun();
 
     Serial.begin(115200);
 
