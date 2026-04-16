@@ -9,7 +9,6 @@ platforms = ["linux-64","win-64"]
 version = "0.1.0"
 
 [dependencies]
-ultralytics = ">=8.4.38,<9"
 python = ">=3.11,<3.14"
 pyside6 = ">=6.11.0,<7"
 opencv = ">=4.13.0,<5"
