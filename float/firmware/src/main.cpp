@@ -23,9 +23,9 @@ const char *MQTT_PASSWORD = nullptr; // Optional
 // network settings
 bool AS_ACCESS_POINT = false;
 
-void connectToNetwork();
-bool connectToWiFi(const char *ssid, const char *password);
-bool initAccessPoint(const char *ssid, const char *password);
+bool connectToNetwork(bool asAccessPoint = false);
+bool connectToWiFi(const char *ssid, const char *password, int maxRetries = 0);
+bool initAccessPoint(const char *ssid, const char *password, int maxRetries = 0);
 void myDelay(unsigned long);
 
 // ArduinoMqttManager MqttManager;
@@ -34,38 +34,44 @@ IDFMQTTManager MqttManager;
 // depths values for testing ######################################
 float depthIncrement = 0.1;
 
-// Flag to ensure MQTT setup is done only once
-bool wifiState = false;
-
 // pressure sensor
 MS5611 pressureSensor = MS5611();
 float depth = 0.0f;
 
 enum State
 {
-    IDLE,
-    COLLECTING, // Collecting data and doing operations
-    UPLOADING   // Uploading data to MQTT broker
+    RUNNING = 19,
+    UPLOADING = 5, // Collecting data and doing operations
+    ERROR = 18     // Uploading data to MQTT broker
 };
-State currentState = IDLE;
 
 #define MAX_WIFI_RETRY_COUNT 5
-int wifiRetryCount = 0;
 
 void setup()
 {
     Serial.begin(115200);
 
-    // OTA
-    // setupOTA();
+    if (!connectToNetwork())
+    {
+        Serial.println("Failed to connect to network");
+        delay(1000);
+        ESP.restart();
+    }
 
-    // @attention - Logic to change state is not implemented yet
-    // COMMENTING OUT WAITING LOGIC FOR TESTING WITHOUT SENSOR ############################
-    // while (currentState == IDLE)
-    // {
-    //     // Wait for sequence to complete
-    //     myDelay(50);
-    // }
+    // OTA
+    setupOTA();
+
+    // if mode is AP and AS_ACCESS_POINT is false then there is a problem
+    while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
+    {
+        Serial.println("set up as Access Point unintentionally");
+        otaupdate(); // Handle OTA updates
+        myDelay(1000);
+        if (connectToWiFi(WIFI_SSID, WIFI_PASSWORD)) // try to connect to WiFi once than pass through otupdate if false
+        {
+            break;
+        }
+    }
 
     // setup and calibrate pressure sensor
     // COMMENTING OUT SENSOR LOGIC FOR TESTING WITHOUT SENSOR ############################
@@ -98,23 +104,24 @@ void setup()
         }
     }
 
-    connectToNetwork();
     MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
     MqttManager.loop(); // checks for mqtt connection and reconnects if needed
     Serial.println("sending: \"Device started and about to collect data\"");
     MqttManager.publish("float/status", "Device started and about to collect data");
     Serial.println("sent initial status message to MQTT broker");
     MqttManager.disconnect();
-    WiFi.disconnect();
-
-    // for testing without sensor, start sequence immediately
-    currentState = COLLECTING; // ###########################################################
 }
 
 void loop()
 {
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        Serial.println("WiFi connection lost. Reconnecting...");
+        WiFi.reconnect();
+    }
+
     // Handle OTA updates
-    // otaupdate();
+    otaupdate();
 
     if (currentState == COLLECTING)
     {
@@ -165,86 +172,76 @@ void loop()
         // MQTT setup
         Serial.println("Connecting to MQTT broker...");
 
-        if (!wifiState)
-        {
-            connectToNetwork();
-            MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
-            wifiState = true;
-        }
-
         // Ensure WiFi is still connected before checking MQTT state
         if (WiFi.status() != WL_CONNECTED)
         {
-            wifiState = false; // reset MQTT state to trigger reconnection logic
-            wifiRetryCount++;
-            Serial.println("WiFi connection lost. Reconnecting...");
-            WiFi.reconnect();
-            myDelay(500);
-
-            if (WiFi.status() == WL_CONNECTED)
+            if (!WiFi.reconnect())
             {
-                MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
-                wifiRetryCount = 0; // reset retry count on successful reconnection
-                wifiState = true;
-            }
-            else if (wifiRetryCount >= MAX_WIFI_RETRY_COUNT)
-            {
-                Serial.println("Failed to reconnect after multiple attempts. Restarting network...");
-                myDelay(5000);
                 WiFi.disconnect();
-                connectToNetwork();
-
-                if (WiFi.status() == WL_CONNECTED)
+                if (!connectToNetwork())
                 {
-                    MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
-                    wifiRetryCount = 0; // reset retry count on successful reconnection
-                    wifiState = true;
+                    Serial.println("Failed to connect to network");
+                    delay(1000);
+                    ESP.restart(); // mothing we can do if we can't connect to network, restart and try again
+                }
+            }
+
+            // if mode is AP and AS_ACCESS_POINT is false then there is a problem
+            while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
+            {
+                Serial.println("set up as Access Point unintentionally");
+                otaupdate(); // Handle OTA updates
+                myDelay(1000);
+                if (connectToWiFi(WIFI_SSID, WIFI_PASSWORD)) // try to connect to WiFi once than pass through otupdate if false
+                {
+                    break;
                 }
             }
         }
 
-        if (wifiState)
-        {
-            // Handle MQTT communication
-            MqttManager.loop(); // checks for mqtt connection and reconnects if needed
+        // Handle MQTT communication
+        MqttManager.loop(); // checks for mqtt connection and reconnects if needed
 
-            Serial.println("sending Company Number and file to mqtt");
+        Serial.println("sending Company Number and file to mqtt");
 
-            Serial.print("Mqtt connection is: ");
-            Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
+        Serial.print("Mqtt connection is: ");
+        Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
 
-            MqttManager.publish("float/data/credential", COMPANY_NUMBER);
-            MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
-            myDelay(5000); // Send data every 5 seconds
-        }
+        MqttManager.publish("float/data/credential", COMPANY_NUMBER);
+        MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
+        myDelay(5000); // Send data every 5 seconds
     }
 }
 
-void connectToNetwork()
+bool connectToNetwork(bool asAccessPoint)
 {
-    if (AS_ACCESS_POINT)
+    if (asAccessPoint)
     {
-        initAccessPoint(WIFI_SSID, WIFI_PASSWORD);
+        initAccessPoint(WIFI_SSID, WIFI_PASSWORD, MAX_WIFI_RETRY_COUNT);
     }
     else
     {
-        if (!connectToWiFi(WIFI_SSID, WIFI_PASSWORD))
+        if (!connectToWiFi(WIFI_SSID, WIFI_PASSWORD, MAX_WIFI_RETRY_COUNT))
         {
             Serial.println("Failed to connect to WiFi -> trying to set up as Access Point");
             AS_ACCESS_POINT = true;
-            initAccessPoint(WIFI_SSID, WIFI_PASSWORD);
+            if (!initAccessPoint(WIFI_SSID, WIFI_PASSWORD, MAX_WIFI_RETRY_COUNT))
+            {
+                Serial.println("Failed to initialize Access Point");
+                return false;
+            }
         }
     }
+    return true;
 }
 
-bool connectToWiFi(const char *ssid, const char *password)
+bool connectToWiFi(const char *ssid, const char *password, int maxRetries)
 {
     Serial.print("Connecting to WiFi");
 
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
 
-    int maxRetries = 3;
     int retryCount = 0;
 
     while (retryCount < maxRetries)
@@ -270,14 +267,6 @@ bool connectToWiFi(const char *ssid, const char *password)
         Serial.println("status: " + String(WiFi.status()));
         retryCount++;
         Serial.printf("\nConnection failed. Retry %d of %d...\n", retryCount, maxRetries);
-
-        WiFi.disconnect();
-        myDelay(1000);
-        WiFi.mode(WIFI_OFF);
-        myDelay(500);
-        WiFi.mode(WIFI_STA);
-        myDelay(500);
-        WiFi.begin(ssid, password); // restart for next retry
     }
 
     Serial.println("\nWiFi connection failed after all retries!");
@@ -290,12 +279,12 @@ void myDelay(unsigned long ms)
     while (millis() - start < ms)
     {
         // Handle OTA updates during delay
-        // otaupdate();
+        otaupdate();
         delay(100); // Short delay to prevent watchdog timer reset
     }
 }
 
-bool initAccessPoint(const char *ssid, const char *password)
+bool initAccessPoint(const char *ssid, const char *password, int maxRetries)
 {
     IPAddress local_IP(192, 168, 1, 22);
     IPAddress gateway(192, 168, 1, 5);
@@ -313,10 +302,9 @@ bool initAccessPoint(const char *ssid, const char *password)
         Serial.println("OK");
     }
 
-    int maxAttempts = 3; // try multiple times to start AP (sometimes first attempt fails)
-    for (int attempt = 1; attempt <= maxAttempts; attempt++)
+    for (int attempt = 1; attempt <= maxRetries; attempt++)
     {
-        Serial.printf("Starting Access Point (attempt %d of %d)... ", attempt, maxAttempts);
+        Serial.printf("Starting Access Point (attempt %d of %d)... ", attempt, maxRetries);
 
         if (WiFi.softAP(ssid, password))
         {
@@ -328,7 +316,7 @@ bool initAccessPoint(const char *ssid, const char *password)
         }
 
         Serial.println("FAILED!");
-        if (attempt < maxAttempts)
+        if (attempt < maxRetries)
         {
             myDelay(1000);
         }
