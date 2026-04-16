@@ -1,11 +1,11 @@
 import os
 import csv
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QFileDialog, QFrame,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
+from PySide6.QtCore import Qt, Signal, Slot
 
 # from gui.test import ColumnSelector
 from gui.pallete import PALETTE
@@ -22,8 +22,8 @@ class DataViewerTab(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._sig_post_message = pyqtSignal(str, str)
-        self._sig_load_csv     = pyqtSignal(str)
+        self._sig_post_message = Signal(str, str)
+        self._sig_load_csv     = Signal(str)
         self._csv_data: list[dict] = []
         self._columns: list[str] = []
         self._col_selector: ColumnSelector | None = None
@@ -128,7 +128,7 @@ class DataViewerTab(QWidget):
         if path:
             self.load_csv(path)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def load_csv(self, path: str):
         """Public API: load a CSV file by path."""
         try:
@@ -192,7 +192,7 @@ class DataViewerTab(QWidget):
         self.post_message("Data cleared.", "INFO")
 
     # ── Message API ───────────────────────────────────────────────────────────
-    @pyqtSlot(str, str)
+    @Slot(str, str)
     def post_message(self, text: str, level: str = "INFO"):
         """Public API: push a message into the message bar."""
         self._msg_bar.post(text, level)

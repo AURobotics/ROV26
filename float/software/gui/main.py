@@ -1,6 +1,6 @@
 import sys
 
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 
 from gui.float_tab import DataViewerTab
 from gui.main_window import DemoWindow
