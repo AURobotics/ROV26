@@ -9,10 +9,12 @@
 #include <ms5611.h>
 
 #define COMPANY_NUMBER "AU Robotics"
+//test OTA
+//const int ledPin = 2;
 
 // WiFi credentials
-const char *WIFI_SSID = "";
-const char *WIFI_PASSWORD = "";
+const char *WIFI_SSID = "realme 12";
+const char *WIFI_PASSWORD = "12345678";
 
 // MQTT broker settings
 const char *MQTT_BROKER = "192.168.1.9";
@@ -57,8 +59,11 @@ void setup()
     Serial.begin(115200);
 
     // OTA
-    // setupOTA();
-
+    setupOTA(WIFI_SSID, WIFI_PASSWORD);
+    Serial.println("\nConnected! IP address: " + WiFi.localIP().toString());
+    Serial.println("OTA Ready");
+    //TEST OTA
+    //pinMode(ledPin, OUTPUT);
     // @attention - Logic to change state is not implemented yet
     // COMMENTING OUT WAITING LOGIC FOR TESTING WITHOUT SENSOR ############################
     // while (currentState == IDLE)
@@ -114,51 +119,58 @@ void setup()
 void loop()
 {
     // Handle OTA updates
-    // otaupdate();
+     otaupdate();
+     //TEST OTA
+    /* static unsigned long ledTimer = 0;
+     if (millis() - ledTimer >= 1000)
+     {
+         ledTimer = millis();
+         digitalWrite(ledPin, !digitalRead(ledPin)); // Toggle LED
+     }
+    /**************/
+     if (currentState == COLLECTING)
+     {
+         Serial.println("Collecting data...");
 
-    if (currentState == COLLECTING)
-    {
-        Serial.println("Collecting data...");
+         // To store depth per time
+         store_data_loop();
 
-        // To store depth per time
-        store_data_loop();
+         // COMMENTING OUT SENSOR LOGIC FOR TESTING WITHOUT SENSOR ############################
+         // depth = pressureSensor.getDepth();
+         // setDepth(depth);
 
-        // COMMENTING OUT SENSOR LOGIC FOR TESTING WITHOUT SENSOR ############################
-        // depth = pressureSensor.getDepth();
-        // setDepth(depth);
+         // For testing depth changes without sensor #################################
+         if (abs(depth - getCurrentTarget()) < 0.05)
+         {
+             Serial.println("At target depth, holding...");
+             setDepth(depth);
+             myDelay(1000); // Wait for 1 second
+             setDepth(depth);
+             myDelay(1000);
+             setDepth(depth);
+         }
+         else if (depth > getCurrentTarget())
+         {
+             depth -= depthIncrement; // Move slightly below target
+         }
+         else
+         {
+             depth += depthIncrement;
+         }
+         setDepth(depth);
 
-        // For testing depth changes without sensor #################################
-        if (abs(depth - getCurrentTarget()) < 0.05)
-        {
-            Serial.println("At target depth, holding...");
-            setDepth(depth);
-            myDelay(1000); // Wait for 1 second
-            setDepth(depth);
-            myDelay(1000);
-            setDepth(depth);
-        }
-        else if (depth > getCurrentTarget())
-        {
-            depth -= depthIncrement; // Move slightly below target
-        }
-        else
-        {
-            depth += depthIncrement;
-        }
-        setDepth(depth);
+         Serial.print("Current Target: ");
+         Serial.println(getCurrentTarget());
+         Serial.print("Current Depth: ");
+         Serial.println(depth);
 
-        Serial.print("Current Target: ");
-        Serial.println(getCurrentTarget());
-        Serial.print("Current Depth: ");
-        Serial.println(depth);
+         myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency ############################################
 
-        myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency ############################################
-
-        if (isComplete())
-        {
-            Serial.println("Data collection complete. Transitioning to UPLOADING state...");
-            currentState = UPLOADING;
-        }
+         if (isComplete())
+         {
+             Serial.println("Data collection complete. Transitioning to UPLOADING state...");
+             currentState = UPLOADING;
+         }
     }
     else if (currentState == UPLOADING) // keep sending data to MQTT broker every 5 seconds till shutdown
     {
@@ -290,7 +302,7 @@ void myDelay(unsigned long ms)
     while (millis() - start < ms)
     {
         // Handle OTA updates during delay
-        // otaupdate();
+         //otaupdate();
         delay(100); // Short delay to prevent watchdog timer reset
     }
 }
