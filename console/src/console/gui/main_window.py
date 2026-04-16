@@ -27,7 +27,16 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("ROV Console")
         ports = [5000, 5002, 5004]
-        pipelines = [0, 0, 0]
+        pipelines = [
+            f"udpsrc address=239.1.1.1 port={port} ! "
+            "application/x-rtp, payload=96 ! "
+            "rtph264depay ! "
+            "h264parse ! "
+            "avdec_h264 ! "
+            "videoconvert ! "
+            "appsink"
+            for port in ports
+        ]
         cam1 = VideoStream(pipelines[0])
         cam2 = VideoStream(pipelines[1])
         cam3 = VideoStream(pipelines[2])
