@@ -31,7 +31,7 @@ class MessageBarWidget(QWidget):
     def __init__(self, max_messages: int = 200, parent=None):
         super().__init__(parent)
         self._messages: deque[MessageEntry] = deque(maxlen=max_messages)
-        self.setFixedHeight(110)
+        self.setFixedHeight(180)
         self.setStyleSheet(f"""
             background: {PALETTE['msg_bg']};
             border-top: 1px solid {PALETTE['border']};

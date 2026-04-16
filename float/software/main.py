@@ -1,19 +1,17 @@
 # main.py
 import sys
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QObject, pyqtSignal, QTimer
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QObject, Signal, QTimer
 
 from comms.file_receiver import file_receiver
 from comms.main import MAIN_TOPIC_NAME, SECONDARY_TOPIC_NAME
 from comms.mqtt import topic, mqtt, mqtt_message
 from gui.main_window import DemoWindow
-from gui.float_tab import DataViewerTab
 
 app = QApplication(sys.argv)
 app.setStyle("Fusion")
 
-float_tab = DataViewerTab()
-win = DemoWindow(float_tab)
+win = DemoWindow()
 win.show()
 
 mqtt_client = mqtt("localhost", 1883)
@@ -21,9 +19,9 @@ mqtt_client = mqtt("localhost", 1883)
 # Create a signal proxy/bridge that lives in the main thread
 class MQTTSignalBridge(QObject):
     """Bridge to safely emit signals from MQTT callbacks to Qt main thread."""
-    status_signal = pyqtSignal(str)
-    company_number_signal = pyqtSignal(str)
-    file_complete_signal = pyqtSignal()
+    status_signal = Signal(str)
+    company_number_signal = Signal(str)
+    file_complete_signal = Signal()
     
     def __init__(self):
         super().__init__()
@@ -32,10 +30,10 @@ class MQTTSignalBridge(QObject):
 bridge = MQTTSignalBridge()
 
 # Connect bridge signals to float_tab slots
-bridge.status_signal.connect(lambda msg: float_tab.post_message(msg, "OK"))
-bridge.company_number_signal.connect(lambda msg: float_tab.post_message(msg, "OK"))
-bridge.file_complete_signal.connect(lambda: float_tab.post_message("CSV file received", "OK"))
-bridge.file_complete_signal.connect(lambda: float_tab.load_csv("log.csv"))
+bridge.status_signal.connect(lambda msg: win.post_message(msg, "OK"))
+bridge.company_number_signal.connect(lambda msg: win.post_message(msg, "OK"))
+bridge.file_complete_signal.connect(lambda: win.post_message("CSV file received", "OK"))
+bridge.file_complete_signal.connect(lambda: win.load_csv("log.csv"))
 
 # MQTT handlers
 class StatusHandler(mqtt_message):
