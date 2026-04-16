@@ -21,6 +21,7 @@ wget -qO- https://pixi.sh/install.sh | sh
 
 
 **Make sure to restart your shell or IDE to refresh any PATH updates**
+**Windows users may need to restart the system once at this point**
 
 For `distrobox` users, here is an example of a good container setup for this project:
 ```sh
@@ -28,6 +29,12 @@ distrobox-create --image ubuntu:latest -n CUSTOM_NAME --home CUSTOM_HOME --addit
 ```
 you can optionally append `--nvidia` to the very end of the command for Nvidia GPU support
 
+
+## Running the code
+At any point if you need to start the gui, simply run:
+```sh
+pixi run console
+```
 
 ## IDE Setup
 
