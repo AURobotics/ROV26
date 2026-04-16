@@ -77,7 +77,6 @@ void IDFMQTTManager::loop(bool pollMqttConnection)
             {
                 _mqttClient->subscribe(entry.first, entry.second);
             }
-
         }
     }
 }
@@ -163,4 +162,14 @@ void IDFMQTTManager::disconnect()
         delete _mqttClient;
         _mqttClient = nullptr;
     }
+}
+
+bool IDFMQTTManager::setCallbackOnMessage(std::function<void(const std::string &topic, const std::string &payload)> callback)
+{
+    if (_mqttClient != nullptr)
+    {
+        _mqttClient->setOnMessage(callback);
+        return true;
+    }
+    return false;
 }

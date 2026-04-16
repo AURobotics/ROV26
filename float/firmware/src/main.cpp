@@ -59,8 +59,10 @@ void initPins()
 
 void setup()
 {
-    Serial.begin(115200);
     initPins();
+    digitalWrite(GATE, HIGH); // set high to retain power
+
+    Serial.begin(115200);
 
     if (!connectToNetwork())
     {
@@ -364,4 +366,29 @@ bool initAccessPoint(const char *ssid, const char *password, int maxRetries)
 
     Serial.println("ERROR: Could not start Access Point!");
     return false;
+}
+
+void subToMqttTopicToEndRun()
+{
+    MqttManager.setCallbackOnMessage([](const std::string &topic, const std::string &payload)
+                                     {
+        Serial.print("Received message on topic: ");
+        Serial.print(topic.c_str());
+        Serial.print(" with payload: [");
+        Serial.print(payload.c_str());
+        Serial.println("]");
+
+        if (topic == "float/end")
+        {
+            if(payload == "shutdown")
+            {
+                Serial.println("Received shutdown command. Ending run...");
+                ESP.restart(); // restart to end the run
+            }
+            else
+            {
+                Serial.println("Received unknown command on float/end topic");
+            }
+        } });
+    MqttManager.subscribe("float/end", 1);
 }
