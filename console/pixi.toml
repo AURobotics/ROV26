@@ -1,24 +1,22 @@
 [workspace]
 authors = ["Youssef Samy <office.youssefkassem@gmail.com>"]
-channels = ["conda-forge"]
+channels = [
+    "https://prefix.dev/aurobotics",
+    "conda-forge"
+]
 name = "console"
 platforms = ["linux-64","win-64"]
 version = "0.1.0"
+
 
 [tasks]
 start = "console"
 
 [dependencies]
-ultralytics = ">=8.4.37,<9"
+ultralytics = ">=8.4.38,<9"
 python = ">=3.12,<3.13"
+pyside6 = ">=6.11.0,<7"
 opencv = ">=4.13.0,<5"
-pyside6 = ">=6.10.2,<7"
-gstreamer = ">=1.28.2,<2"
-gst-plugins-base = ">=1.28.2,<2"
-gst-plugins-good = ">=1.28.2,<2"
-gst-plugins-ugly = ">=1.28.2,<2"
-gst-plugins-bad = ">=1.28.2,<2"
-gst-libav = ">=1.28.2,<2"
 
 
 [pypi-dependencies]
