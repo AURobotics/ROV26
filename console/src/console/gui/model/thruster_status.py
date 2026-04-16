@@ -10,11 +10,14 @@ class ThrusterStatus(QObject):
     def __init__(self, model: Sensors):
         super().__init__()
         self._model = model
-        self._thrustLevel1 = 0
-        self._thrustLevel2 = 0
-        self._thrustLevel3 = 0
-        self._thrustLevel4 = 0
-        self._thrustLevel5 = 0
+        self._h_thrust1 = 0
+        self._h_thrust2 = 0
+        self._h_thrust3 = 0
+        self._h_thrust4 = 0
+        self._v_thrust1 = 0
+        self._v_thrust2 = 0
+        self._v_thrust3 = 0
+        self._v_thrust4 = 0
 
         self._total_h_thrust = 0
         self._h_angle = 0
@@ -24,25 +27,37 @@ class ThrusterStatus(QObject):
         self._timer.start(40)
 
     @Property(float, notify=thrustLevelChanged)
-    def thrustLevel1(self):
-        return self._thrustLevel1
+    def h_thrust1(self):
+        return self._h_thrust1
     
     @Property(float, notify=thrustLevelChanged)
-    def thrustLevel2(self):
-        return self._thrustLevel2
+    def h_thrust2(self):
+        return self._h_thrust2
 
     @Property(float, notify=thrustLevelChanged)
-    def thrustLevel3(self):
-        return self._thrustLevel3
+    def h_thrust3(self):
+        return self._h_thrust3
 
     @Property(float, notify=thrustLevelChanged)
-    def thrustLevel4(self):
-        return self._thrustLevel4
-    
+    def h_thrust4(self):
+        return self._h_thrust4
+
     @Property(float, notify=thrustLevelChanged)
-    def thrustLevel5(self):
-        return self._thrustLevel5
-    
+    def v_thrust1(self):
+        return self._v_thrust1
+
+    @Property(float, notify=thrustLevelChanged)
+    def v_thrust2(self):
+        return self._v_thrust2
+
+    @Property(float, notify=thrustLevelChanged)
+    def v_thrust3(self):
+        return self._v_thrust3
+
+    @Property(float, notify=thrustLevelChanged)
+    def v_thrust4(self):
+        return self._v_thrust4
+
     @Property(float, notify=thrustLevelChanged)
     def totalHorizontalThrust(self):
         return self._total_h_thrust
@@ -52,14 +67,14 @@ class ThrusterStatus(QObject):
         return self._h_angle
     
     def calc_direction(self):
-        x_total = self._thrustLevel1 / math.sqrt(2)
-        y_total = self._thrustLevel1 / math.sqrt(2)
-        x_total = x_total - self._thrustLevel2 / math.sqrt(2)
-        y_total = y_total + self._thrustLevel2 / math.sqrt(2)
-        x_total = x_total - self._thrustLevel3 / math.sqrt(2)
-        y_total = y_total + self._thrustLevel3 / math.sqrt(2)
-        x_total = x_total + self._thrustLevel4 / math.sqrt(2)
-        y_total = y_total + self._thrustLevel4 / math.sqrt(2)
+        x_total = self._h_thrust1 / math.sqrt(2)
+        y_total = self._h_thrust1 / math.sqrt(2)
+        x_total = x_total - self._h_thrust2 / math.sqrt(2)
+        y_total = y_total + self._h_thrust2 / math.sqrt(2)
+        x_total = x_total - self._h_thrust3 / math.sqrt(2)
+        y_total = y_total + self._h_thrust3 / math.sqrt(2)
+        x_total = x_total + self._h_thrust4 / math.sqrt(2)
+        y_total = y_total + self._h_thrust4 / math.sqrt(2)
 
         self._total_h_thrust = math.sqrt(x_total**2 + y_total**2)
         self._h_angle = math.atan2(y_total, x_total) * 180 / math.pi
@@ -73,20 +88,20 @@ class ThrusterStatus(QObject):
         new_thrust5 = self._model.thruster(5)
 
         changed = False
-        if self._thrustLevel1 != new_thrust1:
-            self._thrustLevel1 = new_thrust1
+        if self._h_thrust1 != new_thrust1:
+            self._h_thrust1 = new_thrust1
             changed = True
-        if self._thrustLevel2 != new_thrust2:
-            self._thrustLevel2 = new_thrust2
+        if self._h_thrust2 != new_thrust2:
+            self._h_thrust2 = new_thrust2
             changed = True
-        if self._thrustLevel3 != new_thrust3:
-            self._thrustLevel3 = new_thrust3
+        if self._h_thrust3 != new_thrust3:
+            self._h_thrust3 = new_thrust3
             changed = True
-        if self._thrustLevel4 != new_thrust4:
-            self._thrustLevel4 = new_thrust4
+        if self._h_thrust4 != new_thrust4:
+            self._h_thrust4 = new_thrust4
             changed = True
-        if self._thrustLevel5 != new_thrust5:
-            self._thrustLevel5 = new_thrust5
+        if self._v_thrust1 != new_thrust5:
+            self._v_thrust1 = new_thrust5
             changed = True
         if changed:
             self.calc_direction()
