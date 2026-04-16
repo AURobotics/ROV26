@@ -3,40 +3,19 @@ import os
 import threading
 import base64
 
-from comms.mqtt import mqtt, topic, mqtt_message
-
-import zlib
-
-def calculate_crc32(data):
-    # Convert string to bytes
-    if isinstance(data, str):
-        data = data.encode('utf-8')
-    
-    # zlib.crc32 starts with 0 by default
-    crc = zlib.crc32(data, 0xFFFFFFFF)
-    
-    # Apply final XOR with 0xFFFFFFFF (~)
-    return crc ^ 0xFFFFFFFF
-
-def compare_crc32(data, expected_crc):
-    calculated = calculate_crc32(data)
-    
-    # Handle hex string input
-    if isinstance(expected_crc, str):
-        expected_crc = int(expected_crc, 16)
-    
-    matches = calculated == expected_crc
-    
-    if not matches:
-        print(f"CRC mismatch!")
-        print(f"  Calculated: 0x{calculated:08X} ({calculated})")
-        print(f"  Expected:   0x{expected_crc:08X} ({expected_crc})")
-    else:
-        print(f"CRC matches: 0x{calculated:08X}")
-    
-    return matches
+from .mqtt import mqtt, topic, mqtt_message
+from .crc32 import compare_crc32
 
 class meta_data_message(mqtt_message):
+    """
+    represents the meta data message for a file transfer, which includes:
+        - filename: the name of the file being transferred
+        - size: the total size of the file in bytes
+        - chunks: the total number of chunks the file is divided into
+
+    The meta data message is expected to be sent as a JSON string in the MQTT payload,
+    with an optional CRC32 checksum for integrity verification.
+    """
     def __init__(self, file_receiver_instance: "file_receiver", is_crc32:bool = False):
             super().__init__()
             self.add_variable("filename", "")
@@ -97,6 +76,14 @@ class meta_data_message(mqtt_message):
         return f"meta_data(filename={self.args['filename']}, size={self.args['size']}, chunks={self.args['chunks']}, encoding={self.args['encoding']})"
 
 class data_chunk_message(mqtt_message):
+    """
+    represents a data chunk message for a file transfer, which includes:
+        - chunk_index: the index of the chunk in the file (starting from 0)
+        - data: the base64 encoded string representing the bytes of the chunk
+    The data chunk message is expected to be sent as a base64 encoded string in the MQTT payload,
+    with an optional CRC32 checksum for integrity verification.
+    """
+
     def __init__(self, file_receiver_instance: "file_receiver", is_crc32:bool = False):
             super().__init__()
             self.add_variable("chunk_index", 0)
