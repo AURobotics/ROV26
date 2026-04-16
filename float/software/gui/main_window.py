@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QWidget, QMainWindow, QTabWidget
-from PyQt6.QtCore import QTimer
+from PySide6.QtWidgets import QWidget, QMainWindow, QTabWidget
+from PySide6.QtCore import QTimer
 
 from gui.pallete import PALETTE
 from gui.float_tab import DataViewerTab
