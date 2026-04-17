@@ -20,6 +20,7 @@ class TMC_interfacer{
         int prev_sequencer = 0;
         int ms;
         float max_rotations;
+        float max_distance;
         float max_motor_velocity;
         float oscillator_multiplier = 0.715;
         bool going_forward = true; //false if rotating the other direction
@@ -29,12 +30,16 @@ class TMC_interfacer{
         void readSerialAndRespond();
         void measure_position();
         void stop_motor(bool shutdown);
-        float VACTUAL2SPS(uint32_t VACTUAL);
+        int VACTUAL2SPS(uint32_t VACTUAL);
         uint32_t SPS2VACTUAL(int steps);
-        bool set_velocity(double velocity);
-        float MPS2SPS(float velocity);
+        bool set_velocity(int velocity);
+        int V2SPS(float velocity);
         void manual_ramp();
         void disable_motor();
+        void adjust_velocity(float target_position);
+        float POS2ROTS(float pos); //position to rotations
+        float ROTS2POS(float rotations);
+        float SPS2V(int SPS);
 };
 
 #endif
