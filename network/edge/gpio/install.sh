@@ -29,7 +29,7 @@ cp "$SCRIPT_DIR/runner" "$OPT_DIR/runner"
 chmod +x "$OPT_DIR/runner"
 
 echo "Copying preset sequences..."
-cp "$SCRIPT_DIR/presets/"* "$OPT_DIR/presets/"*
+cp "$SCRIPT_DIR/presets/"* "$OPT_DIR/presets/"
 chmod +x "$OPT_DIR/presets/"*
 
 echo "Installing systemd service..."
