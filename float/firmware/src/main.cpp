@@ -27,7 +27,7 @@ bool connectToNetwork(bool asAccessPoint = false);
 bool connectToWiFi(const char *ssid, const char *password, int maxRetries = 0);
 bool initAccessPoint(const char *ssid, const char *password, int maxRetries = 0);
 void myDelay(unsigned long);
-void subToMqttTopicToEndRun();
+void setMessageOnCallBack();
 
 // ArduinoMqttManager MqttManager;
 IDFMQTTManager MqttManager;
@@ -41,8 +41,8 @@ float depth = 0.0f;
 
 enum Led
 {
-    RUNNING = 19, // red
-    UPLOADING = 5, // blue // Collecting data and doing operations
+    RUNNING = 19,   // red
+    UPLOADING = 5,  // blue // Collecting data and doing operations
     CONNECTION = 18 // green // Uploading data to MQTT broker
 };
 Led currentState;
@@ -62,7 +62,6 @@ void setup()
 {
     initPins();
     digitalWrite(GATE, HIGH); // set high to retain power
-    subToMqttTopicToEndRun();
 
     Serial.begin(115200);
 
@@ -77,10 +76,6 @@ void setup()
 
     // OTA
     setupOTA();
-
-
-
-
 
     // if mode is AP and AS_ACCESS_POINT is false then there is a problem
     while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
@@ -140,6 +135,11 @@ void setup()
 
     MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
     MqttManager.loop(); // checks for mqtt connection and reconnects if needed
+
+    // subscribe to topic that ends run
+    MqttManager.subscribe("float/end", 1);
+    setMessageOnCallBack();
+
     Serial.println("sending: \"Device started and about to collect data\"");
     MqttManager.publish("float/status", "Device started and about to collect data");
     Serial.println("sent initial status message to MQTT broker");
@@ -156,7 +156,7 @@ void loop()
     else
     {
         digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
-        MqttManager.loop(); // if internet then reconnect to mqtt if not connected - non blocking
+        MqttManager.loop();             // if internet then reconnect to mqtt if not connected - non blocking
     }
 
     // Handle OTA updates
@@ -374,7 +374,7 @@ bool initAccessPoint(const char *ssid, const char *password, int maxRetries)
     return false;
 }
 
-void subToMqttTopicToEndRun()
+void setMessageOnCallBack()
 {
     MqttManager.setCallbackOnMessage([](const std::string &topic, const std::string &payload)
                                      {
@@ -384,9 +384,9 @@ void subToMqttTopicToEndRun()
         Serial.print(payload.c_str());
         Serial.println("]");
 
-        if (topic == "float/end")
+        if (!strcmp(topic.c_str(),"float/end"))
         {
-            if(payload == "shutdown")
+            if (!strcmp(payload.c_str(), "shutdown"))
             {
                 Serial.println("Received shutdown command. Ending run...");
                 ESP.restart(); // restart to end the run
@@ -396,5 +396,4 @@ void subToMqttTopicToEndRun()
                 Serial.println("Received unknown command on float/end topic");
             }
         } });
-    MqttManager.subscribe("float/end", 1);
 }
