@@ -32,6 +32,7 @@ class MainWindow(QMainWindow):
         self._build_ui()
 
         QTimer.singleShot(800,  lambda: self.post_message("System initialised.", "INFO"))
+        self.comms.float_communication_setup(self)
         
     # ── UI construction ───────────────────────────────────────────────────────
     def _build_ui(self):
