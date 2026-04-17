@@ -67,12 +67,25 @@ class Stm32:
     def disconnect(self) -> None:
         self.port = None
 
+    @property
+    def programmer_env(self) -> dict[str, str]:
+        if not self.programmer:
+            return {}
+        env = os.environ.copy()
+        lib_path = self.programmer.parent.parent / "lib"
+        if "LD_LIBRARY_PATH" in env:
+            env["LD_LIBRARY_PATH"] = f"{lib_path}:{env['LD_LIBRARY_PATH']}"
+        else:
+            env["LD_LIBRARY_PATH"] = str(lib_path)
+        return env
+
     def reset(self, device: str) -> None:
         with self._programmer_lock:
             if not self.programmer_present:
                 return
             subprocess.run(
                 [str(self.programmer), "-c", f"port={device}", "-s"],
+                env=self.programmer_env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -91,6 +104,7 @@ class Stm32:
                 self.enter_dfu()
             subprocess.run(
                 [str(self.programmer), "-c", f"port={device}", "-d", hex_file, "-s"],
+                env=self.programmer_env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -105,7 +119,10 @@ class Stm32:
             if not self.programmer_present:
                 return []
             cli_result = subprocess.run(
-                [str(self.programmer), "-l", "usb"], capture_output=True, text=True,
+                [str(self.programmer), "-l", "usb"],
+                env=self.programmer_env,
+                capture_output=True,
+                text=True,
             )
             if cli_result.returncode != 0:
                 return []
@@ -121,15 +138,10 @@ class Stm32:
         with self._programmer_lock:
             if self.programmer is None or not self.programmer.exists():
                 return False
-            env = os.environ.copy()
-            lib_path = self.programmer.parent.parent / "lib"
-            if "LD_LIBRARY_PATH" in env:
-                env["LD_LIBRARY_PATH"] = f"{lib_path}:{env['LD_LIBRARY_PATH']}"
-            else:
-                env["LD_LIBRARY_PATH"] = str(lib_path)
+
             test_command = subprocess.run(
                 [str(self.programmer), "--version"],
-                env=env,
+                env=self.programmer_env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
