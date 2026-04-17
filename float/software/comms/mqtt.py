@@ -11,7 +11,7 @@ from paho.mqtt import client as mqtt_client
 from paho.mqtt.enums import CallbackAPIVersion
 from paho.mqtt.client import MQTTMessage
 
-class mqtt_message(ABC):
+class MQTTMessageHandeler(ABC):
     def __init__(self):
         self.args: Dict[str, Any] = {}
 
@@ -39,7 +39,7 @@ class mqtt_message(ABC):
 
 
 # class holding data for connection
-class mqtt():
+class MQTTClient():
     def __init__(self, address = 'localhost', port = 1883, client_id = None, username = None, password = None):
         self.address = address
         self.port = port
@@ -48,8 +48,8 @@ class mqtt():
         self.password = password
         self.unacked_publish = set()
         self._lock = threading.Lock()
-        # Registry mapping topic string -> list of mqtt_message handlers
-        self._topic_handlers: dict[str, list[mqtt_message]] = {} # for subscribed topics
+        # Registry mapping topic string -> list of MQTTMessageHandeler handlers
+        self._topic_handlers: dict[str, list[MQTTMessageHandeler]] = {} # for subscribed topics
         self._connect()
 
     def _connect(self):
@@ -88,7 +88,7 @@ class mqtt():
             except Exception as e:
                 print(f"Error in message handler for {message.topic}: {e}")
 
-    def register_handler(self, topic: str, handler: mqtt_message):
+    def register_handler(self, topic: str, handler: MQTTMessageHandeler):
         """register a message handler for a topic. subscribes if not already subscribed."""
         if topic not in self._topic_handlers:
             self._topic_handlers[topic] = []
@@ -121,8 +121,8 @@ class mqtt():
         self.disconnect()
 
 
-class topic():
-    def __init__(self, topic: str, mqtt_connection: mqtt):
+class Topic():
+    def __init__(self, topic: str, mqtt_connection: MQTTClient):
         self.topic = topic
         self.mqtt = mqtt_connection
 
@@ -131,7 +131,7 @@ class topic():
         return self.topic
 
     @property
-    def mqtt_connection(self) -> mqtt:
+    def mqtt_connection(self) -> MQTTClient:
         return self.mqtt
 
     def publish(self, message: str):
@@ -154,11 +154,11 @@ class topic():
 
         msg.wait_for_publish()
 
-    def subscribe(self, message_handler: mqtt_message):
+    def subscribe(self, message_handler: MQTTMessageHandeler):
         """Register a handler for this topic via the shared mqtt connection."""
         self.mqtt.register_handler(self.topic, message_handler)
 
-    def unsubscribe(self, message_handler: mqtt_message):
+    def unsubscribe(self, message_handler: MQTTMessageHandeler):
         """Unregister a handler for this topic."""
         handlers = self.mqtt._topic_handlers.get(self.topic, [])
         if message_handler in handlers:
@@ -172,7 +172,7 @@ class topic():
 """
     How does this work?
     1. We create an mqtt connection object (mqtt_connection).
-    2. We create a concrete implementation of mqtt_message (e.g. sensor_data_message).
+    2. We create a concrete implementation of MQTTMessageHandeler (e.g. sensor_data_message).
     3. We create a topic object with the topic name and the mqtt_connection.
     4. To subscribe to a topic: topic.subscribe(message_handler).
        Multiple handlers can be registered for the same topic, and multiple topics
@@ -184,7 +184,7 @@ class topic():
 
 
 if __name__ == "__main__":
-    class sensor_data_message(mqtt_message):
+    class sensor_data_message(MQTTMessageHandeler):
         def __init__(self):
             super().__init__()
             self.add_variable("temperature", 0.0)
@@ -203,7 +203,7 @@ if __name__ == "__main__":
             return f"SensorData: temp={self.args['temperature']}°C, humidity={self.args['humidity']}%, pressure={self.args['pressure']}hPa"
 
 
-    class device_status_message(mqtt_message):
+    class device_status_message(MQTTMessageHandeler):
         def __init__(self):
             super().__init__()
             self.add_variable("device_id", "")
@@ -219,10 +219,10 @@ if __name__ == "__main__":
     print("Test 1: Sensor Data Publishing")
     print("=" * 50)
 
-    mqtt_connection = mqtt(address='localhost', port=1883)
+    mqtt_connection = MQTTClient(address='localhost', port=1883)
 
-    sensor_topic = topic("home/livingroom/sensor", mqtt_connection)
-    device_topic = topic("home/devices/status", mqtt_connection)
+    sensor_topic = Topic("home/livingroom/sensor", mqtt_connection)
+    device_topic = Topic("home/devices/status", mqtt_connection)
 
     sensor_handler = sensor_data_message()
     device_handler = device_status_message()
