@@ -20,20 +20,22 @@ class StatusHandler(mqtt_message):
     def __init__(self, bridge):
         super().__init__()
         self.bridge = bridge
+        self.received = False
 
     def decode(self, message):
         status = message.payload.decode()
         # Emit signal through bridge - Qt handles thread safety automatically
         self.bridge.status_signal.emit(f"Float status: {status}")
+        self.received = True
 
 
 class CompanyNumberHandler(mqtt_message):
     def __init__(self, bridge):
         super().__init__()
         self.bridge = bridge
+        self.received = False
 
     def decode(self, message):
         company_number = message.payload.decode()
-        self.bridge.company_number_signal.emit(
-            f"Received company number: {company_number}"
-        )
+        self.bridge.company_number_signal.emit(f"Received company number: {company_number}")
+        self.received = True
