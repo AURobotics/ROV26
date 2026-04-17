@@ -9,6 +9,7 @@ fi
 
 LOCK_FILE="/opt/gpio/gpio.lock"
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 ; pwd -P)
+PRESET_DIR="/opt/gpio/presets/"
 if [ -f "$LOCK_FILE" ]; then
     if [ $(find "$LOCK_FILE" -mtime +0 -mmin +0.5 2>/dev/null) ]; then
         echo "Removing stale lock"
@@ -21,6 +22,8 @@ fi
 
 touch "$LOCK_FILE"
 trap "rm -f '$LOCK_FILE'" EXIT
+
+echo "Listening to command"
 
 read cmd
 
