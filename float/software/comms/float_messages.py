@@ -1,6 +1,6 @@
 from PySide6.QtCore import QObject, Signal
 
-from .mqtt import mqtt_message
+from .mqtt import MQTTMessageHandeler
 
 
 # Create a signal proxy/bridge that lives in the main thread
@@ -16,7 +16,7 @@ class MQTTSignalBridge(QObject):
 
 
 # MQTT handlers
-class StatusHandler(mqtt_message):
+class StatusHandler(MQTTMessageHandeler):
     def __init__(self, bridge):
         super().__init__()
         self.bridge = bridge
@@ -29,7 +29,7 @@ class StatusHandler(mqtt_message):
         self.received = True
 
 
-class CompanyNumberHandler(mqtt_message):
+class CompanyNumberHandler(MQTTMessageHandeler):
     def __init__(self, bridge):
         super().__init__()
         self.bridge = bridge
