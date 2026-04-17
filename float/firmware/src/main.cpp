@@ -11,11 +11,11 @@
 #define COMPANY_NUMBER "AU Robotics"
 
 // WiFi credentials
-const char *WIFI_SSID = "";
-const char *WIFI_PASSWORD = "";
+const char *WIFI_SSID = "Abdelaziz";
+const char *WIFI_PASSWORD = "ya mosahel";
 
 // MQTT broker settings
-const char *MQTT_BROKER = "192.168.1.9";
+const char *MQTT_BROKER = "10.14.70.135";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optional
@@ -27,6 +27,7 @@ bool connectToNetwork(bool asAccessPoint = false);
 bool connectToWiFi(const char *ssid, const char *password, int maxRetries = 0);
 bool initAccessPoint(const char *ssid, const char *password, int maxRetries = 0);
 void myDelay(unsigned long);
+void subToMqttTopicToEndRun();
 
 // ArduinoMqttManager MqttManager;
 IDFMQTTManager MqttManager;
@@ -40,9 +41,9 @@ float depth = 0.0f;
 
 enum Led
 {
-    RUNNING = 19,
-    UPLOADING = 5,  // Collecting data and doing operations
-    CONNECTION = 18 // Uploading data to MQTT broker
+    RUNNING = 19, // red
+    UPLOADING = 5, // blue // Collecting data and doing operations
+    CONNECTION = 18 // green // Uploading data to MQTT broker
 };
 Led currentState;
 constexpr int GATE = 23; // pin set high to retain power, set low to shut down
@@ -76,6 +77,10 @@ void setup()
 
     // OTA
     setupOTA();
+
+
+
+
 
     // if mode is AP and AS_ACCESS_POINT is false then there is a problem
     while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
@@ -138,7 +143,6 @@ void setup()
     Serial.println("sending: \"Device started and about to collect data\"");
     MqttManager.publish("float/status", "Device started and about to collect data");
     Serial.println("sent initial status message to MQTT broker");
-    MqttManager.disconnect();
 }
 
 void loop()
@@ -152,6 +156,7 @@ void loop()
     else
     {
         digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
+        MqttManager.loop(); // if internet then reconnect to mqtt if not connected - non blocking
     }
 
     // Handle OTA updates
@@ -245,7 +250,7 @@ void loop()
         // Handle MQTT communication
         MqttManager.loop(); // checks for mqtt connection and reconnects if needed
 
-        Serial.println("sending Company Number and file to mqtt");
+        Serial.println("trying to send Company Number and file to mqtt");
 
         Serial.print("Mqtt connection is: ");
         Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");

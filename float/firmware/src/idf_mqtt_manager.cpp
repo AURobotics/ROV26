@@ -61,8 +61,6 @@ void IDFMQTTManager::loop(bool pollMqttConnection)
     {
         if (_mqttClient != nullptr && !_mqttClient->isConnected())
         {
-            Serial.println("MQTT not connected, waiting...");
-            delay(5000); // give it time to auto-reconnect first
             Serial.println("MQTT client not connected. Attempting to reconnect...");
             _mqttClient->end(); // deletes mutex, client_, sets connected_=false
 
