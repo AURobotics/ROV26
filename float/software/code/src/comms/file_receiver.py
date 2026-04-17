@@ -3,8 +3,8 @@ import os
 import threading
 import base64
 
-from comms.mqtt import MQTTClient, Topic, MQTTMessageHandeler
-from comms.crc32 import compare_crc32
+from src.comms.mqtt import MQTTClient, Topic, MQTTMessageHandeler
+from src.comms.crc32 import compare_crc32
 
 class meta_data_message(MQTTMessageHandeler):
     """

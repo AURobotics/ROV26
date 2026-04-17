@@ -7,11 +7,11 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal, Slot
 
-from comms.comms import Comms
-from gui.pallete import PALETTE
-from gui.message_bar import MessageBarWidget
-from gui.graph_viewer import GraphWidget
-from gui.column_selector import ColumnSelector
+from src.comms.comms import Comms
+from src.gui.pallete import PALETTE
+from src.gui.message_bar import MessageBarWidget
+from src.gui.graph_viewer import GraphWidget
+from src.gui.column_selector import ColumnSelector
 
 # for testing the float tab
 class MainWindow(QMainWindow):

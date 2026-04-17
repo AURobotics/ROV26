@@ -1,6 +1,6 @@
 from time import sleep
 
-from comms.float_messages import CompanyNumberHandler, MQTTSignalBridge, StatusHandler
+from src.comms.float_messages import CompanyNumberHandler, MQTTSignalBridge, StatusHandler
 from .mqtt import MQTTClient, Topic
 from .file_receiver import file_receiver
 from PySide6.QtCore import QTimer
