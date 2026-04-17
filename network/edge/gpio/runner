@@ -28,7 +28,7 @@ echo "Listening to command"
 read cmd
 
 if [ -f "$PRESET_DIR/$cmd" ]; then
-    bash "$preset_file"
+    bash "$PRESET_DIR/$cmd"
 else
     pin=$(echo "$cmd" | cut -d',' -f1)
     value=$(echo "$cmd" | cut -d',' -f2)
