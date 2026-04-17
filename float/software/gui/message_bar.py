@@ -1,14 +1,14 @@
 from datetime import datetime
 from collections import deque
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QFrame,
     QScrollArea
 )
-from PyQt6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer
 
-from gui.pallete import PALETTE
+from .pallete import PALETTE
 
 class MessageEntry:
     LEVEL_COLORS = {
@@ -31,7 +31,7 @@ class MessageBarWidget(QWidget):
     def __init__(self, max_messages: int = 200, parent=None):
         super().__init__(parent)
         self._messages: deque[MessageEntry] = deque(maxlen=max_messages)
-        self.setFixedHeight(110)
+        self.setFixedHeight(180)
         self.setStyleSheet(f"""
             background: {PALETTE['msg_bg']};
             border-top: 1px solid {PALETTE['border']};
@@ -115,8 +115,8 @@ class MessageBarWidget(QWidget):
         self._messages.clear()
         while self._msg_layout.count() > 1:
             item = self._msg_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            if item.widget(): # type: ignore
+                item.widget().deleteLater() # type: ignore
 
     # internal -----------------------------------------------------------------
     def _add_label(self, entry: MessageEntry):
