@@ -9,6 +9,6 @@ fi
 
 RESET_PIN=6
 
-gpioset --active-low gpiochip0 $RESET_PIN=1
+gpioset gpiochip0 $RESET_PIN=0
 sleep 0.1
-gpioset --active-low gpiochip0 $RESET_PIN=0
+gpioset gpiochip0 $RESET_PIN=1
