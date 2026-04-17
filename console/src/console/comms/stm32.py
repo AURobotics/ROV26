@@ -105,7 +105,7 @@ class Stm32:
             if not self.programmer_present:
                 return []
             cli_result = subprocess.run(
-                [str(self.programmer), "-l", "usb"], capture_output=True, text=True
+                [str(self.programmer), "-l", "usb"], capture_output=True, text=True,
             )
             if cli_result.returncode != 0:
                 return []
@@ -121,12 +121,19 @@ class Stm32:
         with self._programmer_lock:
             if self.programmer is None or not self.programmer.exists():
                 return False
+            env = os.environ.copy()
+            lib_path = self.programmer.parent.parent / "lib"
+            if "LD_LIBRARY_PATH" in env:
+                env["LD_LIBRARY_PATH"] = f"{lib_path}:{env['LD_LIBRARY_PATH']}"
+            else:
+                env["LD_LIBRARY_PATH"] = str(lib_path)
             test_command = subprocess.run(
                 [str(self.programmer), "--version"],
-                capture_output=True,
-                text=True,
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
-            if "STM32CubeProgrammer version" in test_command.stdout:
+            if test_command.returncode == 0:
                 return True
             return False
 

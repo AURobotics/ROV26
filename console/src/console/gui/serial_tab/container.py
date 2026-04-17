@@ -64,6 +64,8 @@ class SerialTab(GuiTab):
     _DISCONNECTED_HINT = "Please choose a serial device below"
     _CONNECTED_STATUS = Template("Connected to $name")
     _CONNECTED_HINT = Template("Port: $port")
+    _PROGRAMMER_STATUS_NO = "not detected"
+    _PROGRAMMER_STATUS_YES = "in use"
     _usb_process_done_signal = Signal()
     _port_process_done_signal = Signal()
 
@@ -107,12 +109,18 @@ class SerialTab(GuiTab):
         flash_group = QGroupBox()
         flash_group.setTitle("STM32 Programmer")
         flash_form = QFormLayout(flash_group)
+        self.programmer_status = QLabel(
+            self._PROGRAMMER_STATUS_YES
+            if self.stm.programmer_present
+            else self._PROGRAMMER_STATUS_NO
+        )
         self.usb_selector = ClickableComboBox()
         self.usb_selector.triggered.connect(self.refresh_usb)
         self.reset_button = QPushButton("Reset Device")
         self.reset_button.clicked.connect(self.reset_usb)
         self.flash_button = QPushButton("Flash Firmware")
         self.flash_button.clicked.connect(self.flash_usb)
+        flash_form.addRow("Programmer status:", self.programmer_status)
         flash_form.addRow("Target:", self.usb_selector)
         flash_form.addWidget(self.reset_button)
         flash_form.addWidget(self.flash_button)
@@ -125,6 +133,15 @@ class SerialTab(GuiTab):
         self._needs_attention = False
 
         self.main_layout.addLayout(utils_hbox)
+        self.settings_changed.connect(self.on_settings_changed)
+
+    @Slot()
+    def on_settings_changed(self) -> None:
+        self.programmer_status = QLabel(
+            self._PROGRAMMER_STATUS_YES
+            if self.stm.programmer_present
+            else self._PROGRAMMER_STATUS_NO
+        )
 
     @property
     def needs_attention(self) -> bool:
@@ -155,7 +172,7 @@ class SerialTab(GuiTab):
         except:
             pass
 
-    @Slot(str)
+    @Slot()
     def flash_usb(self) -> None:
         if self.usb_selector.currentIndex() == -1:
             return

@@ -4,10 +4,7 @@ import os
 
 
 def get_base_path() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    else:
-        return Path(__file__).parent.parent.parent.parent.absolute()
+    return Path(__file__).parent.parent.parent.parent.absolute()
 
 
 def resolve(path: str | os.PathLike) -> Path:

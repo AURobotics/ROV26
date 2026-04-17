@@ -10,6 +10,8 @@ python = ">=3.11,<3.14"
 pyside6 = ">=6.11.0,<7"
 opencv = ">=4.13.0,<5"
 ultralytics = ">=8.4.38,<9"
+pytorch = ">=2.10.0,<3"
+torchvision = ">=0.25.0,<0.26"
 
 
 [pypi-dependencies]
