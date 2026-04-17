@@ -61,8 +61,6 @@ void IDFMQTTManager::loop(bool pollMqttConnection)
     {
         if (_mqttClient != nullptr && !_mqttClient->isConnected())
         {
-            Serial.println("MQTT not connected, waiting...");
-            delay(5000); // give it time to auto-reconnect first
             Serial.println("MQTT client not connected. Attempting to reconnect...");
             _mqttClient->end(); // deletes mutex, client_, sets connected_=false
 
@@ -77,7 +75,6 @@ void IDFMQTTManager::loop(bool pollMqttConnection)
             {
                 _mqttClient->subscribe(entry.first, entry.second);
             }
-
         }
     }
 }
@@ -163,4 +160,14 @@ void IDFMQTTManager::disconnect()
         delete _mqttClient;
         _mqttClient = nullptr;
     }
+}
+
+bool IDFMQTTManager::setCallbackOnMessage(std::function<void(const std::string &topic, const std::string &payload)> callback)
+{
+    if (_mqttClient != nullptr)
+    {
+        _mqttClient->setOnMessage(callback);
+        return true;
+    }
+    return false;
 }
