@@ -249,8 +249,8 @@ bool IDFMQTTClient::publishFileChunkedOverTopics(const std::string &topic,
     bool success = true;
 
     // Send each chunk
-    int outBufSize = ((RAW_CHUNK_SIZE + 2) / 3) * 4 + 1; // Base64 encoded buffer size
-    unsigned char* encodedData = (unsigned char*) malloc(outBufSize); // Base64 encoded buffer
+    int outBufSize = ((RAW_CHUNK_SIZE + 2) / 3) * 4 + 1;              // Base64 encoded buffer size
+    unsigned char *encodedData = (unsigned char *)malloc(outBufSize); // Base64 encoded buffer
     for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++)
     {
         if (!connected_)
@@ -461,7 +461,8 @@ void IDFMQTTClient::dispatchEvent(esp_mqtt_event_handle_t event)
 
 void IDFMQTTClient::reSubscribe()
 {
-    if (!connected_ || !client_) return;
+    if (!connected_ || !client_)
+        return;
 
     xSemaphoreTake(topics_mutex_, portMAX_DELAY);
     for (const auto &pair : _subscribed_topics)
