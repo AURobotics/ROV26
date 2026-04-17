@@ -32,7 +32,7 @@ if [ -f "$PRESET_DIR/$cmd" ]; then
 else
     pin=$(echo "$cmd" | cut -d',' -f1)
     value=$(echo "$cmd" | cut -d',' -f2)
-    gpioset gpiochip0 "$pin"="$value"
+    gpioset gpiochip0 --active-low "$pin"="$value"
 fi
 
 exit 0
