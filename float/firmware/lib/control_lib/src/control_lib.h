@@ -5,9 +5,9 @@
 
 class PID{
     public:
-        PID(float Kp, float Ki, float Kd, float max_motor_output);
-        float Kp, Ki, Kd;
-        float max_motor_output;
+        PID(float Kp, float Ki, float Kd,float Kg, float max_position);
+        float Kp, Ki, Kd, Kg;
+        float max_position;
         float current_integral = 0;
         float prev_error = 0;
         float prev_time = 0;

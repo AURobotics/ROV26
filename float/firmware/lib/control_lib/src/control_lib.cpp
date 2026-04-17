@@ -1,11 +1,12 @@
 #include <control_lib.h>
 
 
-PID::PID(float Kp, float Ki, float Kd, float max_motor_output){
+PID::PID(float Kp, float Ki, float Kd, float Kg, float max_position){
     this->Kp = Kp;
     this->Ki = Ki;
     this->Kd = Kd;
-    this->max_motor_output = max_motor_output;
+    this->Kg = Kg;
+    this->max_position = max_position;
 }
 
 float PID::calculate_error(float current_reading){
@@ -21,12 +22,12 @@ float PID::calculate_PID(float error, float time_stamp){
     this->current_integral += error * (time_stamp - this->prev_time);
     float I = this->Ki * this->current_integral;
     //anti windup starts here
-    if(I > this->max_motor_output){ 
-        this->current_integral = this->max_motor_output / Ki;
+    if(I > this->max_position){ 
+        this->current_integral = this->max_position / Ki;
         I = this->current_integral * this->Ki;
     }
-    else if(I < -this->max_motor_output){
-        this->current_integral = -this->max_motor_output / Ki;
+    else if(I < -this->max_position){
+        this->current_integral = -this->max_position / Ki;
         I = this->current_integral * this->Ki;
     }
     //anti windup ends here
@@ -38,12 +39,12 @@ float PID::calculate_PID(float error, float time_stamp){
     this->prev_error = error;
     this->prev_time = time_stamp;
     this->prev_D = D;
-    float PID = P+I+D;
-    if(PID > this->max_motor_output){
-        PID = this->max_motor_output;
+    float PID = (P+I+D) * this->Kg;
+    if(PID > this->max_position){
+        PID = this->max_position;
     }
-    else if(PID < -this->max_motor_output){
-        PID = -this->max_motor_output;
+    else if(PID < -this->max_position){
+        PID = -this->max_position;
     }
     // TODO REMOVE PRINTS:
     Serial.print("PID:");
@@ -68,7 +69,7 @@ double PID::control_loop(float height) {
     hold_position = false;
   }
   float error = this->calculate_error(height);
-  if(!hold_position && error < 0.3){ //error less than 30 cm
+  if(!hold_position && error < 0.1){ //error less than 30 cm
     hold_position = true; //start holding position
     Time = millis();
   }
