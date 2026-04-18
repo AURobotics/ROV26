@@ -11,7 +11,9 @@ from PySide6.QtWidgets import (
     QDockWidget,
 )
 from PySide6.QtCore import Qt
-from console.gui.camera_display import CameraDisplay
+from console.gui.cv_camera import CVCamera
+from console.gui.analysis_view import AnalysisView
+from console.gui.screenshot_view import ScreenshotView
 
 
 class CVTab(GuiTab):
@@ -36,21 +38,32 @@ class CVTab(GuiTab):
             Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea
         )
 
-        self._cam = CameraDisplay(cam)
+        self._cam = CVCamera(cam)
         self._cam.setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
         )
         self.dock_host.setCentralWidget(self._cam)
 
-        
-        self._screenshot_view = QWidget()  # Placeholder for screenshot view
-        self._screenshot_view.setSizePolicy(
+        self._analysis_view = AnalysisView()
+        self._analysis_view.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        self._screenshot_dock = self._create_dock("Screenshots", self._screenshot_view)
+        self._analysis_dock = self._create_dock("Analysis", self._analysis_view)
+        self.dock_host.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea, self._analysis_dock
+        )
+
+        self._screenshot_manager = ScreenshotView()  # Placeholder for screenshot manager
+        self._screenshot_manager.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        self._screenshot_dock = self._create_dock("Screenshots", self._screenshot_manager)
         self.dock_host.addDockWidget(
             Qt.DockWidgetArea.RightDockWidgetArea, self._screenshot_dock
         )
+
+        self._cam.captureClicked.connect(self._screenshot_manager.setPixmap)
+        self._screenshot_manager.analysisClicked.connect(self._analysis_view.receive_from_screenshot)
 
     def _create_dock(self, title, widget):
         dock = QDockWidget(title, self)
