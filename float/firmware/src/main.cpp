@@ -1,10 +1,8 @@
 #include <Arduino.h>
-#include <ArduinoMQTTClient.h>
 #include <IDFMQTTClient.h>
 #include "ota_manager.h"
 #include <WiFi.h>
 #include "store_data.h"
-#include "arduino_mqtt_manager.h"
 #include "idf_mqtt_manager.h"
 #include <ms5611.h>
 
@@ -12,7 +10,7 @@
 
 // WiFi credentials
 const char *WIFI_SSID = "Abdelaziz";
-const char *WIFI_PASSWORD = "ya mosahel";
+const char *WIFI_PASSWORD = "ya moshel";
 
 // MQTT broker settings
 const char *MQTT_BROKER = "10.14.70.135";
@@ -31,9 +29,6 @@ void setMessageOnCallBack();
 
 // ArduinoMqttManager MqttManager;
 IDFMQTTManager MqttManager;
-
-// depths values for testing ######################################
-float depthIncrement = 0.1;
 
 // pressure sensor
 MS5611 pressureSensor = MS5611();
@@ -95,23 +90,24 @@ void setup()
     }
     digitalWrite(RUNNING, HIGH); // turn on running LED to indicate device is running and connected to network
 
-    // setup and calibrate pressure sensor
-    // COMMENTING OUT SENSOR LOGIC FOR TESTING WITHOUT SENSOR ############################
-    // if (!pressureSensor.begin())
-    // {
-    //     Serial.println("Failed to initialize MS5611 sensor!, if failed after 30 seconds, restarting...");
-    //     // Absoute ERROR - all LEDs on
-    //     digitalWrite(UPLOADING, HIGH);
-    //     myDelay(30000);
-    //     if(!pressureSensor.begin()) // try again before restarting
-    //     {
-    //         ESP.restart();
-    //     }
-    //     else
-    //     {
-    //         Serial.println("MS5611 sensor initialized successfully on second attempt");
-    //     }
-    // }
+    #ifndef GENERAL_TEST
+    // setup and calibrate pressure sensor only if NOT testing
+    if (!pressureSensor.begin())
+    {
+        Serial.println("Failed to initialize MS5611 sensor!, if failed after 30 seconds, restarting...");
+        // Absoute ERROR - all LEDs on
+        digitalWrite(UPLOADING, HIGH);
+        myDelay(30000);
+        if(!pressureSensor.begin()) // try again before restarting
+        {
+            ESP.restart();
+        }
+        else
+        {
+            Serial.println("MS5611 sensor initialized successfully on second attempt");
+        }
+    }
+    #endif
 
     // Start the sequence
     if (!store_data_setup())
@@ -169,11 +165,13 @@ void loop()
         // To store depth per time
         store_data_loop();
 
-        // COMMENTING OUT SENSOR LOGIC FOR TESTING WITHOUT SENSOR ############################
-        // depth = pressureSensor.getDepth();
-        // setDepth(depth);
+        #ifndef GENERAL_TEST // get depth from pressure sensor only if NOT testing
+        depth = pressureSensor.getDepth();
+        setDepth(depth);
+        #endif
 
-        // For testing depth changes without sensor #################################
+        
+        #ifdef GENERAL_TEST // For testing depth changes without sensor
         if (abs(depth - getCurrentTarget()) < 0.05)
         {
             Serial.println("At target depth, holding...");
@@ -185,22 +183,25 @@ void loop()
         }
         else if (depth > getCurrentTarget())
         {
-            depth -= depthIncrement; // Move slightly below target
+            depth -= 0.1; // Move slightly below target
         }
         else
         {
-            depth += depthIncrement;
+            depth += 0.1;
         }
         setDepth(depth);
+        #endif
 
         Serial.print("Current Target: ");
         Serial.println(getCurrentTarget());
         Serial.print("Current Depth: ");
         Serial.println(depth);
 
-        myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency ############################################
-
-        if (isComplete())
+        #ifdef GENERAL_TEST
+        myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency
+        #endif
+        
+    if (isComplete())
         {
             Serial.println("Data collection complete. Transitioning to UPLOADING state...");
             currentState = UPLOADING;
