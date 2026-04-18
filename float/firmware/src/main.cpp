@@ -90,7 +90,7 @@ void setup()
     }
     digitalWrite(RUNNING, HIGH); // turn on running LED to indicate device is running and connected to network
 
-    #ifndef GENERAL_TEST
+    #ifndef DRY_TEST
     // setup and calibrate pressure sensor only if NOT testing
     if (!pressureSensor.begin())
     {
@@ -165,13 +165,16 @@ void loop()
         // To store depth per time
         store_data_loop();
 
-        #ifndef GENERAL_TEST // get depth from pressure sensor only if NOT testing
+        #ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
         depth = pressureSensor.getDepth();
         setDepth(depth);
         #endif
 
-        
-        #ifdef GENERAL_TEST // For testing depth changes without sensor
+        #ifdef PRESSURE_SENSOR_TEST
+        MqttManager.publish("float/depth", String(depth).c_str());
+        #endif
+
+        #ifdef DRY_TEST // For testing depth changes without sensor
         if (abs(depth - getCurrentTarget()) < 0.05)
         {
             Serial.println("At target depth, holding...");
@@ -197,7 +200,7 @@ void loop()
         Serial.print("Current Depth: ");
         Serial.println(depth);
 
-        #ifdef GENERAL_TEST
+        #ifdef DRY_TEST
         myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency
         #endif
         
