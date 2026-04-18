@@ -5,6 +5,7 @@
 #include "store_data.h"
 #include "idf_mqtt_manager.h"
 #include <ms5611.h>
+#include <Wire.h>
 
 #define BLINKING_LED 2 // to make sure esp is ok :|
 
@@ -129,6 +130,7 @@ void setup()
     digitalWrite(RUNNING, HIGH); // turn on running LED to indicate device is running and connected to network
 
 #ifndef DRY_TEST
+    Wire.begin();
     // setup and calibrate pressure sensor only if NOT testing
     if (!pressureSensor.begin())
     {
@@ -211,6 +213,8 @@ void loop()
 
 #ifdef PRESSURE_SENSOR_TEST
         MqttManager.publish("float/depth", String(depth).c_str());
+        Serial.print("Current Depth: ");
+        Serial.println(depth);
 #endif
 
 #ifdef DRY_TEST // For testing depth changes without sensor
