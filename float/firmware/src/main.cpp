@@ -47,28 +47,27 @@ constexpr int POWER = 23; // pin set high to retain power, set low to shut down
 
 #define MAX_WIFI_RETRY_COUNT 5
 
-// timer to trigger if otaupdate stopped from being called
-hw_timer_t *otaWatchdogTimer = NULL;
-const int timeout_ms = 1000; // 1 seconds
+// // timer to trigger if otaupdate stopped from being called
+// hw_timer_t *otaWatchdogTimer = NULL;
+// const int timeout_ms = 3000; // 1 seconds
 
-void callOtaupdate()
-{
-    // To reset: Restart the timer from 0
-    timerRestart(otaWatchdogTimer);
+// void callOtaupdate()
+// {
+//     // To reset: Restart the timer from 0
+//     timerRestart(otaWatchdogTimer);
 
-    // Ensure the alarm is still active
-    timerWrite(otaWatchdogTimer, 0);
+//     // Ensure the alarm is still active
+//     timerWrite(otaWatchdogTimer, 0);
 
-    otaupdate();
-}
+//     otaupdate();
+// }
 
-// This function runs if the timer expires
-void IRAM_ATTR onTimer()
-{
-    Serial.println("OTA Watchdog timer expired! Calling otaupdate to handle OTA updates...");
-    // Handle OTA updates during timer interrupt
-    callOtaupdate();
-}
+// // This function runs if the timer expires
+// void IRAM_ATTR onTimer()
+// {
+//     digitalWrite(POWER, HIGH);
+//     ESP.restart();
+// }
 
 void initPins()
 {
@@ -81,11 +80,6 @@ void initPins()
 
 void setup()
 {
-    Serial.println("Device starting...");
-    otaWatchdogTimer = timerBegin(1000000); // 1 MHz, tick = 1 microsecond
-    timerAttachInterrupt(otaWatchdogTimer, &onTimer);
-    timerAlarm(otaWatchdogTimer, timeout_ms * 1000, true, 0); // tick = 1 microsecond; true for periodic
-
     initPins();
     digitalWrite(POWER, HIGH); // set high to retain power
 
@@ -111,11 +105,16 @@ void setup()
     // OTA
     setupOTA();
 
+    // Set up the watchdog timer to trigger if otaupdate is not called within the timeout period
+    // otaWatchdogTimer = timerBegin(1000000); // 1 MHz, tick = 1 microsecond
+    // timerAttachInterrupt(otaWatchdogTimer, &onTimer);
+    // timerAlarm(otaWatchdogTimer, timeout_ms * 1000, true, 0); // tick = 1 microsecond; true for periodic
+
     // if mode is AP and AS_ACCESS_POINT is false then there is a problem
     while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
     {
         Serial.println("set up as Access Point unintentionally");
-        callOtaupdate(); // Handle OTA updates
+        otaupdate(); // Handle OTA updates
 
         // flucctualting led if AP
         digitalWrite(CONNECTION, HIGH);
@@ -182,6 +181,7 @@ void setup()
 
 void loop()
 {
+    // unsigned long t = millis();
     if (WiFi.status() != WL_CONNECTED)
     {
         digitalWrite(CONNECTION, LOW); // turn off connection LED
@@ -195,7 +195,7 @@ void loop()
     }
 
     // Handle OTA updates
-    callOtaupdate();
+    otaupdate();
 
     if (currentState == RUNNING)
     {
@@ -279,7 +279,7 @@ void loop()
             while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
             {
                 Serial.println("set up as Access Point unintentionally");
-                callOtaupdate(); // Handle OTA updates
+                otaupdate(); // Handle OTA updates
 
                 // flucctualting led if AP
                 digitalWrite(CONNECTION, HIGH);
@@ -304,6 +304,7 @@ void loop()
 
         MqttManager.publish("float/data/credential", COMPANY_NUMBER);
         MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
+        // Serial.println(millis() - t);
         myDelay(5000); // Send data every 5 seconds
     }
 }
@@ -375,7 +376,7 @@ void myDelay(unsigned long ms, bool resetOtaWatchdog)
     {
         // Handle OTA updates during delay
         if (resetOtaWatchdog)
-            callOtaupdate();
+            otaupdate();
         else
             otaupdate();
         delay(100); // Short delay to prevent watchdog timer reset
