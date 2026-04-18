@@ -339,10 +339,17 @@
 // }
 
 #include <buoyancy_lib.h>
+// #include <tmc_interfacer.h>
+// TMC_interfacer tmc = TMC_interfacer(MS, MAX_ROTATIONS, MAX_MOTOR_VEL);
 
 void setup(){
     buoyancy_setup();
 }
 void loop(){
-    buoyancy_loop(getDepth());
+    // buoyancy_loop(getDepth());
+  // tmc.measure_position();
+  // Serial.print("time: ");
+  // Serial.println(millis());
+  buoyancy_loop(getDepth());
+
 }
