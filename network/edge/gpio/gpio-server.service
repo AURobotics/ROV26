@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
-ExecStartPre=/usr/bin/gpioset gpiochip0 5=1 6=1
+ExecStartPre=/usr/bin/gpioset gpiochip0 5=0 6=1
 ExecStartPre=/bin/rm -f /opt/gpio/gpio.lock
 ExecStart=/usr/bin/socat UDP4-RECVFROM:5000,ip-add-membership=239.1.1.2:0.0.0.0,fork EXEC:/opt/gpio/runner
 Restart=always
