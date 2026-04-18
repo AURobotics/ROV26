@@ -1,4 +1,3 @@
-import inspect
 import threading
 from typing import Callable
 

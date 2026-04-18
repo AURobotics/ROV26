@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QPushButton, QWidget, QHBoxLayout, QVBoxLayout
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Signal
-from console.gui.camera_display import CameraDisplay
+from console.gui.common.camera_display import CameraDisplay
 from hal.camera.camera import VideoStream
 
 class CVCamera(CameraDisplay):

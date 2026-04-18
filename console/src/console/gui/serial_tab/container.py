@@ -1,3 +1,5 @@
+from typing import Any
+
 from PySide6.QtGui import QFont, QHideEvent, QShowEvent
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -13,7 +15,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QSize, QTimer, Qt, Slot, Signal
 from string import Template
 from console.comms.stm32 import Stm32
-from console.settings.relative_path import get_base_path
+from console.env import Settings
+from console.env.pathing import get_base_path
 from console.gui.common.combobox import ClickableComboBox
 from console.gui.common.tab import GuiTab
 from core.concurrent.callback_worker import CallbackWorker
@@ -37,7 +40,7 @@ class PortComboLabelDelegate(QStyledItemDelegate):
 
         rect = option.rect
         painter.drawText(
-            rect.adjusted(5, 2, 0, -rect.height() / 2),
+            rect.adjusted(5, 2, 0, -rect.height() // 2),
             Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft,
             main_text,
         )
@@ -48,7 +51,7 @@ class PortComboLabelDelegate(QStyledItemDelegate):
             painter.setFont(sub_font)
             painter.setPen(Qt.GlobalColor.gray)
             painter.drawText(
-                rect.adjusted(5, rect.height() / 2, 0, -2),
+                rect.adjusted(5, rect.height() // 2, 0, -2),
                 Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft,
                 sub_text,
             )
@@ -65,13 +68,17 @@ class SerialTab(GuiTab):
     _CONNECTED_STATUS = Template("Connected to $name")
     _CONNECTED_HINT = Template("Port: $port")
     _PROGRAMMER_STATUS_NO = "not detected"
-    _PROGRAMMER_STATUS_YES = "in use"
+    _PROGRAMMER_STATUS_YES = "detected"
     _usb_process_done_signal = Signal()
     _port_process_done_signal = Signal()
 
     def __init__(self, stm: Stm32):
         super().__init__()
         self.stm = stm
+
+        self.settings = Settings()
+        self.stm.programmer = self.settings.get("stm/programmer")
+
         self._usb_process_done_signal.connect(self.on_usb_process_done)
         self._port_process_done_signal.connect(self.on_port_process_done)
 
@@ -133,10 +140,12 @@ class SerialTab(GuiTab):
         self._needs_attention = False
 
         self.main_layout.addLayout(utils_hbox)
-        self.settings_changed.connect(self.on_settings_changed)
 
-    @Slot()
-    def on_settings_changed(self) -> None:
+    @Slot(str, object)
+    def on_settings_changed(self, key: str, value: Any) -> None:
+        if key != "stm/programmer":
+            return
+        self.stm.programmer = value
         self.programmer_status = QLabel(
             self._PROGRAMMER_STATUS_YES
             if self.stm.programmer_present

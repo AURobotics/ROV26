@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtCore import Qt
-from console.settings.relative_path import get_base_path
+from console.env.pathing import get_base_path
 from ultralytics import YOLO
 import numpy as np
 import cv2

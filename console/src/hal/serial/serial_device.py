@@ -118,6 +118,11 @@ class _SerialDevice:
 
             return cast(serial.Serial, instance)
 
+    def close(self):
+        if not self._serial:
+            return
+        self._release_port(self._serial.port)
+
     @classmethod
     def _release_port(cls, port) -> None:
         with cls._connection_lock:

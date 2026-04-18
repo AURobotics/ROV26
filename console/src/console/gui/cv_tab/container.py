@@ -11,13 +11,12 @@ from PySide6.QtWidgets import (
     QDockWidget,
 )
 from PySide6.QtCore import Qt
-from console.gui.cv_camera import CVCamera
-from console.gui.analysis_view import AnalysisView
-from console.gui.screenshot_view import ScreenshotView
+from console.gui.cv_tab.cv_camera import CVCamera
+from console.gui.cv_tab.analysis_view import AnalysisView
+from console.gui.cv_tab.screenshot_view import ScreenshotView
 
 
-class CVTab(GuiTab):
-    # Placeholder for CVTab implementation
+class CvTab(GuiTab):
     def __init__(self, cam, parent: QWidget | None = None):
         super().__init__(parent)
 

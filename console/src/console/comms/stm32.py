@@ -12,7 +12,7 @@ class Stm32:
     _ser: SerialDevice
     _serial_lock: threading.RLock
     _programmer_lock: threading.RLock
-    programmer: Path | None
+    _programmer: Path | None
 
     def __init__(
         self,
@@ -29,10 +29,21 @@ class Stm32:
         self.read_timeout = read_timeout
         self.write_timeout = write_timeout
         self.continuity_timeout = continuity_timeout
-        self.programmer = Path(programmer_executable) if programmer_executable else None
+        self._programmer = Path(programmer_executable) if programmer_executable else None
         self._ready = False
         self._serial_lock = threading.RLock()
         self._programmer_lock = threading.RLock()
+
+    @property
+    def programmer(self) -> Path | None:
+        return self._programmer
+
+    @programmer.setter
+    def programmer(self, path: str | os.PathLike[str] | None) -> None:
+        with self._programmer_lock:
+            if path is not None:
+                path = Path(path).resolve()
+            self._programmer = path
 
     @property
     def connected(self) -> bool:

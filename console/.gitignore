@@ -26,3 +26,4 @@ programmer/
 settings.ini
 *.elf
 models/
+vhusb/
