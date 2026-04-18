@@ -26,7 +26,7 @@ bool AS_ACCESS_POINT = false;
 bool connectToNetwork(bool asAccessPoint = false);
 bool connectToWiFi(const char *ssid, const char *password, int maxRetries = 0);
 bool initAccessPoint(const char *ssid, const char *password, int maxRetries = 0);
-void myDelay(unsigned long);
+void myDelay(unsigned long ms, bool resetOtaWatchdog = true);
 void setMessageOnCallBack();
 
 // ArduinoMqttManager MqttManager;
@@ -47,6 +47,29 @@ constexpr int POWER = 23; // pin set high to retain power, set low to shut down
 
 #define MAX_WIFI_RETRY_COUNT 5
 
+// timer to trigger if otaupdate stopped from being called
+hw_timer_t *otaWatchdogTimer = NULL;
+const int timeout_ms = 1000; // 1 seconds
+
+void callOtaupdate()
+{
+    // To reset: Restart the timer from 0
+    timerRestart(otaWatchdogTimer);
+
+    // Ensure the alarm is still active
+    timerWrite(otaWatchdogTimer, 0);
+
+    otaupdate();
+}
+
+// This function runs if the timer expires
+void IRAM_ATTR onTimer()
+{
+    Serial.println("OTA Watchdog timer expired! Calling otaupdate to handle OTA updates...");
+    // Handle OTA updates during timer interrupt
+    callOtaupdate();
+}
+
 void initPins()
 {
     pinMode(RUNNING, OUTPUT);
@@ -58,6 +81,11 @@ void initPins()
 
 void setup()
 {
+    Serial.println("Device starting...");
+    otaWatchdogTimer = timerBegin(1000000); // 1 MHz, tick = 1 microsecond
+    timerAttachInterrupt(otaWatchdogTimer, &onTimer);
+    timerAlarm(otaWatchdogTimer, timeout_ms * 1000, true, 0); // tick = 1 microsecond; true for periodic
+
     initPins();
     digitalWrite(POWER, HIGH); // set high to retain power
 
@@ -67,9 +95,17 @@ void setup()
     {
         digitalWrite(CONNECTION, LOW); // turn off connection LED
         Serial.println("Failed to connect to network");
+
+        // extreme error - all LEDs on
+        digitalWrite(UPLOADING, HIGH);
+        digitalWrite(RUNNING, HIGH);
+        digitalWrite(CONNECTION, HIGH);
+
         delay(1000);
         ESP.restart();
     }
+    digitalWrite(UPLOADING, LOW);
+    digitalWrite(RUNNING, LOW);
     digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
 
     // OTA
@@ -79,7 +115,7 @@ void setup()
     while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
     {
         Serial.println("set up as Access Point unintentionally");
-        otaupdate(); // Handle OTA updates
+        callOtaupdate(); // Handle OTA updates
 
         // flucctualting led if AP
         digitalWrite(CONNECTION, HIGH);
@@ -159,7 +195,7 @@ void loop()
     }
 
     // Handle OTA updates
-    otaupdate();
+    callOtaupdate();
 
     if (currentState == RUNNING)
     {
@@ -243,7 +279,7 @@ void loop()
             while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
             {
                 Serial.println("set up as Access Point unintentionally");
-                otaupdate(); // Handle OTA updates
+                callOtaupdate(); // Handle OTA updates
 
                 // flucctualting led if AP
                 digitalWrite(CONNECTION, HIGH);
@@ -332,13 +368,16 @@ bool connectToWiFi(const char *ssid, const char *password, int maxRetries)
     return false;
 }
 
-void myDelay(unsigned long ms)
+void myDelay(unsigned long ms, bool resetOtaWatchdog)
 {
     unsigned long start = millis();
     while (millis() - start < ms)
     {
         // Handle OTA updates during delay
-        otaupdate();
+        if (resetOtaWatchdog)
+            callOtaupdate();
+        else
+            otaupdate();
         delay(100); // Short delay to prevent watchdog timer reset
     }
 }
