@@ -100,7 +100,7 @@ class MessageType(Enum):
 
     @property
     def size(self) -> int:
-        return struct.calcsize(self.value.format)
+        return struct.calcsize(f"<{self.value.format}")
 
     @property
     def format(self) -> str:
