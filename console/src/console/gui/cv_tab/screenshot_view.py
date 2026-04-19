@@ -1,8 +1,8 @@
 from PySide6.QtWidgets import QHBoxLayout, QWidget, QVBoxLayout, QLabel, QPushButton
 from PySide6.QtGui import QPixmap, Qt
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QSize, Signal
 
-aspect_ratio = 4/3
+aspect_ratio = 16/9
 
 class ScreenshotView(QWidget):
     analysisClicked = Signal(QPixmap)
@@ -10,14 +10,9 @@ class ScreenshotView(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
-        self._main_layout = QVBoxLayout(self)
-        self._main_layout.setContentsMargins(0, 0, 0, 0)
-
         self._screenshot_label = QLabel(self)
         self._screenshot_label.setScaledContents(True)
         self._screenshot_label.setMinimumSize(1, 1)
-        self._screenshot_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._main_layout.addWidget(self._screenshot_label)
 
         self._overlay = QWidget(self)
 
@@ -27,9 +22,9 @@ class ScreenshotView(QWidget):
         self._discard_btn.clicked.connect(self.hide)
 
         self._h_btn_layout = QHBoxLayout(self._overlay)
-        self._h_btn_layout.addWidget(QWidget(), 1) # Horizontal Spacer
+        self._h_btn_layout.addStretch(1) # Horizontal Spacer
         self._v_btn_layout = QVBoxLayout()
-        self._v_btn_layout.addWidget(QWidget(), 1) # Vertical Spacer
+        self._v_btn_layout.addStretch(1) # Vertical Spacer
         self._v_btn_layout.addWidget(self._analyse_btn)
         self._v_btn_layout.addWidget(self._discard_btn)
         self._h_btn_layout.addLayout(self._v_btn_layout)
@@ -58,12 +53,26 @@ class ScreenshotView(QWidget):
         self._overlay.hide()
         self._screenshot_label.clear()
 
-    def sizeHint(self):
-        return self._screenshot_label.sizeHint()
+#    def sizeHint(self):
+#        if self._screenshot_label.pixmap() is not None:
+#            pixmap_size = self._screenshot_label.pixmap().size()
+#            pixmap_width = pixmap_size.width()
+#            pixmap_height = pixmap_size.height()
+#
+#            if pixmap_width > pixmap_height*aspect_ratio:
+#                scaled_width = int(pixmap_height*aspect_ratio)
+#            else:
+#                scaled_height = int(pixmap_width/aspect_ratio)
+#
+#            return QSize(scaled_width, scaled_height)
+#        else:
+#            return super().sizeHint()
     
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        self._resize_widgets()
 
+    def _resize_widgets(self):
         if self._screenshot_label.pixmap() is not None:
             total_size = self.size()
 
@@ -81,4 +90,4 @@ class ScreenshotView(QWidget):
             y_offset = (total_height - new_height)//2
 
             self._screenshot_label.setGeometry(x_offset, y_offset, new_width, new_height)
-        self._overlay.setGeometry(self.rect())
+            self._overlay.setGeometry(x_offset, y_offset, new_width, new_height)

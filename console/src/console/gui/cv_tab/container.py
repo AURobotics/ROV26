@@ -21,7 +21,7 @@ from pathlib import Path
 
 
 class CvTab(GuiTab):
-    def __init__(self, cam, parent: QWidget | None = None):
+    def __init__(self, cam1, cam2, cam3, parent: QWidget | None = None):
         super().__init__(parent)
 
         self.setWindowFlags(Qt.WindowType.Widget)
@@ -41,7 +41,7 @@ class CvTab(GuiTab):
             Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea
         )
 
-        self._cam = CVCamera(cam)
+        self._cam = CVCamera(cam1, cam2, cam3)
         self._cam.setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
         )
