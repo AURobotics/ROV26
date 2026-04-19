@@ -1,102 +1,84 @@
 #include <control_lib.h>
 
 
-PID::PID(float Kp, float Ki, float Kd, float max_motor_output){
+PID::PID(float Kp, float Ki, float Kd, float max_position, float* set_points, int set_points_num){
     this->Kp = Kp;
     this->Ki = Ki;
     this->Kd = Kd;
-    this->max_motor_output = max_motor_output;
+    this->max_position = max_position * 0.95;
+    this->min_position = - max_position;
+    this->set_points = set_points;
+    this->set_points_num = set_points_num;
 }
 
 float PID::calculate_error(float current_reading){
-    return this->current_set_point - current_reading;
+    return this->set_points[this->current_setpoint_idx] - current_reading;
 }
 
-void PID::set_reference_time(float time){
-    this->prev_time = time;
+void PID::set_reference_time(unsigned long Time){
+    this->prev_time = Time;
 }
 
-float PID::calculate_PID(float error, float time_stamp){
+int PID::calculate_PID(float error, unsigned long time_stamp){
+    if(time_stamp - this->prev_time < sampling_time)
+        return this->PID_output;
+
     float P = this->Kp * error;
-    this->current_integral += error * (time_stamp - this->prev_time);
+    float integral_increment = error * (time_stamp - this->prev_time);
+    this->current_integral += integral_increment;
     float I = this->Ki * this->current_integral;
-    //anti windup starts here
-    if(I > this->max_motor_output){ 
-        this->current_integral = this->max_motor_output / Ki;
-        I = this->current_integral * this->Ki;
-    }
-    else if(I < -this->max_motor_output){
-        this->current_integral = -this->max_motor_output / Ki;
-        I = this->current_integral * this->Ki;
-    }
-    //anti windup ends here
     float D;
-    if(time_stamp - this->prev_time == 0) //make sure to not divide by 0
-        D = prev_D;
-    else
-        D = Kd * (error - this->prev_error) / (time_stamp - this->prev_time);
+    D = Kd * (error - this->prev_error) / (time_stamp - this->prev_time);
     this->prev_error = error;
     this->prev_time = time_stamp;
     this->prev_D = D;
-    float PID = P+I+D;
-    if(PID > this->max_motor_output){
-        PID = this->max_motor_output;
+    float PID = (P+I+D);
+    //anti windup
+    if(PID >= this->max_position){
+        // PID = this->max_position;
+        this->current_integral -= integral_increment;
+        PID = this->max_position;
     }
-    else if(PID < -this->max_motor_output){
-        PID = -this->max_motor_output;
+    else if(PID <= this->min_position){
+        this->current_integral -= integral_increment;
+        PID = this->min_position;
     }
-    //TODO REMOVE PRINTS:
-    Serial.print("P, I, D: ");
+    this->PID_output = PID;
+
+    // TODO REMOVE PRINTS:
+    Serial.print("PID:");
     Serial.print(P);
-    Serial.print(", ");
+    Serial.print(",");
     Serial.print(I);
-    Serial.print(", ");
+    Serial.print(",");
     Serial.println(D);
     return PID;
 }
 
 
-float get_height(){
-    Serial.print("h1:");
-    while(Serial.available() <= 0)
-        delay(10);
-    char receivedChar = Serial.read();
-    char h1_c[1] = {receivedChar};
-    int h1 = atoi(h1_c);
-    Serial.print("h2:");
-    while(Serial.available() <= 1){
-        delay(10);
-    }
-    char c1 = Serial.read();
-    char c2 = Serial.read();
-    char h2_c[2] = {c1, c2};
-    int h2 = atoi(h2_c);
-    float height = h1 + (0.01 * h2);
-    return height;
-}
+int PID::control_loop(float height) {
+    float error = this->calculate_error(height);
 
-double PID::control_loop(float height) {
-  if(hold_position && (millis() - Time > holding_time)){ //if we have been holding position for 30 seconds, we flip direction
-    if(current_set_point == set_point1){ //flip motor direction after being stable for 30 seconds
-        current_set_point = set_point2;
+    if(hold_position){ //if we have been holding position for 30 seconds, we flip direction
+        if(abs(error) > 0.3)
+            Time = millis(); //if error increases above 30cm again, restart the holding timer
+        if((millis() - Time > holding_time)){
+            if(this->current_setpoint_idx < this->set_points_num)
+                this->current_setpoint_idx++;
+            hold_position = false;
+        }
     }
-    else{
-        current_set_point = set_point1;
+    if(!hold_position && abs(error) < 0.3){ //error less than 30 cm
+        hold_position = true; //start holding position
+        Time = millis();
     }
-    // this->current_integral = 0; //reset integral to help change direction faster
-    hold_position = false;
-  }
-  float error = this->calculate_error(height);
-  if(!hold_position && error < 0.3){ //error less than 30 cm
-    hold_position = true; //start holding position
-    Time = millis();
-  }
-  float signal = this->calculate_PID(error, millis());
-  return signal;
+    int signal = this->calculate_PID(error, millis());
+
+    return signal;
 }
 
 double getDepth(){
-    int reading = analogRead(39);
-    double depth = 0.000833333 * reading;
+    int reading = analogRead(4);
+    double depth = 0.001210352 * reading;
     return depth;
 }

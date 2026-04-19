@@ -5,6 +5,8 @@
 #include "store_data.h"
 #include "idf_mqtt_manager.h"
 #include <ms5611.h>
+#include <buoyancy_lib.h>
+
 #include "lan.h"
 
 #define BLINKING_LED 2 // to make sure esp is ok :|
@@ -83,6 +85,7 @@ void setup()
     digitalWrite(POWER, HIGH); // set high to retain power
 
     Serial.begin(115200);
+    buoyancy_setup(false);
 
     if (!connectToNetwork())
     {
@@ -267,6 +270,12 @@ void loop()
     {
         yala_beina_nUpload();
     }
+
+
+    
+    //buoyancy loop
+    buoyancy_loop(getDepth());
+
 }
 
 bool connectToNetwork(bool asAccessPoint)
