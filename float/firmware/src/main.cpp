@@ -1,18 +1,18 @@
 #include <Arduino.h>
-#include <ArduinoMQTTClient.h>
 #include <IDFMQTTClient.h>
 #include "ota_manager.h"
 #include <WiFi.h>
 #include "store_data.h"
-#include "arduino_mqtt_manager.h"
 #include "idf_mqtt_manager.h"
 #include <ms5611.h>
+
+#define BLINKING_LED 2 // to make sure esp is ok :|
 
 #define COMPANY_NUMBER "AU Robotics"
 
 // WiFi credentials
 const char *WIFI_SSID = "Abdelaziz";
-const char *WIFI_PASSWORD = "ya mosahel";
+const char *WIFI_PASSWORD = "ya moshel";
 
 // MQTT broker settings
 const char *MQTT_BROKER = "10.14.70.135";
@@ -26,14 +26,11 @@ bool AS_ACCESS_POINT = false;
 bool connectToNetwork(bool asAccessPoint = false);
 bool connectToWiFi(const char *ssid, const char *password, int maxRetries = 0);
 bool initAccessPoint(const char *ssid, const char *password, int maxRetries = 0);
-void myDelay(unsigned long);
+void myDelay(unsigned long ms, bool resetOtaWatchdog = true);
 void setMessageOnCallBack();
 
 // ArduinoMqttManager MqttManager;
 IDFMQTTManager MqttManager;
-
-// depths values for testing ######################################
-float depthIncrement = 0.1;
 
 // pressure sensor
 MS5611 pressureSensor = MS5611();
@@ -46,22 +43,45 @@ enum Led
     CONNECTION = 18 // green // Uploading data to MQTT broker
 };
 Led currentState;
-constexpr int GATE = 23; // pin set high to retain power, set low to shut down
+constexpr int POWER = 23; // pin set high to retain power, set low to shut down
 
 #define MAX_WIFI_RETRY_COUNT 5
+
+// // timer to trigger if otaupdate stopped from being called
+// hw_timer_t *otaWatchdogTimer = NULL;
+// const int timeout_ms = 3000; // 1 seconds
+
+// void callOtaupdate()
+// {
+//     // To reset: Restart the timer from 0
+//     timerRestart(otaWatchdogTimer);
+
+//     // Ensure the alarm is still active
+//     timerWrite(otaWatchdogTimer, 0);
+
+//     otaupdate();
+// }
+
+// // This function runs if the timer expires
+// void IRAM_ATTR onTimer()
+// {
+//     digitalWrite(POWER, HIGH);
+//     ESP.restart();
+// }
 
 void initPins()
 {
     pinMode(RUNNING, OUTPUT);
     pinMode(UPLOADING, OUTPUT);
     pinMode(CONNECTION, OUTPUT);
-    pinMode(GATE, OUTPUT);
+    pinMode(POWER, OUTPUT);
+    pinMode(BLINKING_LED, OUTPUT);
 }
 
 void setup()
 {
     initPins();
-    digitalWrite(GATE, HIGH); // set high to retain power
+    digitalWrite(POWER, HIGH); // set high to retain power
 
     Serial.begin(115200);
 
@@ -69,13 +89,26 @@ void setup()
     {
         digitalWrite(CONNECTION, LOW); // turn off connection LED
         Serial.println("Failed to connect to network");
+
+        // extreme error - all LEDs on
+        digitalWrite(UPLOADING, HIGH);
+        digitalWrite(RUNNING, HIGH);
+        digitalWrite(CONNECTION, HIGH);
+
         delay(1000);
         ESP.restart();
     }
+    digitalWrite(UPLOADING, LOW);
+    digitalWrite(RUNNING, LOW);
     digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
 
     // OTA
     setupOTA();
+
+    // Set up the watchdog timer to trigger if otaupdate is not called within the timeout period
+    // otaWatchdogTimer = timerBegin(1000000); // 1 MHz, tick = 1 microsecond
+    // timerAttachInterrupt(otaWatchdogTimer, &onTimer);
+    // timerAlarm(otaWatchdogTimer, timeout_ms * 1000, true, 0); // tick = 1 microsecond; true for periodic
 
     // if mode is AP and AS_ACCESS_POINT is false then there is a problem
     while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
@@ -95,31 +128,32 @@ void setup()
     }
     digitalWrite(RUNNING, HIGH); // turn on running LED to indicate device is running and connected to network
 
-    // setup and calibrate pressure sensor
-    // COMMENTING OUT SENSOR LOGIC FOR TESTING WITHOUT SENSOR ############################
-    // if (!pressureSensor.begin())
-    // {
-    //     Serial.println("Failed to initialize MS5611 sensor!, if failed after 30 seconds, restarting...");
-    //     // Absoute ERROR - all LEDs on
-    //     digitalWrite(UPLOADING, HIGH);
-    //     myDelay(30000);
-    //     if(!pressureSensor.begin()) // try again before restarting
-    //     {
-    //         ESP.restart();
-    //     }
-    //     else
-    //     {
-    //         Serial.println("MS5611 sensor initialized successfully on second attempt");
-    //     }
-    // }
+#ifndef DRY_TEST
+    // setup and calibrate pressure sensor only if NOT testing
+    if (!pressureSensor.begin())
+    {
+        Serial.println("Failed to initialize MS5611 sensor!, if failed after 60 seconds, restarting...");
+        // Absoute ERROR - all LEDs on
+        digitalWrite(UPLOADING, HIGH);
+        myDelay(60000);              // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
+        if (!pressureSensor.begin()) // try again before restarting
+        {
+            ESP.restart();
+        }
+        else
+        {
+            Serial.println("MS5611 sensor initialized successfully on second attempt");
+        }
+    }
+#endif
 
     // Start the sequence
     if (!store_data_setup())
     {
-        Serial.println("Failed to setup data storage!, if failed after 30 seconds, restarting...");
+        Serial.println("Failed to setup data storage!, if failed after 60 seconds, restarting...");
         // Absoute ERROR - all LEDs on
         digitalWrite(UPLOADING, HIGH);
-        myDelay(30000);
+        myDelay(60000);
         if (!store_data_setup()) // try again before restarting
         {
             ESP.restart();
@@ -147,6 +181,7 @@ void setup()
 
 void loop()
 {
+    // unsigned long t = millis();
     if (WiFi.status() != WL_CONNECTED)
     {
         digitalWrite(CONNECTION, LOW); // turn off connection LED
@@ -169,11 +204,16 @@ void loop()
         // To store depth per time
         store_data_loop();
 
-        // COMMENTING OUT SENSOR LOGIC FOR TESTING WITHOUT SENSOR ############################
-        // depth = pressureSensor.getDepth();
-        // setDepth(depth);
+#ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
+        depth = pressureSensor.getDepth();
+        setDepth(depth);
+#endif
 
-        // For testing depth changes without sensor #################################
+#ifdef PRESSURE_SENSOR_TEST
+        MqttManager.publish("float/depth", String(depth).c_str());
+#endif
+
+#ifdef DRY_TEST // For testing depth changes without sensor
         if (abs(depth - getCurrentTarget()) < 0.05)
         {
             Serial.println("At target depth, holding...");
@@ -185,20 +225,25 @@ void loop()
         }
         else if (depth > getCurrentTarget())
         {
-            depth -= depthIncrement; // Move slightly below target
+            depth -= 0.1; // Move slightly below target
         }
         else
         {
-            depth += depthIncrement;
+            depth += 0.1;
         }
         setDepth(depth);
+#endif
 
         Serial.print("Current Target: ");
         Serial.println(getCurrentTarget());
         Serial.print("Current Depth: ");
         Serial.println(depth);
 
-        myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency ############################################
+#ifdef DRY_TEST
+        digitalWrite(BLINKING_LED, HIGH);
+        myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency
+        digitalWrite(BLINKING_LED, LOW);
+#endif
 
         if (isComplete())
         {
@@ -208,6 +253,8 @@ void loop()
     }
     else if (currentState == UPLOADING) // keep sending data to MQTT broker every 5 seconds till shutdown
     {
+        digitalWrite(UPLOADING, HIGH); // turn on uploading LED to indicate device is uploading data to MQTT broker
+        digitalWrite(RUNNING, LOW);
         // MQTT setup
         Serial.println("Connecting to MQTT broker...");
 
@@ -257,6 +304,7 @@ void loop()
 
         MqttManager.publish("float/data/credential", COMPANY_NUMBER);
         MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
+        // Serial.println(millis() - t);
         myDelay(5000); // Send data every 5 seconds
     }
 }
@@ -321,13 +369,16 @@ bool connectToWiFi(const char *ssid, const char *password, int maxRetries)
     return false;
 }
 
-void myDelay(unsigned long ms)
+void myDelay(unsigned long ms, bool resetOtaWatchdog)
 {
     unsigned long start = millis();
     while (millis() - start < ms)
     {
         // Handle OTA updates during delay
-        otaupdate();
+        if (resetOtaWatchdog)
+            otaupdate();
+        else
+            otaupdate();
         delay(100); // Short delay to prevent watchdog timer reset
     }
 }
@@ -335,11 +386,11 @@ void myDelay(unsigned long ms)
 bool initAccessPoint(const char *ssid, const char *password, int maxRetries)
 {
     IPAddress local_IP(192, 168, 1, 22);
-    IPAddress gateway(192, 168, 1, 5);
+    IPAddress POWERway(192, 168, 1, 5);
     IPAddress subnet(255, 255, 255, 0);
 
     Serial.print("Setting up Access Point configuration... ");
-    if (!WiFi.softAPConfig(local_IP, gateway, subnet))
+    if (!WiFi.softAPConfig(local_IP, POWERway, subnet))
     {
         Serial.println("FAILED!");
         Serial.println("Using default configuration instead");
@@ -389,7 +440,13 @@ void setMessageOnCallBack()
             if (!strcmp(payload.c_str(), "shutdown"))
             {
                 Serial.println("Received shutdown command. Ending run...");
-                ESP.restart(); // restart to end the run
+                // turn off all LEDs to indicate shutdown
+                digitalWrite(CONNECTION, LOW);
+                digitalWrite(RUNNING, LOW);
+                digitalWrite(UPLOADING, LOW);
+                digitalWrite(POWER, LOW); // turn off power to shut down device
+
+                ESP.restart(); // restart m4 3aref leih
             }
             else
             {
