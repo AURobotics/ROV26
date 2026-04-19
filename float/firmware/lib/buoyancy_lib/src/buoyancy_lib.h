@@ -4,16 +4,19 @@
 #include <control_lib.h>
 #define MS 256
 #define RMS_CURRENT 800
-// #define K_P 0.086
-#define K_P 1.2
-// #define K_I 0.00879 / 7
-#define K_I 0.00879 / 3
-// #define K_D 0.187
-#define K_D 100
-#define MAX_MOTOR_VEL 0.032
-// #define MAX_MOTOR_VEL 100000
-#define MAX_DISTANCE 10
-#define MAX_ROTATIONS 12
+#define K_P 600
+#define K_I 0
+#define K_D 650
+#define MAX_MOTOR_SPS 100 //make motor steps per second
+// #define MAX_MOTOR_VEL MAX_MOTOR_SPS / 200 * POWER_SCREW_SIZE
+#define MAX_MOTOR_VEL 101
+#define MAX_ROTATIONS 13
+// #define MAX_DISTANCE 8 * MAX_ROTATIONS //96mm
+#define MAX_DISTANCE 1300 //1300 steps up and down
+#define FLOAT_HEIGHT 0.5
+
+const int EEPROM_SIZE = sizeof(float) + 1;
+
 
 void buoyancy_setup();
 void buoyancy_loop(float depth);

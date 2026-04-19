@@ -3,102 +3,104 @@
 TMC_interfacer::TMC_interfacer(int ms, float max_rotations, float max_motor_velocity){
     this->ms = ms;
     this->max_rotations = max_rotations;
-    this->max_motor_velocity = MPS2SPS(max_motor_velocity);
+    this->max_motor_velocity = max_motor_velocity;
+    this->max_distance = max_rotations * 200;
 }
 
-float TMC_interfacer::VACTUAL2SPS(uint32_t VACTUAL){
-    return (int) VACTUAL / this->ms * this->oscillator_multiplier;
-    // return VACTUAL * this->oscillator_multiplier;
+int TMC_interfacer::VACTUAL2SPS(uint32_t VACTUAL){
+    float SPS = ((int) VACTUAL) * this->oscillator_multiplier / this->ms;
+    return (int) round(SPS);
 }
 
 uint32_t TMC_interfacer::SPS2VACTUAL(int steps){
+    // Serial.print("SPS2VACTUAL INPUT:");
+    // Serial.println(steps);
     return steps * this->ms / this->oscillator_multiplier;
-    // return steps / this->oscillator_multiplier;
 }
-float TMC_interfacer::MPS2SPS(float velocity){
-    return velocity / (POWER_SCREW_SIZE  * 0.001) * STEPS;
+
+int TMC_interfacer::V2SPS(float velocity){
+    float SPS = (velocity / POWER_SCREW_SIZE) * STEPS;
+    return (int) round(SPS);
+
 }
-void TMC_interfacer::stop_motor(bool shutdown){
-    // Serial.println("!");
-    if(shutdown){
-        motor_stopped = true;
-    }
-    else if(!motor_stopped)
-        return;
-    float velocity = VACTUAL2SPS(driver.VACTUAL());
-    if(velocity >= 1){
+float TMC_interfacer::SPS2V(int SPS){
+    return ((float) SPS / STEPS) * POWER_SCREW_SIZE;
+}
+
+float TMC_interfacer::POS2ROTS(float pos){
+    return pos / POWER_SCREW_SIZE;
+}
+
+float TMC_interfacer::ROTS2POS(float rotations){
+    return rotations * POWER_SCREW_SIZE;
+}
+
+void TMC_interfacer::stop_motor(){
+    int velocity = VACTUAL2SPS(driver.VACTUAL());
+    if(velocity > fast_decceleration_threshold)
+        velocity -= fast_deceleration_step;
+    else if(velocity < - fast_decceleration_threshold)
+        velocity += fast_deceleration_step;
+    else if(velocity >= 1){
         velocity -= 1;
     }
     else if(velocity <= -1){
         velocity += 1;
     }
     driver.VACTUAL(SPS2VACTUAL(velocity));
-    delay(1);
     
 }
 
-void TMC_interfacer::disable_motor(){
-    driver.toff(0);
-    Serial.println("motor stopped successfully!");
-    Serial.println("input any key to continue...");
-    while(!(Serial.available() > 0)){
-        delay(100);
-    }
-    Serial.read();
-    driver.toff(5);
-}
 
 void TMC_interfacer::readSerialAndRespond() {
   if (Serial.available() > 0) {  // Check if data is available
     char receivedChar = Serial.read();  // Read a single character
     
     if (receivedChar == 'h') {  // Check if it matches 'h'
-      stop_motor(true);
+      stop_motor(); //FIX FOR DEBUGGING
     }
   }
 }
 
-void TMC_interfacer::manual_ramp(){
-    int velocity = 10;
-    Serial.println("MANUAL RAMP MODE");
-    while(true){
-        while(Serial.available() <= 0)
-            delay(10);
-        char receivedChar = Serial.read();
-        if(receivedChar == 'u'){
-            velocity += 10;
-            Serial.print("velocity before sending: ");
-            Serial.println(velocity);
-            driver.VACTUAL(SPS2VACTUAL(velocity));
-            uint32_t vel = driver.VACTUAL();
-            Serial.print("current vactual: ");
-            Serial.println(vel);
-            Serial.print("steps per second: ");
-            Serial.println(VACTUAL2SPS(vel));
-        }
-        else if(receivedChar == 'd'){
-            velocity -= 10;
-            driver.VACTUAL(SPS2VACTUAL(velocity));
-            uint32_t vel = driver.VACTUAL();
-            Serial.print("current vactual: ");
-            Serial.println(vel);
-            Serial.print("steps per second: ");
-            Serial.println(VACTUAL2SPS(vel));
-        }
-        else if(receivedChar == 'h'){
-            stop_motor(true);
-        }
-        else if(receivedChar == 'c'){
-            break;
-        }
-    }
+
+void TMC_interfacer::adjust_velocity(int target_position){
+    if(target_position > this->max_distance)
+        target_position = this->max_distance;
+    else if(target_position < 0)
+        target_position = 0;
+
+    //get position
+    int current_position = (int) (this->rotations * 200);
+    int displacement = target_position - current_position;
+    int velocity_SPS;
+    int dead_zone = 5;
+    if(abs(displacement) < dead_zone)
+        velocity_SPS = 0;
+    else if(displacement > 0)
+        velocity_SPS = 100;
+    else
+        velocity_SPS = -100;
+    set_velocity(velocity_SPS);
 }
 
+void TMC_interfacer::adjust_velocity_STEPDIR(float target_position){
+    bool forward = true;
+    bool backward = !forward;
+    bool direction;
+    float current_position = ROTS2POS(this->rotations);
+    float displacement = target_position - current_position;
+    if(displacement < 1 || displacement < -1)
+        return;
+    if(displacement >= 0)
+        direction = forward;
+    else
+        direction = backward;
+    
+}
 void TMC_interfacer::normal_setup(int rms_current, int steps_per_second){
     driver.begin(); 
     delay(500);
     driver.pdn_disable(true); 
-    driver.toff(5); 
     driver.pwm_autoscale(true); 
     driver.I_scale_analog(false);
     driver.rms_current(rms_current); 
@@ -106,14 +108,25 @@ void TMC_interfacer::normal_setup(int rms_current, int steps_per_second){
     driver.microsteps(this->ms);
     if(this->ms == 0)
         this->ms += 1;
-    Serial.println("starting soon...");
-    driver.toff(0); 
-    delay(1000);
-    Serial.println("started!");
-    driver.toff(5); 
     driver.VACTUAL(SPS2VACTUAL(steps_per_second));
 }
 
+void TMC_interfacer::STEPDIR_setup(int rms_current){
+    driver.begin(); 
+    delay(500);
+    driver.pdn_disable(true); 
+    driver.pwm_autoscale(true); 
+    driver.I_scale_analog(false);
+    driver.rms_current(rms_current); 
+    driver.mstep_reg_select(true);
+    driver.microsteps(this->ms);
+    if(this->ms == 0)
+        this->ms += 1;
+    driver.VACTUAL(0);
+    pinMode(STEP_PIN, OUTPUT);
+    pinMode(DIR_PIN, OUTPUT);
+    digitalWrite(DIR_PIN, true);
+}
 
 void TMC_interfacer::measure_position(){
     current_sequencer = driver.MSCNT();
@@ -136,42 +149,22 @@ void TMC_interfacer::measure_position(){
         }
         prev_sequencer = current_sequencer - remainder;
     }
-    if(!motor_stopped){ //make sure motor does not exceed the max rotations allowed
-        if(going_forward && (max_rotations - rotations < 1.5)){
-            stop_motor(true);
-        }
-        else if(!going_forward && (rotations < 1.5)){
-            stop_motor(true);
-        }
-    }
 }
 
-bool TMC_interfacer::set_velocity(double velocity){
-    bool safe_to_move = false;
-    if(motor_stopped){ 
-        if((going_forward && velocity < 0) || (!going_forward && velocity > 0)){ //motor reached max position in one direction and now wants to switch
-            safe_to_move = true;
-            motor_stopped = false;
-            going_forward = !going_forward;
-        }
-    }
-    else{
-        if((going_forward && velocity < 0) || (!going_forward && velocity > 0))
-            going_forward = !going_forward;
-        safe_to_move = true;
-    }
-    if(safe_to_move){
-        float SPS = MPS2SPS(velocity);
-        if(SPS > this->max_motor_velocity)
-            SPS = max_motor_velocity; //make sure to not exceed max motor velocity
-        Serial.print("S:");
-        Serial.println((int) SPS);
-        driver.VACTUAL(SPS2VACTUAL(SPS));
-        return true;
-    }
-    else{
-        Serial.print("S:");
-        Serial.println((int) VACTUAL2SPS(driver.VACTUAL()));
-        return false;
-    }
+bool TMC_interfacer::set_velocity(int SPS){
+    if(SPS > this->max_motor_velocity)
+        SPS = max_motor_velocity; //make sure to not exceed max motor velocity
+    else if(SPS < -this->max_motor_velocity)
+        SPS = - max_motor_velocity;
+
+    if(SPS >= 0)
+        going_forward = true;
+    else
+        going_forward = false;
+    // if((max_rotations - rotations < 1  && going_forward) || (rotations < 1 && !going_forward)){
+    //     stop_motor();
+    //     return false;
+    // }
+    driver.VACTUAL(SPS2VACTUAL(SPS));
+    return true;
 }
