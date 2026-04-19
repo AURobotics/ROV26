@@ -25,6 +25,7 @@ public:
     bool publishFileChunkedOverTopics(const char *topic, const char *path, const char *name);
     bool isConnected() const { return _mqttClient && _mqttClient->isConnected(); }
     void disconnect();
+    bool setCallbackOnMessage(std::function<void(const std::string &topic, const std::string &payload)> callback);
 
 private:
     IDFMQTTClient *_mqttClient;
