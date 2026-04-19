@@ -7,7 +7,7 @@ float setpoints[setpoints_num] = {2.5 - FLOAT_HEIGHT, 0.4, 2.5 - FLOAT_HEIGHT, 0
 TMC_interfacer driver = TMC_interfacer(MS, MAX_ROTATIONS, MAX_MOTOR_VEL);
 PID pid = PID(K_P, K_I, K_D, MAX_DISTANCE, setpoints, setpoints_num);
 void buoyancy_setup(bool read_EEPROM) {
-  Serial.begin(115200);
+  // Serial.begin(115200);
   EEPROM.begin(EEPROM_SIZE);
   if(read_EEPROM){
     float stored_rotations = EEPROM.readFloat(0);

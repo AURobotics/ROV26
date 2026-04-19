@@ -16,22 +16,7 @@ uint32_t TMC_interfacer::SPS2VACTUAL(int steps){
     return steps * this->ms / this->oscillator_multiplier;
 }
 
-int TMC_interfacer::V2SPS(float velocity){
-    float SPS = (velocity / POWER_SCREW_SIZE) * STEPS;
-    return (int) round(SPS);
 
-}
-float TMC_interfacer::SPS2V(int SPS){
-    return ((float) SPS / STEPS) * POWER_SCREW_SIZE;
-}
-
-float TMC_interfacer::POS2ROTS(float pos){
-    return pos / POWER_SCREW_SIZE;
-}
-
-float TMC_interfacer::ROTS2POS(float rotations){
-    return rotations * POWER_SCREW_SIZE;
-}
 
 void TMC_interfacer::stop_motor(){
     int velocity = VACTUAL2SPS(driver.VACTUAL());
@@ -71,7 +56,7 @@ void TMC_interfacer::adjust_velocity(int target_position){
     int current_position = (int) (this->rotations * 200);
     int displacement = target_position - current_position;
     int velocity_SPS;
-    const int dead_zone = 5;
+    const int dead_zone = 50;
     const int slow_zone = 200;
     const int slow_velocity = 30;
     const int fast_velocity = 100;
@@ -90,20 +75,6 @@ void TMC_interfacer::adjust_velocity(int target_position){
     set_velocity(velocity_SPS);
 }
 
-void TMC_interfacer::adjust_velocity_STEPDIR(float target_position){
-    bool forward = true;
-    bool backward = !forward;
-    bool direction;
-    float current_position = ROTS2POS(this->rotations);
-    float displacement = target_position - current_position;
-    if(displacement < 1 || displacement < -1)
-        return;
-    if(displacement >= 0)
-        direction = forward;
-    else
-        direction = backward;
-    
-}
 void TMC_interfacer::normal_setup(int rms_current, int steps_per_second){
     driver.begin(); 
     delay(500);
