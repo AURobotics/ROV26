@@ -5,10 +5,14 @@
 #include <HardwareSerial.h>
 
 #define R_SENSE 0.11f
-#define RX_PIN 16 
+// #define RX_PIN 16 
+// #define TX_PIN 17
+#define RX_PIN 18
 #define TX_PIN 17
 #define STEPS 200
 #define POWER_SCREW_SIZE 8 //mm
+#define DIR_PIN 23
+#define STEP_PIN 22
 
 class TMC_interfacer{
     public:
@@ -19,24 +23,31 @@ class TMC_interfacer{
         int current_sequencer = 0;
         int prev_sequencer = 0;
         int ms;
+        int fast_decceleration_threshold = 25;
+        int fast_deceleration_step = 25;
         float max_rotations;
+        float max_distance;
         float max_motor_velocity;
         float oscillator_multiplier = 0.715;
         bool going_forward = true; //false if rotating the other direction
         bool motor_stopped = false;
         TMC2208Stepper driver = TMC2208Stepper(&Serial2, R_SENSE);
         void normal_setup(int rms_current, int steps_per_second);
+        void STEPDIR_setup(int rms_current);
         void readSerialAndRespond();
         void measure_position();
-        void stop_motor(bool shutdown);
-        void manual_ramp();
-        float VACTUAL2SPS(uint32_t VACTUAL);
+        void stop_motor();
+        int VACTUAL2SPS(uint32_t VACTUAL);
         uint32_t SPS2VACTUAL(int steps);
-        void calibrate();
-        void calibration_loop();
-        bool set_velocity(double velocity);
-        float MPS2SPS(float velocity);
-
+        bool set_velocity(int velocity);
+        int V2SPS(float velocity);
+        void manual_ramp();
+        void disable_motor();
+        void adjust_velocity(int target_position);
+        void adjust_velocity_STEPDIR(float target_position);
+        float POS2ROTS(float pos); //position to rotations
+        float ROTS2POS(float rotations);
+        float SPS2V(int SPS);
 };
 
 #endif
