@@ -1,5 +1,9 @@
 import os
 
+os.environ["YOLO_OFFLINE"] = "True"
+os.environ["YOLO_SYNC"] = "False"
+os.environ["YOLO_HUB_CHECK"] = "False"
+
 from PySide6.QtWidgets import (
     QWidget,
     QSizePolicy,
