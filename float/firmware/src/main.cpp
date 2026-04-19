@@ -1,4 +1,80 @@
-#include "miscellaneous.h"
+#include <Arduino.h>
+#include <IDFMQTTClient.h>
+#include "ota_manager.h"
+#include <WiFi.h>
+#include "store_data.h"
+#include "idf_mqtt_manager.h"
+#include <ms5611.h>
+#include "lan.h"
+
+#define BLINKING_LED 2 // to make sure esp is ok :|
+
+#define COMPANY_NUMBER "AU Robotics"
+
+// WiFi credentials
+const char *WIFI_SSID = "aurobotics-ap";
+const char *WIFI_PASSWORD = "12345678";
+
+// MQTT broker settings
+const char *MQTT_BROKER = "192.168.1.100";
+const int MQTT_PORT = 1883;
+const char *MQTT_USER = nullptr;     // Optional
+const char *MQTT_PASSWORD = nullptr; // Optional
+
+// network settings
+bool AS_ACCESS_POINT = false;
+
+bool connectToNetwork(bool asAccessPoint = false);
+void setMessageOnCallBack();
+
+// ArduinoMqttManager MqttManager;
+IDFMQTTManager MqttManager;
+
+// pressure sensor
+MS5611 pressureSensor = MS5611();
+float depth = 0.0f;
+
+enum Led
+{
+    RUNNING = 19,   // red
+    UPLOADING = 5,  // blue // Collecting data and doing operations
+    CONNECTION = 18 // green // Uploading data to MQTT broker
+};
+Led currentState;
+constexpr int POWER = 23; // pin set high to retain power, set low to shut down
+
+#define MAX_WIFI_RETRY_COUNT 5
+
+// // timer to trigger if otaupdate stopped from being called
+// hw_timer_t *otaWatchdogTimer = NULL;
+// const int timeout_ms = 3000; // 1 seconds
+
+// void callOtaupdate()
+// {
+//     // To reset: Restart the timer from 0
+//     timerRestart(otaWatchdogTimer);
+
+//     // Ensure the alarm is still active
+//     timerWrite(otaWatchdogTimer, 0);
+
+//     otaupdate();
+// }
+
+// // This function runs if the timer expires
+// void IRAM_ATTR onTimer()
+// {
+//     digitalWrite(POWER, HIGH);
+//     ESP.restart();
+// }
+
+void initPins()
+{
+    pinMode(RUNNING, OUTPUT);
+    pinMode(UPLOADING, OUTPUT);
+    pinMode(CONNECTION, OUTPUT);
+    pinMode(POWER, OUTPUT);
+    pinMode(BLINKING_LED, OUTPUT);
+}
 
 void setup()
 {
@@ -232,4 +308,56 @@ void loop()
         // Serial.println(millis() - t);
         myDelay(5000); // Send data every 5 seconds
     }
+}
+
+bool connectToNetwork(bool asAccessPoint)
+{
+    if (asAccessPoint)
+    {
+        initAccessPoint(WIFI_SSID, WIFI_PASSWORD, MAX_WIFI_RETRY_COUNT);
+    }
+    else
+    {
+        if (!connectToWiFi(WIFI_SSID, WIFI_PASSWORD, MAX_WIFI_RETRY_COUNT))
+        {
+            Serial.println("Failed to connect to WiFi -> trying to set up as Access Point");
+            AS_ACCESS_POINT = true;
+            if (!initAccessPoint(WIFI_SSID, WIFI_PASSWORD, MAX_WIFI_RETRY_COUNT))
+            {
+                Serial.println("Failed to initialize Access Point");
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+void setMessageOnCallBack()
+{
+    MqttManager.setCallbackOnMessage([](const std::string &topic, const std::string &payload)
+                                     {
+        Serial.print("Received message on topic: ");
+        Serial.print(topic.c_str());
+        Serial.print(" with payload: [");
+        Serial.print(payload.c_str());
+        Serial.println("]");
+
+        if (!strcmp(topic.c_str(),"float/end"))
+        {
+            if (!strcmp(payload.c_str(), "shutdown"))
+            {
+                Serial.println("Received shutdown command. Ending run...");
+                // turn off all LEDs to indicate shutdown
+                digitalWrite(CONNECTION, LOW);
+                digitalWrite(RUNNING, LOW);
+                digitalWrite(UPLOADING, LOW);
+                digitalWrite(POWER, LOW); // turn off power to shut down device
+
+                ESP.restart(); // restart m4 3aref leih
+            }
+            else
+            {
+                Serial.println("Received unknown command on float/end topic");
+            }
+        } });
 }
