@@ -230,14 +230,14 @@ void loop()
     {
         Serial.println("Collecting data...");
 
-        // buoyancy loop
-        buoyancy_loop(getDepth());
-
-        // To store depth per time
-        store_data_loop();
-
 #ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
         depth = pressureSensor.getDepth();
+        
+        // buoyancy loop
+        buoyancy_loop(depth);
+
+        // To store depth per time
+        store_data_loop(depth);
 #endif
 
 #ifdef DRY_TEST // For testing depth changes without sensor
@@ -259,29 +259,25 @@ void loop()
             depth += 0.1;
         }
 #endif
-        if (millis() - captureDepthTime >= 5000)
-        {
-            captureDepthTime = millis(); // Reset timer for next target
-            setDepth(depth);
+        captureDepthTime = millis(); // Reset timer for next target
 
 #ifdef PRESSURE_SENSOR_TEST
-            MqttManager.publish("float/depth", String(depth).c_str());
-            Serial.print("Current Depth: ");
-            Serial.println(depth);
+        MqttManager.publish("float/depth", String(depth).c_str());
+        Serial.print("Current Depth: ");
+        Serial.println(depth);
 #endif
 
-            Serial.print("Current Target: ");
-            Serial.println(getCurrentTarget());
-            Serial.print("Current Depth: ");
-            Serial.println(depth);
-            MqttManager.publish("float/depth", String(depth).c_str());
+        Serial.print("Current Target: ");
+        Serial.println(getCurrentTarget());
+        Serial.print("Current Depth: ");
+        Serial.println(depth);
+        MqttManager.publish("float/depth", String(depth).c_str());
 
 #ifdef DRY_TEST
-            digitalWrite(BLINKING_LED, HIGH);
-            myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency
-            digitalWrite(BLINKING_LED, LOW);
+        digitalWrite(BLINKING_LED, HIGH);
+        myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency
+        digitalWrite(BLINKING_LED, LOW);
 #endif
-        }
 
         if (isComplete())
         {
