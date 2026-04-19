@@ -1,82 +1,4 @@
-#include <Arduino.h>
-#include <IDFMQTTClient.h>
-#include "ota_manager.h"
-#include <WiFi.h>
-#include "store_data.h"
-#include "idf_mqtt_manager.h"
-#include <ms5611.h>
-
-#define BLINKING_LED 2 // to make sure esp is ok :|
-
-#define COMPANY_NUMBER "AU Robotics"
-
-// WiFi credentials
-const char *WIFI_SSID = "Abdelaziz";
-const char *WIFI_PASSWORD = "ya moshel";
-
-// MQTT broker settings
-const char *MQTT_BROKER = "10.14.70.135";
-const int MQTT_PORT = 1883;
-const char *MQTT_USER = nullptr;     // Optional
-const char *MQTT_PASSWORD = nullptr; // Optional
-
-// network settings
-bool AS_ACCESS_POINT = false;
-
-bool connectToNetwork(bool asAccessPoint = false);
-bool connectToWiFi(const char *ssid, const char *password, int maxRetries = 0);
-bool initAccessPoint(const char *ssid, const char *password, int maxRetries = 0);
-void myDelay(unsigned long ms, bool resetOtaWatchdog = true);
-void setMessageOnCallBack();
-
-// ArduinoMqttManager MqttManager;
-IDFMQTTManager MqttManager;
-
-// pressure sensor
-MS5611 pressureSensor = MS5611();
-float depth = 0.0f;
-
-enum Led
-{
-    RUNNING = 19,   // red
-    UPLOADING = 5,  // blue // Collecting data and doing operations
-    CONNECTION = 18 // green // Uploading data to MQTT broker
-};
-Led currentState;
-constexpr int POWER = 23; // pin set high to retain power, set low to shut down
-
-#define MAX_WIFI_RETRY_COUNT 5
-
-// // timer to trigger if otaupdate stopped from being called
-// hw_timer_t *otaWatchdogTimer = NULL;
-// const int timeout_ms = 3000; // 1 seconds
-
-// void callOtaupdate()
-// {
-//     // To reset: Restart the timer from 0
-//     timerRestart(otaWatchdogTimer);
-
-//     // Ensure the alarm is still active
-//     timerWrite(otaWatchdogTimer, 0);
-
-//     otaupdate();
-// }
-
-// // This function runs if the timer expires
-// void IRAM_ATTR onTimer()
-// {
-//     digitalWrite(POWER, HIGH);
-//     ESP.restart();
-// }
-
-void initPins()
-{
-    pinMode(RUNNING, OUTPUT);
-    pinMode(UPLOADING, OUTPUT);
-    pinMode(CONNECTION, OUTPUT);
-    pinMode(POWER, OUTPUT);
-    pinMode(BLINKING_LED, OUTPUT);
-}
+#include "miscellaneous.h"
 
 void setup()
 {
@@ -129,6 +51,7 @@ void setup()
     digitalWrite(RUNNING, HIGH); // turn on running LED to indicate device is running and connected to network
 
 #ifndef DRY_TEST
+    Wire.begin();
     // setup and calibrate pressure sensor only if NOT testing
     if (!pressureSensor.begin())
     {
@@ -211,6 +134,8 @@ void loop()
 
 #ifdef PRESSURE_SENSOR_TEST
         MqttManager.publish("float/depth", String(depth).c_str());
+        Serial.print("Current Depth: ");
+        Serial.println(depth);
 #endif
 
 #ifdef DRY_TEST // For testing depth changes without sensor
@@ -307,150 +232,4 @@ void loop()
         // Serial.println(millis() - t);
         myDelay(5000); // Send data every 5 seconds
     }
-}
-
-bool connectToNetwork(bool asAccessPoint)
-{
-    if (asAccessPoint)
-    {
-        initAccessPoint(WIFI_SSID, WIFI_PASSWORD, MAX_WIFI_RETRY_COUNT);
-    }
-    else
-    {
-        if (!connectToWiFi(WIFI_SSID, WIFI_PASSWORD, MAX_WIFI_RETRY_COUNT))
-        {
-            Serial.println("Failed to connect to WiFi -> trying to set up as Access Point");
-            AS_ACCESS_POINT = true;
-            if (!initAccessPoint(WIFI_SSID, WIFI_PASSWORD, MAX_WIFI_RETRY_COUNT))
-            {
-                Serial.println("Failed to initialize Access Point");
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-bool connectToWiFi(const char *ssid, const char *password, int maxRetries)
-{
-    Serial.print("Connecting to WiFi");
-
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
-
-    int retryCount = 0;
-
-    while (retryCount < maxRetries)
-    {
-        int attempts = 0;
-        int maxAttempts = 60; // 30 seconds
-
-        while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts)
-        {
-            myDelay(500);
-            Serial.print(".");
-            attempts++;
-        }
-
-        if (WiFi.status() == WL_CONNECTED)
-        {
-            Serial.println("\nWiFi connected");
-            Serial.print("IP address: ");
-            Serial.println(WiFi.localIP());
-            return true;
-        }
-
-        Serial.println("status: " + String(WiFi.status()));
-        retryCount++;
-        Serial.printf("\nConnection failed. Retry %d of %d...\n", retryCount, maxRetries);
-    }
-
-    Serial.println("\nWiFi connection failed after all retries!");
-    return false;
-}
-
-void myDelay(unsigned long ms, bool resetOtaWatchdog)
-{
-    unsigned long start = millis();
-    while (millis() - start < ms)
-    {
-        // Handle OTA updates during delay
-        if (resetOtaWatchdog)
-            otaupdate();
-        else
-            otaupdate();
-        delay(100); // Short delay to prevent watchdog timer reset
-    }
-}
-
-bool initAccessPoint(const char *ssid, const char *password, int maxRetries)
-{
-    IPAddress local_IP(192, 168, 1, 22);
-    IPAddress POWERway(192, 168, 1, 5);
-    IPAddress subnet(255, 255, 255, 0);
-
-    Serial.print("Setting up Access Point configuration... ");
-    if (!WiFi.softAPConfig(local_IP, POWERway, subnet))
-    {
-        Serial.println("FAILED!");
-        Serial.println("Using default configuration instead");
-        // continue without custom config and use data printed by WiFi.softAPIP() later to know the actual IP address
-    }
-    else
-    {
-        Serial.println("OK");
-    }
-
-    for (int attempt = 1; attempt <= maxRetries; attempt++)
-    {
-        Serial.printf("Starting Access Point (attempt %d of %d)... ", attempt, maxRetries);
-
-        if (WiFi.softAP(ssid, password))
-        {
-            Serial.println("READY!");
-            Serial.print("Access Point IP address: ");
-            Serial.println(WiFi.softAPIP());
-            Serial.printf("SSID: %s\n", ssid);
-            return true;
-        }
-
-        Serial.println("FAILED!");
-        if (attempt < maxRetries)
-        {
-            myDelay(1000);
-        }
-    }
-
-    Serial.println("ERROR: Could not start Access Point!");
-    return false;
-}
-
-void setMessageOnCallBack()
-{
-    MqttManager.setCallbackOnMessage([](const std::string &topic, const std::string &payload)
-                                     {
-        Serial.print("Received message on topic: ");
-        Serial.print(topic.c_str());
-        Serial.print(" with payload: [");
-        Serial.print(payload.c_str());
-        Serial.println("]");
-
-        if (!strcmp(topic.c_str(),"float/end"))
-        {
-            if (!strcmp(payload.c_str(), "shutdown"))
-            {
-                Serial.println("Received shutdown command. Ending run...");
-                // turn off all LEDs to indicate shutdown
-                digitalWrite(CONNECTION, LOW);
-                digitalWrite(RUNNING, LOW);
-                digitalWrite(UPLOADING, LOW);
-                digitalWrite(POWER, LOW); // turn off power to shut down device
-
-                ESP.restart(); // restart m4 3aref leih
-            }
-            else
-            {
-                Serial.println("Received unknown command on float/end topic");
-            }
-        } });
 }
