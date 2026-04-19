@@ -18,14 +18,15 @@ const char *WIFI_SSID = "aurobotics-ap";
 const char *WIFI_PASSWORD = "12345678";
 
 // MQTT broker settings
-const char *MQTT_BROKER = "192.168.1.100";
+const char *MQTT_BROKER = "192.168.1.146";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
-const char *MQTT_PASSWORD = nullptr; // Optional
+const char *MQTT_PASSWORD = nullptr; // Optionalf
 
 // network settings
 bool AS_ACCESS_POINT = false;
 
+void yala_beina_nUpload();
 bool connectToNetwork(bool asAccessPoint = false);
 void setMessageOnCallBack();
 
@@ -84,7 +85,6 @@ void setup()
     digitalWrite(POWER, HIGH); // set high to retain power
 
     Serial.begin(115200);
-    buoyancy_setup(false);
 
     if (!connectToNetwork())
     {
@@ -105,6 +105,7 @@ void setup()
 
     // OTA
     setupOTA();
+    otaupdate();
 
     // Set up the watchdog timer to trigger if otaupdate is not called within the timeout period
     // otaWatchdogTimer = timerBegin(1000000); // 1 MHz, tick = 1 microsecond
@@ -147,6 +148,24 @@ void setup()
             Serial.println("MS5611 sensor initialized successfully on second attempt");
         }
     }
+
+    // setting up buoyancy logic
+    if (!buoyancy_setup(false))
+    {
+        Serial.println("Failed to setup buoyancy logic!, if failed after 60 seconds, restarting...");
+        // Absoute ERROR - all LEDs on
+        digitalWrite(UPLOADING, HIGH);
+        myDelay(60000);             // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
+        if (!buoyancy_setup(false)) // try again before restarting
+        {
+            ESP.restart();
+        }
+        else
+        {
+            Serial.println("Buoyancy logic setup successfully on second attempt");
+        }
+    }
+
 #endif
 
     // Start the sequence
@@ -169,11 +188,18 @@ void setup()
     digitalWrite(UPLOADING, LOW);   // turn on uploading LED to indicate device is collecting data and doing operations
     currentState = RUNNING;
 
-    MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+    IDFMQTTManager::setupState mqtt_state = MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+    while (!MqttManager.isConnected())
+    {
+        Serial.println("Error in connection to mqtt delaying in a while loop");
+        myDelay(1000);
+    }
+
     MqttManager.loop(); // checks for mqtt connection and reconnects if needed
 
-    // subscribe to topic that ends run
+    // subscribe to topic that ends run and that sends instant file
     MqttManager.subscribe("float/end", 1);
+    MqttManager.subscribe("float/send_now", 1);
     setMessageOnCallBack();
 
     Serial.println("sending: \"Device started and about to collect data\"");
@@ -203,18 +229,15 @@ void loop()
     {
         Serial.println("Collecting data...");
 
+        // buoyancy loop
+        buoyancy_loop(getDepth());
+        
         // To store depth per time
         store_data_loop();
 
 #ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
         depth = pressureSensor.getDepth();
         setDepth(depth);
-#endif
-
-#ifdef PRESSURE_SENSOR_TEST
-        MqttManager.publish("float/depth", String(depth).c_str());
-        Serial.print("Current Depth: ");
-        Serial.println(depth);
 #endif
 
 #ifdef DRY_TEST // For testing depth changes without sensor
@@ -238,10 +261,17 @@ void loop()
         setDepth(depth);
 #endif
 
+#ifdef PRESSURE_SENSOR_TEST
+        MqttManager.publish("float/depth", String(depth).c_str());
+        Serial.print("Current Depth: ");
+        Serial.println(depth);
+#endif
+
         Serial.print("Current Target: ");
         Serial.println(getCurrentTarget());
         Serial.print("Current Depth: ");
         Serial.println(depth);
+        MqttManager.publish("float/depth", String(depth).c_str());
 
 #ifdef DRY_TEST
         digitalWrite(BLINKING_LED, HIGH);
@@ -252,71 +282,14 @@ void loop()
         if (isComplete())
         {
             Serial.println("Data collection complete. Transitioning to UPLOADING state...");
+            MqttManager.publish("float/data", "run ended, complete file ready for receive");
             currentState = UPLOADING;
         }
     }
     else if (currentState == UPLOADING) // keep sending data to MQTT broker every 5 seconds till shutdown
     {
-        digitalWrite(UPLOADING, HIGH); // turn on uploading LED to indicate device is uploading data to MQTT broker
-        digitalWrite(RUNNING, LOW);
-        // MQTT setup
-        Serial.println("Connecting to MQTT broker...");
-
-        // Ensure WiFi is still connected before checking MQTT state
-        if (WiFi.status() != WL_CONNECTED)
-        {
-            digitalWrite(CONNECTION, LOW); // turn off connection LED
-            if (!WiFi.reconnect())
-            {
-                WiFi.disconnect();
-                if (!connectToNetwork())
-                {
-                    Serial.println("Failed to connect to network");
-                    delay(1000);
-                    ESP.restart(); // mothing we can do if we can't connect to network, restart and try again
-                }
-            }
-
-            digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
-
-            // if mode is AP and AS_ACCESS_POINT is false then there is a problem
-            while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
-            {
-                Serial.println("set up as Access Point unintentionally");
-                otaupdate(); // Handle OTA updates
-
-                // flucctualting led if AP
-                digitalWrite(CONNECTION, HIGH);
-                myDelay(1000);
-                digitalWrite(CONNECTION, LOW);
-
-                if (connectToWiFi(WIFI_SSID, WIFI_PASSWORD)) // try to connect to WiFi once than pass through otupdate if false
-                {
-                    break;
-                }
-            }
-        }
-        digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
-
-        // Handle MQTT communication
-        MqttManager.loop(); // checks for mqtt connection and reconnects if needed
-
-        Serial.println("trying to send Company Number and file to mqtt");
-
-        Serial.print("Mqtt connection is: ");
-        Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
-
-        MqttManager.publish("float/data/credential", COMPANY_NUMBER);
-        MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
-        // Serial.println(millis() - t);
-        myDelay(5000); // Send data every 5 seconds
+        yala_beina_nUpload();
     }
-
-
-    
-    //buoyancy loop
-    buoyancy_loop(getDepth());
-
 }
 
 bool connectToNetwork(bool asAccessPoint)
@@ -368,5 +341,66 @@ void setMessageOnCallBack()
             {
                 Serial.println("Received unknown command on float/end topic");
             }
+        }
+        else if (!strcmp(topic.c_str(), "float/send_now")){
+            Serial.println("I need to send data now, 27eih yala wa nekamel b3dein");
+            yala_beina_nUpload();
         } });
+}
+
+void yala_beina_nUpload()
+{
+    digitalWrite(UPLOADING, HIGH); // turn on uploading LED to indicate device is uploading data to MQTT broker
+    digitalWrite(RUNNING, LOW);
+    // MQTT setup
+    Serial.println("Connecting to MQTT broker...");
+
+    // Ensure WiFi is still connected before checking MQTT state
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        digitalWrite(CONNECTION, LOW); // turn off connection LED
+        if (!WiFi.reconnect())
+        {
+            WiFi.disconnect();
+            if (!connectToNetwork())
+            {
+                Serial.println("Failed to connect to network");
+                delay(1000);
+                ESP.restart(); // mothing we can do if we can't connect to network, restart and try again
+            }
+        }
+
+        digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
+
+        // if mode is AP and AS_ACCESS_POINT is false then there is a problem
+        while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
+        {
+            Serial.println("set up as Access Point unintentionally");
+            otaupdate(); // Handle OTA updates
+
+            // flucctualting led if AP
+            digitalWrite(CONNECTION, HIGH);
+            myDelay(1000);
+            digitalWrite(CONNECTION, LOW);
+
+            if (connectToWiFi(WIFI_SSID, WIFI_PASSWORD)) // try to connect to WiFi once than pass through otupdate if false
+            {
+                break;
+            }
+        }
+    }
+    digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
+
+    // Handle MQTT communication
+    MqttManager.loop(); // checks for mqtt connection and reconnects if needed
+
+    Serial.println("trying to send Company Number and file to mqtt");
+
+    Serial.print("Mqtt connection is: ");
+    Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
+
+    MqttManager.publish("float/data/credential", COMPANY_NUMBER);
+    MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
+    // Serial.println(millis() - t);
+    myDelay(5000); // Send data every 5 seconds
 }
