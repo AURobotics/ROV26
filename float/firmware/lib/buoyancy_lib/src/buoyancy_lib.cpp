@@ -82,10 +82,10 @@ void buoyancy_loop(float depth)
 
 float getCurrentTarget()
 {
-  
+  return pid.set_points[pid.current_setpoint_idx];
 }
 
 bool isComplete()
 {
-
+  return pid.sequence_done;
 }
