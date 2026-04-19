@@ -10,10 +10,8 @@ const char *IDF_IP5 = "192.168.4.6";
 
 const char *IDF_IPs[] = {IDF_startingIP, IDF_IP2, IDF_IP3, IDF_IP4, IDF_IP5};
 
-IDFMQTTManager::IDFMQTTManager() : _mqttClient(nullptr) {}
-
-void IDFMQTTManager::setup(const char *mqtt_broker, int mqtt_port,
-                           const char *mqtt_username, const char *mqtt_password, bool asAccessPoint)
+IDFMQTTManager::setupState IDFMQTTManager::setup(const char *mqtt_broker, int mqtt_port,
+                                                 const char *mqtt_username, const char *mqtt_password, bool asAccessPoint)
 {
     // Delete old client if exists
     if (_mqttClient != nullptr)
@@ -32,27 +30,22 @@ void IDFMQTTManager::setup(const char *mqtt_broker, int mqtt_port,
     // Initialize
     bool res = _mqttClient->begin(_mqttConfig);
 
-    if (!res && asAccessPoint)
-    {
-        Serial.println("Running in Access Point mode. Connect to the AP and use the following IPs:");
-        for (const char *ip : IDF_IPs)
-        {
-            if (!res)
-            {
-                delete _mqttClient;
-                _mqttClient = new IDFMQTTClient();
-                _mqttConfig.broker_uri = std::string(ip) + ":" + std::to_string(mqtt_port);
-                _mqttClient->setOnMessage(messageCallback);
-                res = _mqttClient->begin(_mqttConfig);
-            }
-        }
-    }
+    // if (!res && asAccessPoint)
+    // {
+    //     Serial.println("Running in Access Point mode. Connect to the AP and use the following IPs:");
+    //     for (const char *ip : IDF_IPs)
+    //     {
+    //         if (!res)
+    //         {
+    //             delete _mqttClient;
+    //             _mqttClient = new IDFMQTTClient();
+    //             _mqttConfig.broker_uri = std::string(ip) + ":" + std::to_string(mqtt_port);
+    //             _mqttClient->setOnMessage(messageCallback);
+    //             res = _mqttClient->begin(_mqttConfig);
+    //         }
+    //         // }
 
-    while (_mqttClient->isConnected() == false)
-    {
-        Serial.println("Waiting for MQTT connection...");
-        delay(1000);
-    }
+    return ok;
 }
 
 void IDFMQTTManager::loop(bool pollMqttConnection)
