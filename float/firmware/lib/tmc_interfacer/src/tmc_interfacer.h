@@ -43,7 +43,7 @@ class TMC_interfacer{
         int V2SPS(float velocity);
         void manual_ramp();
         void disable_motor();
-        void adjust_velocity(float target_position);
+        void adjust_velocity(int target_position);
         void adjust_velocity_STEPDIR(float target_position);
         float POS2ROTS(float pos); //position to rotations
         float ROTS2POS(float rotations);

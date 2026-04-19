@@ -2,7 +2,7 @@
 #include <EEPROM.h>
 
 TMC_interfacer driver = TMC_interfacer(MS, MAX_ROTATIONS, MAX_MOTOR_VEL);
-PID pid = PID(K_P, K_I, K_D, K_G, MAX_DISTANCE);
+PID pid = PID(K_P, K_I, K_D, MAX_DISTANCE);
 void buoyancy_setup() {
   Serial.begin(115200);
   EEPROM.begin(EEPROM_SIZE);
@@ -20,8 +20,11 @@ void buoyancy_setup() {
   while (Serial.available() <= 0) // wait for input to start
     delay(1);
   char temp = Serial.read();  // Read a single character
-  pid.set_point1 = 2500 - FLOAT_HEIGHT;
-  pid.set_point2 = 400;
+  if(temp == 'n')
+    driver.rotations = 0;
+  
+  pid.set_point1 = 2.5 - FLOAT_HEIGHT;
+  pid.set_point2 = 0.4;
   pid.current_set_point = pid.set_point1;
 
   driver.normal_setup(RMS_CURRENT, 0);
@@ -35,9 +38,8 @@ void save_rotations(){
 }
 
 void buoyancy_loop(float depth) {
-  depth = depth * 1000; //m to mm
 
-  double target_position = pid.control_loop(depth);
+  int target_position = pid.control_loop(depth) + 1300;
   driver.adjust_velocity(target_position);
   driver.measure_position();
 
@@ -53,7 +55,7 @@ void buoyancy_loop(float depth) {
     }
   }
   Serial.print("D:");
-  Serial.println((int) depth);
+  Serial.println(depth);
   Serial.print("V:");
   Serial.println(target_position);
   Serial.print("R:");

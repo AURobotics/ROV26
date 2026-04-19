@@ -5,10 +5,10 @@
 
 class PID{
     public:
-        PID(float Kp, float Ki, float Kd,float Kg, float max_position);
-        float Kp, Ki, Kd, Kg;
+        PID(float Kp, float Ki, float Kd, float max_position);
+        float Kp, Ki, Kd;
         float max_position;
-        float min_position = 0;
+        float min_position;
         float max_position_clearance_percentage = 0.95;
         float current_integral = 0;
         float prev_error = 0;
@@ -23,8 +23,8 @@ class PID{
         unsigned long Time = millis();
         bool hold_position = false;
         float calculate_error(float current_reading);
-        float calculate_PID(float error, unsigned long time_stamp);
-        double control_loop(float height);
+        int calculate_PID(float error, unsigned long time_stamp);
+        int control_loop(float height);
         void set_reference_time(unsigned long Time);
 
 

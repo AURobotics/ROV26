@@ -1,7 +1,7 @@
-// #ifndef OTA_MANAGER_H
-// #define OTA_MANAGER_H
+#ifndef OTA_MANAGER_H
+#define OTA_MANAGER_H
 
-// void setupOTA();
-// void otaupdate();
+void setupOTA();
+void otaupdate();
 
-// #endif
+#endif

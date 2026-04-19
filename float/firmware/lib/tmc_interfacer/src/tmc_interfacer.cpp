@@ -3,8 +3,8 @@
 TMC_interfacer::TMC_interfacer(int ms, float max_rotations, float max_motor_velocity){
     this->ms = ms;
     this->max_rotations = max_rotations;
-    this->max_motor_velocity = V2SPS(max_motor_velocity);
-    this->max_distance = ROTS2POS(max_rotations);
+    this->max_motor_velocity = max_motor_velocity;
+    this->max_distance = max_rotations * 200;
 }
 
 int TMC_interfacer::VACTUAL2SPS(uint32_t VACTUAL){
@@ -34,6 +34,7 @@ float TMC_interfacer::POS2ROTS(float pos){
 float TMC_interfacer::ROTS2POS(float rotations){
     return rotations * POWER_SCREW_SIZE;
 }
+
 void TMC_interfacer::stop_motor(){
     int velocity = VACTUAL2SPS(driver.VACTUAL());
     if(velocity > fast_decceleration_threshold)
@@ -62,25 +63,24 @@ void TMC_interfacer::readSerialAndRespond() {
 }
 
 
-void TMC_interfacer::adjust_velocity(float target_position){
+void TMC_interfacer::adjust_velocity(int target_position){
     if(target_position > this->max_distance)
         target_position = this->max_distance;
     else if(target_position < 0)
         target_position = 0;
 
     //get position
-    float current_position = ROTS2POS(this->rotations);
-    float displacement = target_position - current_position;
-    int velocity_SPS = VACTUAL2SPS(driver.VACTUAL());
-    float velocity = SPS2V(velocity_SPS); //velocity in mm/s
-    if(abs(displacement) < 2)
-        stop_motor();
+    int current_position = (int) (this->rotations * 200);
+    int displacement = target_position - current_position;
+    int velocity_SPS;
+    int dead_zone = 5;
+    if(abs(displacement) < dead_zone)
+        velocity_SPS = 0;
     else if(displacement > 0)
-        velocity_SPS += 8;
+        velocity_SPS = 100;
     else
-        velocity_SPS -= 8;
+        velocity_SPS = -100;
     set_velocity(velocity_SPS);
-
 }
 
 void TMC_interfacer::adjust_velocity_STEPDIR(float target_position){
@@ -161,10 +161,10 @@ bool TMC_interfacer::set_velocity(int SPS){
         going_forward = true;
     else
         going_forward = false;
-    if((max_rotations - rotations < 1  && going_forward) || (rotations < 1 && !going_forward)){
-        stop_motor();
-        return false;
-    }
+    // if((max_rotations - rotations < 1  && going_forward) || (rotations < 1 && !going_forward)){
+    //     stop_motor();
+    //     return false;
+    // }
     driver.VACTUAL(SPS2VACTUAL(SPS));
     return true;
 }
