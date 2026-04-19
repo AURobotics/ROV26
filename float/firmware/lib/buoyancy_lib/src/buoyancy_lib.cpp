@@ -79,3 +79,13 @@ void buoyancy_loop(float depth)
   else
     Serial.println(-1);
 }
+
+float getCurrentTarget()
+{
+  
+}
+
+bool isComplete()
+{
+
+}
