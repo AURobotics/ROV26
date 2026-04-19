@@ -79,6 +79,7 @@ void initPins()
     pinMode(BLINKING_LED, OUTPUT);
 }
 
+unsigned long captureDepthTime;
 void setup()
 {
     initPins();
@@ -205,11 +206,11 @@ void setup()
     Serial.println("sending: \"Device started and about to collect data\"");
     MqttManager.publish("float/status", "Device started and about to collect data");
     Serial.println("sent initial status message to MQTT broker");
+    captureDepthTime = millis();
 }
 
 void loop()
 {
-    // unsigned long t = millis();
     if (WiFi.status() != WL_CONNECTED)
     {
         digitalWrite(CONNECTION, LOW); // turn off connection LED
@@ -231,13 +232,12 @@ void loop()
 
         // buoyancy loop
         buoyancy_loop(getDepth());
-        
+
         // To store depth per time
         store_data_loop();
 
 #ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
         depth = pressureSensor.getDepth();
-        setDepth(depth);
 #endif
 
 #ifdef DRY_TEST // For testing depth changes without sensor
@@ -258,26 +258,30 @@ void loop()
         {
             depth += 0.1;
         }
-        setDepth(depth);
 #endif
+        if (millis() - captureDepthTime >= 5000)
+        {
+            captureDepthTime = millis(); // Reset timer for next target
+            setDepth(depth);
 
 #ifdef PRESSURE_SENSOR_TEST
-        MqttManager.publish("float/depth", String(depth).c_str());
-        Serial.print("Current Depth: ");
-        Serial.println(depth);
+            MqttManager.publish("float/depth", String(depth).c_str());
+            Serial.print("Current Depth: ");
+            Serial.println(depth);
 #endif
 
-        Serial.print("Current Target: ");
-        Serial.println(getCurrentTarget());
-        Serial.print("Current Depth: ");
-        Serial.println(depth);
-        MqttManager.publish("float/depth", String(depth).c_str());
+            Serial.print("Current Target: ");
+            Serial.println(getCurrentTarget());
+            Serial.print("Current Depth: ");
+            Serial.println(depth);
+            MqttManager.publish("float/depth", String(depth).c_str());
 
 #ifdef DRY_TEST
-        digitalWrite(BLINKING_LED, HIGH);
-        myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency
-        digitalWrite(BLINKING_LED, LOW);
+            digitalWrite(BLINKING_LED, HIGH);
+            myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency
+            digitalWrite(BLINKING_LED, LOW);
 #endif
+        }
 
         if (isComplete())
         {
@@ -342,7 +346,8 @@ void setMessageOnCallBack()
                 Serial.println("Received unknown command on float/end topic");
             }
         }
-        else if (!strcmp(topic.c_str(), "float/send_now")){
+        else if (!strcmp(topic.c_str(), "float/send_now"))
+        {
             Serial.println("I need to send data now, 27eih yala wa nekamel b3dein");
             yala_beina_nUpload();
         } });
