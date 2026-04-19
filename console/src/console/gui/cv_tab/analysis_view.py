@@ -1,3 +1,5 @@
+import os
+
 from PySide6.QtWidgets import (
     QWidget,
     QSizePolicy,
@@ -10,42 +12,54 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtCore import Qt
-from console.env.pathing import get_base_path
 from ultralytics import YOLO
 import numpy as np
 import cv2
 
-model = YOLO(get_base_path() / "models" / "crab-counting-v1.0.pt")
 
 
-def count_crabs(frame):
-    results = model(frame)
-    counts = {"green crab": 0, "red crab": 0, "brown crab": 0}
-    for r in results:
-        for cls in r.boxes.cls:
-            name = model.names[int(cls)]
-            if name in counts:
-                counts[name] += 1
-    return (
-        counts["green crab"],
-        counts["red crab"],
-        counts["brown crab"],
-        results[0].plot(),
-    )
+class ModelManager:
+    def __init__(self) -> None:
+        self._model = None
 
+    def set_model(self, model_path: str) -> None:
+        self._model = YOLO(model_path)
 
-def to_cv2(pixmap: QPixmap) -> np.ndarray:
-    img = pixmap.toImage().convertToFormat(QImage.Format.Format_RGB888)
-    arr = np.array(img.bits(), dtype=np.uint8).reshape((img.height(), img.width(), 3))
-    return cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+    def unload_model(self) -> None:
+        self._model = None
 
+    def count_crabs(self, frame) -> tuple[int, int, int, np.ndarray] | None:
+        if not self._model:
+            return None
+        results = self._model(frame)
+        counts: dict[str, int] = {"green crab": 0, "red crab": 0, "brown crab": 0}
+        for r in results:
+            for cls in r.boxes.cls:
+                name = self._model.names[int(cls)]
+                if name in counts:
+                    counts[name] += 1
+        return (
+            counts["green crab"],
+            counts["red crab"],
+            counts["brown crab"],
+            results[0].plot(),
+        )
 
-def to_pixmap(frame: np.ndarray) -> QPixmap:
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    h, w, ch = rgb.shape
-    return QPixmap.fromImage(
-        QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
-    )
+    @staticmethod
+    def to_cv2(pixmap: QPixmap) -> np.ndarray:
+        img = pixmap.toImage().convertToFormat(QImage.Format.Format_RGB888)
+        arr = np.array(img.bits(), dtype=np.uint8).reshape(
+            (img.height(), img.width(), 3)
+        )
+        return cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+
+    @staticmethod
+    def to_pixmap(frame: np.ndarray) -> QPixmap:
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb.shape
+        return QPixmap.fromImage(
+            QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
+        )
 
 
 class AnalysisView(QWidget):
@@ -55,7 +69,11 @@ class AnalysisView(QWidget):
         self._displayed_pixmap: QPixmap | None = None
         self._last_counts = (0, 0, 0)
         self._build()
+        self._model = ModelManager()
         self.setVisible(False)
+
+    def load_model(self, model: str | os.PathLike[str]) -> None:
+        self._model.set_model(str(model))
 
     def _build(self):
         root = QHBoxLayout(self)
@@ -156,9 +174,13 @@ class AnalysisView(QWidget):
     def _on_run(self):
         if self._original_pixmap is None:
             return
-        g, r, b, annotated = count_crabs(to_cv2(self._original_pixmap))
+
+        inference = self._model.count_crabs(self._model.to_cv2(self._original_pixmap))
+        if not inference:
+            return
+        g, r, b, annotated = inference
         self._last_counts = (g, r, b)
-        self._show_pixmap(to_pixmap(annotated))
+        self._show_pixmap(self._model.to_pixmap(annotated))
         self._accept_btn.setEnabled(True)
 
     def _on_accept(self):

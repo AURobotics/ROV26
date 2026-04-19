@@ -4,11 +4,13 @@ from PySide6.QtCore import QTimer
 
 from random import randint
 
+from console.comms.manager import CommunicationManager
+
 
 class LeakageDisplay(QWidget):
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, comms: CommunicationManager, parent: QWidget | None = None):
         super().__init__(parent)
-
+        self._comms = comms
         font = QFont()
         font.setPointSize(10)
 
@@ -39,7 +41,7 @@ class LeakageDisplay(QWidget):
         )
         self._layout.addWidget(self._sensor1, 0, 0)
 
-        self._label1 = QLabel("temp1")
+        self._label1 = QLabel("0%")
         self._label1.setFont(font)
         self._label1.setSizePolicy(
             QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum
@@ -52,11 +54,11 @@ class LeakageDisplay(QWidget):
         self._layout.setColumnStretch(1, 0)
 
         self._timer = QTimer()
-        self._timer.timeout.connect(self.updateSensors)
+        self._timer.timeout.connect(self.update_value)
         self._timer.start(100)
 
-    def updateSensors(self):
-        new_value = max(0, min(100, self._sensor1.value() + randint(-5, 5)))
+    def update_value(self):
+        new_value = int(self._comms.sensor_cache.depth)
         if new_value != self._sensor1.value():
             self._sensor1.setValue(new_value)
             self._label1.setText(f"{self._sensor1.value()}%")

@@ -8,21 +8,20 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+from console.comms.manager import CommunicationManager
 from console.gui.common.camera_display import CameraDisplay
 from console.gui.common.tab import GuiTab
 from console.gui.pilot_tab.leakage_display import LeakageDisplay
 from console.gui.model.orientation_data import OrientationData
-from console.gui.model.sensors import Sensors
 from console.gui.model.thruster_status import ThrusterStatus
 from console.gui.pilot_tab.status_widget import StatusWidget
 from console.gui.pilot_tab.auto_control_input import AutoControlInput
 
 
 class PilotTab(GuiTab):
-    def __init__(self, cam1, cam2, cam3, comms):
+    def __init__(self, cam1, cam2, cam3, comms: CommunicationManager):
         super().__init__()
         self._comms = comms
-        self._sensors = Sensors(self._comms)  # Shared sensor instance
 
         # 1. Main Layout
         self.main_layout = QVBoxLayout(self)
@@ -65,18 +64,18 @@ class PilotTab(GuiTab):
         )
 
         # 4.1 Create the actual instances of your widgets
-        self.leakage_widget = LeakageDisplay()
+        self.leakage_widget = LeakageDisplay(self._comms)
         self.thruster_layout_widget = StatusWidget(
-            ThrusterStatus(self._sensors), "thrusterLayout.qml"
+            ThrusterStatus(self._comms), "thrusterLayout.qml"
         )
-        self.depth_widget = StatusWidget(OrientationData(self._sensors), "depth.qml")
+        self.depth_widget = StatusWidget(OrientationData(self._comms), "depth.qml")
         self.compass_widget = StatusWidget(
-            OrientationData(self._sensors), "compassWidget.qml"
+            OrientationData(self._comms), "compassWidget.qml"
         )
         self.pitch_roll_widget = StatusWidget(
-            OrientationData(self._sensors), "pitchRoll.qml"
+            OrientationData(self._comms), "pitchRoll.qml"
         )
-        self.auto_input_widget = AutoControlInput()
+        self.auto_input_widget = AutoControlInput(self._comms)
 
         # 4.2 Wrap them in Docks
         self.leak_dock = self._create_dock("Leakage", self.leakage_widget)

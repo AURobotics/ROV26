@@ -43,6 +43,14 @@ class CommandState:
 _empty_sensors = SensorsData(0, 0, 0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0])
 
 
+@dataclass(slots=True)
+class AutomaticControlData:
+    yaw: float | None = None
+    pitch: float | None = None
+    roll: float | None = None
+    depth: float | None = None
+
+
 class CommunicationManager:
     _stm: Stm32
     _joystick: ActiveJoystick
@@ -52,6 +60,7 @@ class CommunicationManager:
     _killswitch: bool
     _incoming_thread: threading.Thread
     _outgoing_thread: threading.Thread
+    _automatic_control: AutomaticControlData
 
     def __init__(self, stm: Stm32, joystick: ActiveJoystick):
         self._stm = stm
@@ -60,6 +69,7 @@ class CommunicationManager:
         self._command_cache = CommandState()
         self._data_ready_event = threading.Event()
         self._killswitch = False
+        self._automatic_control = AutomaticControlData()
         self._incoming_thread = threading.Thread(
             target=self._incoming_loop, daemon=True
         )
@@ -77,6 +87,9 @@ class CommunicationManager:
             return
         for btn in ToggleButtons.keys():
             self._joystick.add_gamepad_button_listener(self._on_joystick_button, btn)
+
+    def set_automatic_control(self, options: AutomaticControlData) -> None:
+        self._automatic_control = options
 
     def _on_joystick_button(self, _: Joystick, button: GamepadButton, is_pressed: bool):
         try:
@@ -126,21 +139,29 @@ class CommunicationManager:
             except Exception as ex:
                 print(f"[WARN] | {ex}")
 
+    def _input_deadzone(self, val: float) -> float:
+        if abs(val) > 0.2:
+            return val
+        return 0.0
+
     def _controller_payload(self):
         control_word = 0
         # Event-triggered toggles
         control_word |= ControlFlags.led_open * self._command_cache.led
         control_word |= ControlFlags.gripper_close * self._command_cache.gripper
         control_word |= ControlFlags.arm_close * self._command_cache.arm
+        control_word |= ControlFlags.yaw * (self._automatic_control.yaw is not None)
+        control_word |= ControlFlags.roll * (self._automatic_control.roll is not None)
+        control_word |= ControlFlags.pitch * (self._automatic_control.pitch is not None)
+        control_word |= ControlFlags.depth * (self._automatic_control.depth is not None)
 
         # Polling controls
         joy = self._joystick
-        
+
         arm_up = bool(joy.get_gpinput(GamepadButton.DPAD_UP))
         arm_down = bool(joy.get_gpinput(GamepadButton.DPAD_DOWN))
         control_word |= ControlFlags.arm_enable_rotation * (arm_up or arm_down)
-        control_word |= ControlFlags.arm_rotate_up * arm_up
-
+        control_word |= ControlFlags.arm_rotate_down * arm_up
         force_x = self._command_cache.force_x.filter_step(
             -joy.get_gpinput(GamepadStick.LEFT_Y)
         )
@@ -164,12 +185,12 @@ class CommunicationManager:
 
         payload = CommandData(
             control=control_word,
-            x=force_x,
-            y=force_y,
-            z=force_z,
-            roll=roll,
-            pitch=pitch,
-            yaw=yaw,
+            x=self._input_deadzone(force_x),
+            y=self._input_deadzone(force_y),
+            z=self._input_deadzone(force_z),
+            roll=self._input_deadzone(roll),
+            pitch=self._input_deadzone(pitch),
+            yaw=self._input_deadzone(yaw),
         )
         print(payload)
         return payload

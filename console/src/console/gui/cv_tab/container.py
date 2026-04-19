@@ -1,3 +1,6 @@
+from typing import Any
+
+from console.env import Settings
 from console.gui.common.tab import GuiTab
 from PySide6.QtWidgets import (
     QDockWidget,
@@ -14,6 +17,7 @@ from PySide6.QtCore import Qt
 from console.gui.cv_tab.cv_camera import CVCamera
 from console.gui.cv_tab.analysis_view import AnalysisView
 from console.gui.cv_tab.screenshot_view import ScreenshotView
+from pathlib import Path
 
 
 class CvTab(GuiTab):
@@ -63,6 +67,9 @@ class CvTab(GuiTab):
 
         self._cam.captureClicked.connect(self._screenshot_manager.setPixmap)
         self._screenshot_manager.analysisClicked.connect(self._analysis_view.receive_from_screenshot)
+        model_path = Path(Settings().get("cv/model"))
+        if model_path.exists():
+            self._analysis_view.load_model(model_path)
 
     def _create_dock(self, title, widget):
         dock = QDockWidget(title, self)
@@ -72,3 +79,10 @@ class CvTab(GuiTab):
             | QDockWidget.DockWidgetFeature.DockWidgetFloatable
         )
         return dock
+
+    def on_settings_changed(self, key: str, value: Any) -> None:
+        if key != "cv/model":
+            return
+        path = Path(value)
+        if path.exists():
+            self._analysis_view.load_model(path)

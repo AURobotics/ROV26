@@ -22,7 +22,7 @@ class ControlFlags(IntFlag):
     gripper_close = 1 << 10  # dcv1
     arm_close = 1 << 9  # dcv2
     arm_enable_rotation = 1 << 8
-    arm_rotate_up = 1 << 7
+    arm_rotate_down = 1 << 7
 
 
 NormalizedFloat: TypeAlias = Annotated[float, Ge(-1.0), Le(1.0)]
@@ -48,10 +48,10 @@ class CommandData(Payload):
 @dataclass(frozen=True, slots=True)
 class SensorsData(Payload):
     status: Byte
-    depth: NormalizedFloat
-    yaw: NormalizedFloat
-    pitch: NormalizedFloat
-    roll: NormalizedFloat
+    depth: float # depth in meters
+    yaw: float # angle in degrees
+    pitch: float # angle in degrees
+    roll: float # angle in degrees
     thrusters: list[NormalizedFloat] = field(metadata={"size": 8}, default_factory=list)
 
     @property
