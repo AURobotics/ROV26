@@ -114,3 +114,13 @@ class CameraDisplay(QWidget):
 
     def _cleanup(self):
         self._camera_timer.stop()
+
+    def getPixmap(self) -> QPixmap | None:
+        pixmap = self._frame_view.pixmap()
+        if pixmap is not None:
+            return pixmap.copy()
+        return None
+    
+    def hide(self):
+        super().hide()
+        self._cleanup()
