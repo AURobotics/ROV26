@@ -1,27 +1,4 @@
-#include "miscellaneous.h"
-
-
-bool connectToNetwork(bool asAccessPoint)
-{
-    if (asAccessPoint)
-    {
-        initAccessPoint(WIFI_SSID, WIFI_PASSWORD, MAX_WIFI_RETRY_COUNT);
-    }
-    else
-    {
-        if (!connectToWiFi(WIFI_SSID, WIFI_PASSWORD, MAX_WIFI_RETRY_COUNT))
-        {
-            Serial.println("Failed to connect to WiFi -> trying to set up as Access Point");
-            AS_ACCESS_POINT = true;
-            if (!initAccessPoint(WIFI_SSID, WIFI_PASSWORD, MAX_WIFI_RETRY_COUNT))
-            {
-                Serial.println("Failed to initialize Access Point");
-                return false;
-            }
-        }
-    }
-    return true;
-}
+#include"lan.h"
 
 bool connectToWiFi(const char *ssid, const char *password, int maxRetries)
 {
@@ -59,20 +36,6 @@ bool connectToWiFi(const char *ssid, const char *password, int maxRetries)
 
     Serial.println("\nWiFi connection failed after all retries!");
     return false;
-}
-
-void myDelay(unsigned long ms, bool resetOtaWatchdog)
-{
-    unsigned long start = millis();
-    while (millis() - start < ms)
-    {
-        // Handle OTA updates during delay
-        if (resetOtaWatchdog)
-            otaupdate();
-        else
-            otaupdate();
-        delay(100); // Short delay to prevent watchdog timer reset
-    }
 }
 
 bool initAccessPoint(const char *ssid, const char *password, int maxRetries)
@@ -115,34 +78,4 @@ bool initAccessPoint(const char *ssid, const char *password, int maxRetries)
 
     Serial.println("ERROR: Could not start Access Point!");
     return false;
-}
-
-void setMessageOnCallBack()
-{
-    MqttManager.setCallbackOnMessage([](const std::string &topic, const std::string &payload)
-                                     {
-        Serial.print("Received message on topic: ");
-        Serial.print(topic.c_str());
-        Serial.print(" with payload: [");
-        Serial.print(payload.c_str());
-        Serial.println("]");
-
-        if (!strcmp(topic.c_str(),"float/end"))
-        {
-            if (!strcmp(payload.c_str(), "shutdown"))
-            {
-                Serial.println("Received shutdown command. Ending run...");
-                // turn off all LEDs to indicate shutdown
-                digitalWrite(CONNECTION, LOW);
-                digitalWrite(RUNNING, LOW);
-                digitalWrite(UPLOADING, LOW);
-                digitalWrite(POWER, LOW); // turn off power to shut down device
-
-                ESP.restart(); // restart m4 3aref leih
-            }
-            else
-            {
-                Serial.println("Received unknown command on float/end topic");
-            }
-        } });
 }

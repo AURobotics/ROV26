@@ -3,5 +3,6 @@
 
 void setupOTA();
 void otaupdate();
+void myDelay(unsigned long ms);
 
 #endif
