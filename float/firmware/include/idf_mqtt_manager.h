@@ -16,9 +16,16 @@ extern const char *IDF_IPs[];
 class IDFMQTTManager
 {
 public:
-    IDFMQTTManager();
-    void setup(const char *mqtt_broker, int mqtt_port,
-               const char *mqtt_username, const char *mqtt_password, bool asAccessPoint = false);
+    enum setupState
+    {
+        ok,
+        not_connected,
+        failed
+    };
+
+    explicit constexpr IDFMQTTManager() : _mqttClient(nullptr) {}
+    setupState setup(const char *mqtt_broker, int mqtt_port,
+                     const char *mqtt_username, const char *mqtt_password, bool asAccessPoint = false);
     void loop(bool pollMqttConnection = true);
     bool publish(const char *topic, const char *payload, int qos = 1, bool retained = false);
     bool subscribe(const char *topic, int qos = 1);
