@@ -15,10 +15,10 @@
 #define MAX_DISTANCE 1300 //1300 steps up and down
 #define FLOAT_HEIGHT 0.5
 
-const int EEPROM_SIZE = sizeof(float) + 1;
+const int EEPROM_SIZE = sizeof(float);
 
 
-void buoyancy_setup();
+void buoyancy_setup(bool read_EEPROM);
 void buoyancy_loop(float depth);
 
 

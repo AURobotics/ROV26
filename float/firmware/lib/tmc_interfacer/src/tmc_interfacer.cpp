@@ -13,8 +13,6 @@ int TMC_interfacer::VACTUAL2SPS(uint32_t VACTUAL){
 }
 
 uint32_t TMC_interfacer::SPS2VACTUAL(int steps){
-    // Serial.print("SPS2VACTUAL INPUT:");
-    // Serial.println(steps);
     return steps * this->ms / this->oscillator_multiplier;
 }
 
@@ -73,13 +71,22 @@ void TMC_interfacer::adjust_velocity(int target_position){
     int current_position = (int) (this->rotations * 200);
     int displacement = target_position - current_position;
     int velocity_SPS;
-    int dead_zone = 5;
+    const int dead_zone = 5;
+    const int slow_zone = 200;
+    const int slow_velocity = 30;
+    const int fast_velocity = 100;
     if(abs(displacement) < dead_zone)
         velocity_SPS = 0;
     else if(displacement > 0)
-        velocity_SPS = 100;
+        if(displacement <= slow_zone)
+            velocity_SPS = slow_velocity;
+        else
+            velocity_SPS = fast_velocity;
     else
-        velocity_SPS = -100;
+        if(displacement >= slow_zone)
+            velocity_SPS = - slow_velocity; 
+        else
+            velocity_SPS = - fast_velocity;
     set_velocity(velocity_SPS);
 }
 

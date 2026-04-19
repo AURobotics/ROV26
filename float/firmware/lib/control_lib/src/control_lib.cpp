@@ -1,16 +1,18 @@
 #include <control_lib.h>
 
 
-PID::PID(float Kp, float Ki, float Kd, float max_position){
+PID::PID(float Kp, float Ki, float Kd, float max_position, float* set_points, int set_points_num){
     this->Kp = Kp;
     this->Ki = Ki;
     this->Kd = Kd;
     this->max_position = max_position * 0.95;
     this->min_position = - max_position;
+    this->set_points = set_points;
+    this->set_points_num = set_points_num;
 }
 
 float PID::calculate_error(float current_reading){
-    return this->current_set_point - current_reading;
+    return this->set_points[this->current_setpoint_idx] - current_reading;
 }
 
 void PID::set_reference_time(unsigned long Time){
@@ -55,23 +57,24 @@ int PID::calculate_PID(float error, unsigned long time_stamp){
 
 
 int PID::control_loop(float height) {
-  if(hold_position && (millis() - Time > holding_time)){ //if we have been holding position for 30 seconds, we flip direction
-    if(current_set_point == set_point1){ //flip motor direction after being stable for 30 seconds
-        current_set_point = set_point2;
+    float error = this->calculate_error(height);
+
+    if(hold_position){ //if we have been holding position for 30 seconds, we flip direction
+        if(abs(error) > 0.3)
+            Time = millis(); //if error increases above 30cm again, restart the holding timer
+        if((millis() - Time > holding_time)){
+            if(this->current_setpoint_idx < this->set_points_num)
+                this->current_setpoint_idx++;
+            hold_position = false;
+        }
     }
-    else{
-        current_set_point = set_point1;
+    if(!hold_position && abs(error) < 0.3){ //error less than 30 cm
+        hold_position = true; //start holding position
+        Time = millis();
     }
-    // this->current_integral = 0; //reset integral to help change direction faster
-    hold_position = false;
-  }
-  float error = this->calculate_error(height);
-  if(!hold_position && error < 0.1){ //error less than 10 cm
-    hold_position = true; //start holding position
-    Time = millis();
-  }
-  int signal = this->calculate_PID(error, millis());
-  return signal;
+    int signal = this->calculate_PID(error, millis());
+
+    return signal;
 }
 
 double getDepth(){
