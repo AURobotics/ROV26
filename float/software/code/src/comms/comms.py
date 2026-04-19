@@ -12,7 +12,7 @@ class Comms:
     def __init__(self):
         self._mqtt_client = MQTTClient("localhost", 1883)
         self.end_Topic = Topic("float/end", self._mqtt_client)
-        # self._debug_get_depth(self._mqtt_client)
+        self._debug_get_depth()
         
     def float_communication_setup(self, float_window):
         # Create bridge in main thread BEFORE MQTTClient handlers
@@ -67,9 +67,10 @@ class Comms:
         _cono_poll_timer.timeout.connect(_check_cono_handeler)
         _cono_poll_timer.start(5000)
 
-    def _debug_get_depth(self, mqtt):
-        self.depth_topic = Topic("float/depth", mqtt)
+    def _debug_get_depth(self):
+        self.depth_topic = Topic("float/depth", self._mqtt_client)
         self.depth_handeler = DepthHandeler()
+        self.depth_topic.subscribe(self.depth_handeler)
 
     def end_comms(self):
         self.end_Topic.publish("shutdown")
