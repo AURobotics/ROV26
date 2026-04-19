@@ -20,6 +20,7 @@ const int EEPROM_SIZE = sizeof(float);
 
 bool buoyancy_setup(bool read_EEPROM);
 void buoyancy_loop(float depth);
-
+float getCurrentTarget();
+bool isComplete();
 
 #endif
