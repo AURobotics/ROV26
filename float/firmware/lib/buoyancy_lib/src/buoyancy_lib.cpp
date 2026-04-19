@@ -1,13 +1,15 @@
 #include <buoyancy_lib.h>
 #include <EEPROM.h>
 
+const int setpoints_num = 5;
+float setpoints[setpoints_num] = {2.5 - FLOAT_HEIGHT, 0.4, 2.5 - FLOAT_HEIGHT, 0.4, 0};
+
 TMC_interfacer driver = TMC_interfacer(MS, MAX_ROTATIONS, MAX_MOTOR_VEL);
-PID pid = PID(K_P, K_I, K_D, MAX_DISTANCE);
-void buoyancy_setup() {
+PID pid = PID(K_P, K_I, K_D, MAX_DISTANCE, setpoints, setpoints_num);
+void buoyancy_setup(bool read_EEPROM) {
   Serial.begin(115200);
   EEPROM.begin(EEPROM_SIZE);
-  bool rotations_stored = EEPROM.readBool(sizeof(float));
-  if(rotations_stored){
+  if(read_EEPROM){
     float stored_rotations = EEPROM.readFloat(0);
     driver.rotations = stored_rotations;
   }
@@ -22,11 +24,6 @@ void buoyancy_setup() {
   char temp = Serial.read();  // Read a single character
   if(temp == 'n')
     driver.rotations = 0;
-  
-  pid.set_point1 = 2.5 - FLOAT_HEIGHT;
-  pid.set_point2 = 0.4;
-  pid.current_set_point = pid.set_point1;
-
   driver.normal_setup(RMS_CURRENT, 0);
   pid.set_reference_time(millis());
 }
@@ -43,14 +40,17 @@ void buoyancy_loop(float depth) {
   driver.adjust_velocity(target_position);
   driver.measure_position();
 
-  // driver.readSerialAndRespond();
-  // driver.stop_motor(false);
+  driver.readSerialAndRespond();
+
   if (Serial.available() > 0) {  // Check if data is available
     char receivedChar = Serial.read();  // Read a single character
-    
     if (receivedChar == 's') {  // Check if it matches 'h'
       save_rotations();
       driver.driver.VACTUAL(0);
+      delay(10000);
+    }
+    else if(receivedChar == 'h'){
+      driver.driver.toff(0);
       delay(10000);
     }
   }
@@ -63,17 +63,9 @@ void buoyancy_loop(float depth) {
   Serial.print("S:");
   int SPS = driver.VACTUAL2SPS(driver.driver.VACTUAL());
   Serial.println(SPS);
-  // Serial.print("time: ");
-  // Serial.println(millis());
-  // int SPS = driver.VACTUAL2SPS(driver.driver.VACTUAL());
-  // Serial.println(SPS);
-  // if(SPS < 1){
-  //   finishing = millis();
-  //   while(true){
-  //     Serial.print("time: ");
-  //     Serial.println(finishing - start_time);
-  //     delay(1);
-  //   }
-  // }
-  // delay(1);
+  Serial.print("T:");
+  if(pid.hold_position)
+    Serial.println(millis() - pid.Time);
+  else
+    Serial.println(-1);
 }
