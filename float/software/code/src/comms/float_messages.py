@@ -10,6 +10,7 @@ class MQTTSignalBridge(QObject):
     status_signal = Signal(str)
     company_number_signal = Signal(str)
     file_complete_signal = Signal()
+    run_ended_signal = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -40,6 +41,14 @@ class CompanyNumberHandler(MQTTMessageHandeler):
         self.bridge.company_number_signal.emit(f"Received company number: {company_number}")
         self.received = True
 
+class RunEndedHandeler(MQTTMessageHandeler):
+    def __init__(self, bridge):
+        super().__init__()
+        self.bridge = bridge
+
+    def decode(self, message):
+        self.bridge.run_ended_signal.emit(message.payload.decode())
+
 class DepthHandeler(MQTTMessageHandeler):
     def __init__(self):
         super().__init__()
@@ -47,4 +56,3 @@ class DepthHandeler(MQTTMessageHandeler):
 
     def decode(self, message):
         print(f"depth = {message.payload.decode()}")
-
