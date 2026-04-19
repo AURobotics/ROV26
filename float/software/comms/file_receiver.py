@@ -3,40 +3,19 @@ import os
 import threading
 import base64
 
-from comms.mqtt import mqtt, topic, mqtt_message
+from comms.mqtt import MQTTClient, Topic, MQTTMessageHandeler
+from comms.crc32 import compare_crc32
 
-import zlib
+class meta_data_message(MQTTMessageHandeler):
+    """
+    represents the meta data message for a file transfer, which includes:
+        - filename: the name of the file being transferred
+        - size: the total size of the file in bytes
+        - chunks: the total number of chunks the file is divided into
 
-def calculate_crc32(data):
-    # Convert string to bytes
-    if isinstance(data, str):
-        data = data.encode('utf-8')
-    
-    # zlib.crc32 starts with 0 by default
-    crc = zlib.crc32(data, 0xFFFFFFFF)
-    
-    # Apply final XOR with 0xFFFFFFFF (~)
-    return crc ^ 0xFFFFFFFF
-
-def compare_crc32(data, expected_crc):
-    calculated = calculate_crc32(data)
-    
-    # Handle hex string input
-    if isinstance(expected_crc, str):
-        expected_crc = int(expected_crc, 16)
-    
-    matches = calculated == expected_crc
-    
-    if not matches:
-        print(f"CRC mismatch!")
-        print(f"  Calculated: 0x{calculated:08X} ({calculated})")
-        print(f"  Expected:   0x{expected_crc:08X} ({expected_crc})")
-    else:
-        print(f"CRC matches: 0x{calculated:08X}")
-    
-    return matches
-
-class meta_data_message(mqtt_message):
+    The meta data message is expected to be sent as a JSON string in the MQTTClient payload,
+    with an optional CRC32 checksum for integrity verification.
+    """
     def __init__(self, file_receiver_instance: "file_receiver", is_crc32:bool = False):
             super().__init__()
             self.add_variable("filename", "")
@@ -96,7 +75,15 @@ class meta_data_message(mqtt_message):
     def __str__(self):
         return f"meta_data(filename={self.args['filename']}, size={self.args['size']}, chunks={self.args['chunks']}, encoding={self.args['encoding']})"
 
-class data_chunk_message(mqtt_message):
+class data_chunk_message(MQTTMessageHandeler):
+    """
+    represents a data chunk message for a file transfer, which includes:
+        - chunk_index: the index of the chunk in the file (starting from 0)
+        - data: the base64 encoded string representing the bytes of the chunk
+    The data chunk message is expected to be sent as a base64 encoded string in the MQTTClient payload,
+    with an optional CRC32 checksum for integrity verification.
+    """
+
     def __init__(self, file_receiver_instance: "file_receiver", is_crc32:bool = False):
             super().__init__()
             self.add_variable("chunk_index", 0)
@@ -133,7 +120,7 @@ class data_chunk_message(mqtt_message):
         else:
             self.set_variable("data", received)  # Store the base64 string as is
         
-        index = message.topic.split("/")[-1]  # assuming topic format is "MAIN_TOPIC_NAME/chunk/{index}"
+        index = message.topic.split("/")[-1]  # assuming Topic format is "MAIN_Topic_NAME/chunk/{index}"
         self.set_variable("chunk_index", int(index))  # Store the chunk index as an integer
         
         self._file_receiver.add_data_chunk(self)  # Add the decoded data chunk to the data manager
@@ -151,7 +138,7 @@ class file_receiver:
     - messages sent in base64 encoding to handle binary data
     - expects a meta data message that describes the file and how many chunks to expect.
     """
-    def __init__(self, mqtt_client: mqtt, topic_name: str, crc32: bool = False):
+    def __init__(self, MQTTClient_client: MQTTClient, Topic_name: str, crc32: bool = False):
         self._lock = threading.Lock()
 
         self.data_chunks: dict[int, bytes] = {} # each chunck received will be stored here
@@ -161,21 +148,21 @@ class file_receiver:
         self.crc32 = crc32
         self.chunk_msg: list[data_chunk_message] = []
 
-        self.meta_topic = topic(f"{topic_name}/meta", mqtt_client)
-        self.topic = topic_name
-        self.client = mqtt_client
-        self.chunk_topic: list[topic] = []
+        self.meta_Topic = Topic(f"{Topic_name}/meta", MQTTClient_client)
+        self.Topic = Topic_name
+        self.client = MQTTClient_client
+        self.chunk_Topic: list[Topic] = []
 
-        self.meta_topic.subscribe(self.meta_msg)
+        self.meta_Topic.subscribe(self.meta_msg)
 
         self.is_file_received = False
 
-    def _sub_to_chunk_topics(self):
-        """Subscribe to the chunk topics based on the number of chunks specified in the meta data"""    
+    def _sub_to_chunk_Topics(self):
+        """Subscribe to the chunk Topics based on the number of chunks specified in the meta data"""    
         for i in range(self.meta_data.chunks): # type: ignore
-            self.chunk_topic.append(topic(f"{self.topic}/chunk/{i}", self.client))
+            self.chunk_Topic.append(Topic(f"{self.Topic}/chunk/{i}", self.client))
             self.chunk_msg.append(data_chunk_message(self, self.crc32))
-            self.chunk_topic[-1].subscribe(self.chunk_msg[-1])
+            self.chunk_Topic[-1].subscribe(self.chunk_msg[-1])
 
     def add_meta_data(self, meta_data: meta_data_message):
         if not meta_data.is_valid:
@@ -185,7 +172,7 @@ class file_receiver:
         else:
             self.meta_data = meta_data
             print(f"Received meta data: {self.meta_data}") 
-            self._sub_to_chunk_topics()
+            self._sub_to_chunk_Topics()
 
     def add_data_chunk(self, chunk: data_chunk_message):
         if not chunk.is_valid:
@@ -200,7 +187,7 @@ class file_receiver:
    
     def _assemble_file(self):
         """Assemble the file from the received data chunks and save it to disk"""
-        # If somehow add_data_chunk is triggered twice for the last chunk (e.g. MQTT QoS retry), _assemble_file runs again while is_file_received is still False
+        # If somehow add_data_chunk is triggered twice for the last chunk (e.g. MQTTClient QoS retry), _assemble_file runs again while is_file_received is still False
         if self.is_file_received:
             return
     
@@ -229,9 +216,9 @@ class file_receiver:
 
     def on_complete(self):
         print(f"Received file: {self.meta_data.filename}") # type: ignore
-        self.meta_topic.unsubscribe(self.meta_msg)
+        self.meta_Topic.unsubscribe(self.meta_msg)
         for i in range(self.meta_data.chunks): # type: ignore
-            self.chunk_topic[i].unsubscribe(self.chunk_msg[i])
+            self.chunk_Topic[i].unsubscribe(self.chunk_msg[i])
         self.is_file_received = True
 
     @property

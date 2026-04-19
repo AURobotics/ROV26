@@ -1,10 +1,10 @@
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QFrame
-from PyQt6.QtCore import pyqtSignal
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QFrame
+from PySide6.QtCore import Signal
 
-from gui.pallete import PALETTE
+from .pallete import PALETTE
 
 class ColumnSelector(QFrame):
-    selection_changed = pyqtSignal(str, list)   # x_key, [y_keys]
+    selection_changed = Signal(str, list)   # x_key, [y_keys]
 
     def __init__(self, columns: list[str], parent=None):
         super().__init__(parent)
