@@ -40,7 +40,7 @@ bool connectToWiFi(const char *ssid, const char *password, int maxRetries)
 
 bool initAccessPoint(const char *ssid, const char *password, int maxRetries)
 {
-    IPAddress local_IP(192, 168, 1, 22);
+    IPAddress local_IP(192, 168, 1, 40);
     IPAddress POWERway(192, 168, 1, 5);
     IPAddress subnet(255, 255, 255, 0);
 
