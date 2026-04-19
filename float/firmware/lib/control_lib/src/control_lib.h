@@ -19,6 +19,7 @@ class PID{
         float prev_D = 0;
         int holding_time = 30 * 1000; //hold position for 30 seconds
         unsigned long sampling_time = 50;
+        bool sequence_done = false;
         float PID_output;
         unsigned long Time = millis();
         bool hold_position = false;

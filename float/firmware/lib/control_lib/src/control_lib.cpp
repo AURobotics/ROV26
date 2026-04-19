@@ -65,6 +65,8 @@ int PID::control_loop(float height) {
         if((millis() - Time > holding_time)){
             if(this->current_setpoint_idx < this->set_points_num)
                 this->current_setpoint_idx++;
+            else
+                this->sequence_done = true;
             hold_position = false;
         }
     }
