@@ -1,12 +1,12 @@
 #include <control_lib.h>
 
 
-PID::PID(float Kp, float Ki, float Kd, float Kg, float max_position){
+PID::PID(float Kp, float Ki, float Kd, float max_position){
     this->Kp = Kp;
     this->Ki = Ki;
     this->Kd = Kd;
-    this->Kg = Kg;
     this->max_position = max_position * 0.95;
+    this->min_position = - max_position;
 }
 
 float PID::calculate_error(float current_reading){
@@ -17,7 +17,7 @@ void PID::set_reference_time(unsigned long Time){
     this->prev_time = Time;
 }
 
-float PID::calculate_PID(float error, unsigned long time_stamp){
+int PID::calculate_PID(float error, unsigned long time_stamp){
     if(time_stamp - this->prev_time < sampling_time)
         return this->PID_output;
 
@@ -30,7 +30,7 @@ float PID::calculate_PID(float error, unsigned long time_stamp){
     this->prev_error = error;
     this->prev_time = time_stamp;
     this->prev_D = D;
-    float PID = (P+I+D) * this->Kg;
+    float PID = (P+I+D);
     //anti windup
     if(PID >= this->max_position){
         // PID = this->max_position;
@@ -54,7 +54,7 @@ float PID::calculate_PID(float error, unsigned long time_stamp){
 }
 
 
-double PID::control_loop(float height) {
+int PID::control_loop(float height) {
   if(hold_position && (millis() - Time > holding_time)){ //if we have been holding position for 30 seconds, we flip direction
     if(current_set_point == set_point1){ //flip motor direction after being stable for 30 seconds
         current_set_point = set_point2;
@@ -66,11 +66,11 @@ double PID::control_loop(float height) {
     hold_position = false;
   }
   float error = this->calculate_error(height);
-  if(!hold_position && error < 0.1){ //error less than 30 cm
+  if(!hold_position && error < 0.1){ //error less than 10 cm
     hold_position = true; //start holding position
     Time = millis();
   }
-  float signal = this->calculate_PID(error, millis());
+  int signal = this->calculate_PID(error, millis());
   return signal;
 }
 
