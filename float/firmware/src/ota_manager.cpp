@@ -36,3 +36,13 @@ void otaupdate()
 {
     ArduinoOTA.handle();
 }
+
+void myDelay(unsigned long ms)
+{
+    unsigned long start = millis();
+    while (millis() - start < ms)
+    {
+        otaupdate();
+        delay(100); // Short delay to prevent watchdog timer reset
+    }
+}

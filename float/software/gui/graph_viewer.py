@@ -1,11 +1,11 @@
-from PyQt6.QtWidgets import QWidget, QSizePolicy
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import (
+from PySide6.QtWidgets import QWidget, QSizePolicy
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QPainterPath
 )
-from PyQt6.QtCore import QPointF
+from PySide6.QtCore import QPointF
 
-from gui.pallete import PALETTE
+from .pallete import PALETTE
 
 class GraphWidget(QWidget):
     """Renders one or more series from a list of dicts, auto-scaled."""
