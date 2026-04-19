@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC
 from dataclasses import dataclass, field, fields
-from enum import Enum
+from enum import Enum, IntFlag
 import struct
 from typing import Annotated, Self, TypeAlias
 
@@ -11,6 +11,18 @@ from annotated_types import Ge, Le
 class Constants:
     SYNC_BYTE = b"\xff"
     SYNC_INT = 255
+
+
+class ControlFlags(IntFlag):
+    depth = 1 << 15
+    roll = 1 << 14
+    pitch = 1 << 13
+    yaw = 1 << 12
+    led_open = 1 << 11
+    gripper_close = 1 << 10
+    arm_close = 1 << 9
+    arm_enable_rotation = 1 << 8
+    arm_rotate_up = 1 << 7
 
 
 NormalizedFloat: TypeAlias = Annotated[float, Ge(-1.0), Le(1.0)]

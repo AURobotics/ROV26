@@ -9,6 +9,7 @@ from hal.joystick.joystick import Joystick
 from hal.joystick.active_joystick import ActiveJoystick
 from console.comms.messages import (
     CommandData,
+    ControlFlags,
     MessageType,
     SensorsData,
 )
@@ -126,15 +127,20 @@ class CommunicationManager:
                 print(f"[WARN] | {ex}")
 
     def _controller_payload(self):
-        # Toggle-based controls
-        control_word = int(self._command_cache.led) << 0
-        control_word |= int(self._command_cache.gripper) << 1
-        control_word |= int(self._command_cache.arm) << 2
+        control_word = 0
+        # Event-triggered toggles
+        control_word |= ControlFlags.led_open * self._command_cache.led
+        control_word |= ControlFlags.gripper_close * self._command_cache.gripper
+        control_word |= ControlFlags.arm_close * self._command_cache.arm
 
-        # Event-based controls
+        # Polling controls
         joy = self._joystick
-        control_word |= int(joy.get_gpinput(GamepadButton.DPAD_UP)) << 3
-        control_word |= int(joy.get_gpinput(GamepadButton.DPAD_DOWN)) << 4
+        
+        arm_up = bool(joy.get_gpinput(GamepadButton.DPAD_UP))
+        arm_down = bool(joy.get_gpinput(GamepadButton.DPAD_DOWN))
+        control_word |= ControlFlags.arm_enable_rotation * (arm_up or arm_down)
+        control_word |= ControlFlags.arm_rotate_up * arm_up
+
         force_x = self._command_cache.force_x.filter_step(
             -joy.get_gpinput(GamepadStick.LEFT_Y)
         )
