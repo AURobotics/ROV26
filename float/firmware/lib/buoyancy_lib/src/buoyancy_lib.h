@@ -18,7 +18,7 @@
 const int EEPROM_SIZE = sizeof(float);
 
 
-void buoyancy_setup(bool read_EEPROM);
+bool buoyancy_setup(bool read_EEPROM);
 void buoyancy_loop(float depth);
 
 

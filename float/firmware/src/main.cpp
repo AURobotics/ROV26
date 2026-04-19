@@ -85,7 +85,6 @@ void setup()
     digitalWrite(POWER, HIGH); // set high to retain power
 
     Serial.begin(115200);
-    buoyancy_setup(false);
 
     if (!connectToNetwork())
     {
@@ -149,6 +148,24 @@ void setup()
             Serial.println("MS5611 sensor initialized successfully on second attempt");
         }
     }
+
+    // setting up buoyancy logic
+    if (!buoyancy_setup(false))
+    {
+        Serial.println("Failed to setup buoyancy logic!, if failed after 60 seconds, restarting...");
+        // Absoute ERROR - all LEDs on
+        digitalWrite(UPLOADING, HIGH);
+        myDelay(60000);             // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
+        if (!buoyancy_setup(false)) // try again before restarting
+        {
+            ESP.restart();
+        }
+        else
+        {
+            Serial.println("Buoyancy logic setup successfully on second attempt");
+        }
+    }
+
 #endif
 
     // Start the sequence
@@ -212,6 +229,9 @@ void loop()
     {
         Serial.println("Collecting data...");
 
+        // buoyancy loop
+        buoyancy_loop(getDepth());
+        
         // To store depth per time
         store_data_loop();
 
@@ -270,12 +290,6 @@ void loop()
     {
         yala_beina_nUpload();
     }
-
-
-    
-    //buoyancy loop
-    buoyancy_loop(getDepth());
-
 }
 
 bool connectToNetwork(bool asAccessPoint)
