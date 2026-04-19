@@ -19,8 +19,8 @@ class ControlFlags(IntFlag):
     pitch = 1 << 13
     yaw = 1 << 12
     led_open = 1 << 11
-    gripper_close = 1 << 10
-    arm_close = 1 << 9
+    gripper_close = 1 << 10  # dcv1
+    arm_close = 1 << 9  # dcv2
     arm_enable_rotation = 1 << 8
     arm_rotate_up = 1 << 7
 
