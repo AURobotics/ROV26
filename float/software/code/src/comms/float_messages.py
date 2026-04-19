@@ -39,3 +39,12 @@ class CompanyNumberHandler(MQTTMessageHandeler):
         company_number = message.payload.decode()
         self.bridge.company_number_signal.emit(f"Received company number: {company_number}")
         self.received = True
+
+class DepthHandeler(MQTTMessageHandeler):
+    def __init__(self):
+        super().__init__()
+        self.depth = 0
+
+    def decode(self, message):
+        print(f"depth = {message.payload.decode()}")
+

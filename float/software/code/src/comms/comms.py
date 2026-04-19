@@ -1,6 +1,6 @@
 from time import sleep
 
-from src.comms.float_messages import CompanyNumberHandler, MQTTSignalBridge, StatusHandler
+from comms.float_messages import CompanyNumberHandler, DepthHandeler, MQTTSignalBridge, StatusHandler
 from .mqtt import MQTTClient, Topic
 from .file_receiver import file_receiver
 from PySide6.QtCore import QTimer
@@ -10,8 +10,9 @@ SECONDARY_TOPIC_NAME = "float/status"
 
 class Comms:
     def __init__(self):
-        self._MQTTClient_client = MQTTClient("localhost", 1883)
-        self.end_Topic = Topic("float/end", self._MQTTClient_client)
+        self._mqtt_client = MQTTClient("localhost", 1883)
+        self.end_Topic = Topic("float/end", self._mqtt_client)
+        # self._debug_get_depth(self._mqtt_client)
         
     def float_communication_setup(self, float_window):
         # Create bridge in main thread BEFORE MQTTClient handlers
@@ -28,13 +29,13 @@ class Comms:
         company_handler = CompanyNumberHandler(bridge)
 
         # Subscribe to Topics
-        float_status_Topic = Topic(SECONDARY_TOPIC_NAME, self._MQTTClient_client)
+        float_status_Topic = Topic(SECONDARY_TOPIC_NAME, self._mqtt_client)
         float_status_Topic.subscribe(status_handler)
 
-        float_company_number_Topic = Topic("float/data/credential", self._MQTTClient_client)
+        float_company_number_Topic = Topic("float/data/credential", self._mqtt_client)
         float_company_number_Topic.subscribe(company_handler)
 
-        file_receiver_instance = file_receiver(self._MQTTClient_client, MAIN_TOPIC_NAME, crc32=False)
+        file_receiver_instance = file_receiver(self._mqtt_client, MAIN_TOPIC_NAME, crc32=False)
         
         # File polling timer (runs in main thread)
         _file_poll_timer = QTimer()
@@ -65,6 +66,10 @@ class Comms:
         _status_poll_timer.start(5000)
         _cono_poll_timer.timeout.connect(_check_cono_handeler)
         _cono_poll_timer.start(5000)
+
+    def _debug_get_depth(self, mqtt):
+        self.depth_topic = Topic("float/depth", mqtt)
+        self.depth_handeler = DepthHandeler()
 
     def end_comms(self):
         self.end_Topic.publish("shutdown")

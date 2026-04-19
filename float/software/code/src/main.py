@@ -2,8 +2,8 @@
 import sys
 from PySide6.QtWidgets import QApplication
 
-from src.gui.main_window import MainWindow
-from src.comms.comms import Comms
+from gui.main_window import MainWindow
+from comms.comms import Comms
 
 
 app = QApplication(sys.argv)
