@@ -22,11 +22,6 @@ bool buoyancy_setup(bool read_EEPROM)
   }
   delay(500);
 
-  while (Serial.available() <= 0) // wait for input to start
-    delay(1);
-  char temp = Serial.read(); // Read a single character
-  if (temp == 'n')
-    driver.rotations = 0;
   driver.normal_setup(RMS_CURRENT, 0);
   pid.set_reference_time(millis());
 
