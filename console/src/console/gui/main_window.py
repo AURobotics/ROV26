@@ -39,9 +39,12 @@ class MainWindow(QMainWindow):
             "appsink"
             for port in ports
         ]
-        cam1 = VideoStream(pipelines[0])
-        cam2 = VideoStream(pipelines[1])
-        cam3 = VideoStream(pipelines[2])
+        ustreamer_pipelines = [
+            f"http://192.168.1.104:{port}/stream" for port in [8080, 8082, 8084]
+        ]
+        cam1 = VideoStream(ustreamer_pipelines[0])
+        cam2 = VideoStream(ustreamer_pipelines[1])
+        cam3 = VideoStream(ustreamer_pipelines[2])
 
         self.stack = QStackedWidget()
 
@@ -134,7 +137,7 @@ class MainWindow(QMainWindow):
             "It looks like this is the first time you open the ROV console. Would you like to open the settings to finish any needed setup?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             self,
-            Qt.WindowType.Dialog
+            Qt.WindowType.Dialog,
         ).exec()
 
         if reply == QMessageBox.StandardButton.Yes:
