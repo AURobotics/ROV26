@@ -18,9 +18,6 @@ __pycache__/
 build/
 dist/
 
-# opencv-build leftovers
-.tmp/
-
 # Transient runtime files
 programmer/
 settings.ini

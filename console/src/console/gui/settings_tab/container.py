@@ -1,29 +1,46 @@
+from pathlib import Path
 from typing import Any
 
-from PySide6.QtWidgets import QFormLayout, QGroupBox, QHBoxLayout, QScrollArea, QVBoxLayout
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+)
 
+from console.env import Settings
 from console.gui.common.tab import GuiTab
 
 
 class SettingsTab(GuiTab):
     def __init__(self):
         super().__init__()
+
+        # self.settings = Settings()
+
         # main_layout = QVBoxLayout(self)
         # scrollable = QScrollArea()
         # scrollable.setWidgetResizable(True)
 
         # serial_group = QGroupBox()
         # serial_group.setTitle("Serial Tools")
+        # serial_layout = QVBoxLayout(serial_group)
+        # self.vhusb_label = QLabel(f"VirtualHere Client Status")
+        # self.vhusb
+        # self.
+        # self.vhusb_dlbtn = QPushButton()
+        # serial_layout.addWidget(self.vhusb_label)
 
         # main_layout.addWidget(scrollable)
 
         # port_group = QGroupBox()
         # port_group.setTitle("Manage Connection")
         # port_form = QFormLayout(port_group)
-        # self.port_selector = ClickableComboBox()
-        # self.port_selector.setItemDelegate(PortComboLabelDelegate())
-        # self.port_selector.triggered.connect(self.refresh_ports)
-        # self.port_selector.textActivated.connect(self.select_port)
+
         # port_form.addRow("Port:", self.port_selector)
         # self.dfu_button = QPushButton("Enter DFU Mode")
         # self.dfu_button.clicked.connect(self.enter_dfu)
