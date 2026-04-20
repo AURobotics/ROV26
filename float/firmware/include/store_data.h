@@ -6,7 +6,7 @@
 extern const char *LOG_FILE;
 
 void store_data_loop(float depth);
-\ void clearLog();
+void clearLog();
 bool store_data_setup();
 
 #endif
