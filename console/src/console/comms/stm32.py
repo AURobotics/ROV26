@@ -2,6 +2,7 @@ import os
 import subprocess
 import re
 import threading
+from typing import Callable
 
 from console.comms.messages import Constants, DfuData, Message, MessageType, Payload
 from hal.joystick.manager import Path
@@ -13,6 +14,7 @@ class Stm32:
     _serial_lock: threading.RLock
     _programmer_lock: threading.RLock
     _programmer: Path | None
+    _connection_listeners: list[Callable]
 
     def __init__(
         self,
@@ -32,6 +34,7 @@ class Stm32:
         self._programmer = Path(programmer_executable) if programmer_executable else None
         self._ready = False
         self._serial_lock = threading.RLock()
+        self._connection_listeners = []
         self._programmer_lock = threading.RLock()
 
     @property
@@ -50,6 +53,10 @@ class Stm32:
         with self._serial_lock:
             return self._ser.is_open
 
+    def add_connection_listener(self, callback: Callable) -> None:
+        with self._serial_lock:
+            self._connection_listeners.append(callback)
+
     @property
     def port(self) -> str | None:
         with self._serial_lock:
@@ -61,6 +68,8 @@ class Stm32:
     def port(self, value: str | None) -> None:
         with self._serial_lock:
             self._ser.port = value
+            for l in self._connection_listeners:
+                l()
 
     @property
     def name(self) -> str | None:
@@ -104,6 +113,8 @@ class Stm32:
     def enter_dfu(self) -> None:
         with self._serial_lock:
             if not self._ser.is_open:
+                if self._ser.port is not None:
+                    self._ser.port = None
                 return
             self._ser.write(Message.encode(DfuData()))
 
@@ -165,17 +176,23 @@ class Stm32:
         with self._serial_lock:
             if self._ser.is_open:
                 return self._ser.in_waiting > 0
+            if self._ser.port is not None:
+                self._ser.port = None
             return False
 
     def send(self, payload: Payload) -> None:
         with self._serial_lock:
             if not self._ser.is_open:
+                if self._ser.port is not None:
+                    self._ser.port = None
                 return
             self._ser.write(Message.encode(payload))
 
     def receive(self) -> Payload | None:
         with self._serial_lock:
             if not self._ser.is_open:
+                if self._ser.port is not None:
+                    self._ser.port = None
                 return None
             sync_byte = self._ser.read_until(Constants.SYNC_BYTE)
             if not sync_byte or sync_byte[-1] != Constants.SYNC_INT:

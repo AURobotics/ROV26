@@ -4,7 +4,6 @@ from time import sleep
 from typing import Any, cast
 from console.comms.stm32 import Stm32
 from core.math.exponential_filter import ExponentialFilter
-from core.math.pwm import Pwm
 from hal.joystick.inputs import GamepadButton, GamepadStick, GamepadTrigger
 from hal.joystick.joystick import Joystick
 from hal.joystick.active_joystick import ActiveJoystick
@@ -33,7 +32,6 @@ class CommandState:
     yaw: ExponentialFilter = ExponentialFilter(setting_time=0.5)
     pitch: ExponentialFilter = ExponentialFilter(setting_time=0.5)
     roll: ExponentialFilter = ExponentialFilter(setting_time=0.5)
-    arm_motion: Pwm = Pwm(duty_cycle=0.2, period=0.050)
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
@@ -162,8 +160,7 @@ class CommunicationManager:
 
         arm_up = bool(joy.get_gpinput(GamepadButton.DPAD_UP))
         arm_down = bool(joy.get_gpinput(GamepadButton.DPAD_DOWN))
-        pwm = self._command_cache.arm_motion.filter(arm_up or arm_down)
-        control_word |= ControlFlags.arm_enable_rotation * (pwm)
+        control_word |= ControlFlags.arm_enable_rotation * (arm_up or arm_down)
         control_word |= ControlFlags.arm_rotate_down * arm_down
         force_x = self._command_cache.force_x.filter_step(
             -joy.get_gpinput(GamepadStick.LEFT_Y)

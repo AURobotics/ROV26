@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QFormLayout,
 )
-from PySide6.QtCore import QSize, QTimer, Qt, Slot, Signal
+from PySide6.QtCore import QSize, Qt, Slot, Signal
 from string import Template
 from console.comms.stm32 import Stm32
 from console.env import Settings
@@ -71,6 +71,7 @@ class SerialTab(GuiTab):
     _PROGRAMMER_STATUS_YES = "detected"
     _usb_process_done_signal = Signal()
     _port_process_done_signal = Signal()
+    _refresh_signal = Signal()
 
     def __init__(self, stm: Stm32):
         super().__init__()
@@ -81,6 +82,7 @@ class SerialTab(GuiTab):
 
         self._usb_process_done_signal.connect(self.on_usb_process_done)
         self._port_process_done_signal.connect(self.on_port_process_done)
+        self._refresh_signal.connect(self.refresh_all)
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addStretch()
@@ -132,14 +134,13 @@ class SerialTab(GuiTab):
         flash_form.addWidget(self.reset_button)
         flash_form.addWidget(self.flash_button)
         utils_hbox.addWidget(flash_group)
-        self.refresh_timer = QTimer()
-        self.refresh_timer.timeout.connect(self.refresh_all)
-        self.refresh_timer.setInterval(100)
-        self.refresh_timer.start()
-
         self._needs_attention = False
 
         self.main_layout.addLayout(utils_hbox)
+
+        self.stm.add_connection_listener(self._refresh_signal.emit)
+
+        self.refresh_all()
 
     @Slot(str, object)
     def on_settings_changed(self, key: str, value: Any) -> None:
@@ -324,6 +325,7 @@ class SerialTab(GuiTab):
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
+        self.refresh_all()
         return
 
     def hideEvent(self, event: QHideEvent) -> None:
