@@ -124,4 +124,4 @@ class ThrusterStatus(QObject):
         self._timer.stop()
 
     def start_timer(self):
-        self._timer.start(40)
+        self._timer.start(15)
