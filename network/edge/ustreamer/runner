@@ -1,0 +1,16 @@
+#!/bin/bash
+# $1 is passed from systemd as %i (e.g., video2)
+DEVICE_NAME=$1
+DEVICE_NUM=${DEVICE_NAME#video}
+PORT=$((8080 + DEVICE_NUM))
+
+# Wait for device to be available
+for i in {1..5}; do
+    if [ -c "/dev/$DEVICE_NAME" ]; then break; fi
+    sleep 1
+done
+
+echo "Starting uStreamer on /dev/$DEVICE_NAME at port $PORT with resolution ${WIDTH}x${HEIGHT}"
+
+# exec uStreamer to expose failure to systemd service
+exec /usr/bin/ustreamer --device=/dev/$DEVICE_NAME --host=0.0.0.0 --port=$PORT -m MJPEG
