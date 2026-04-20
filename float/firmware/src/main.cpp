@@ -232,7 +232,7 @@ void loop()
 
 #ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
         depth = pressureSensor.getDepth();
-        
+
         // buoyancy loop
         buoyancy_loop(depth);
 
@@ -244,11 +244,6 @@ void loop()
         if (abs(depth - getCurrentTarget()) < 0.05)
         {
             Serial.println("At target depth, holding...");
-            setDepth(depth);
-            myDelay(1000); // Wait for 1 second
-            setDepth(depth);
-            myDelay(1000);
-            setDepth(depth);
         }
         else if (depth > getCurrentTarget())
         {
@@ -329,6 +324,8 @@ void setMessageOnCallBack()
             if (!strcmp(payload.c_str(), "shutdown"))
             {
                 Serial.println("Received shutdown command. Ending run...");
+                save_rotations();
+                
                 // turn off all LEDs to indicate shutdown
                 digitalWrite(CONNECTION, LOW);
                 digitalWrite(RUNNING, LOW);
