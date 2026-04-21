@@ -13,6 +13,8 @@
 
 #define COMPANY_NUMBER "AU Robotics"
 
+constexpr unsigned long TIME_LIMIT(20UL * 60UL * 1000UL); // 20 mins
+
 // WiFi credentials
 const char *WIFI_SSID = "Vodafone_VDSL_3BE7";
 const char *WIFI_PASSWORD = "Ee0123608241@";
@@ -29,6 +31,7 @@ bool AS_ACCESS_POINT = false;
 void yala_beina_nUpload();
 bool connectToNetwork(bool asAccessPoint = false);
 void setMessageOnCallBack();
+void shutdown();
 
 // ArduinoMqttManager MqttManager;
 IDFMQTTManager MqttManager;
@@ -79,8 +82,11 @@ void initPins()
     pinMode(BLINKING_LED, OUTPUT);
 }
 
+unsigned long powerTimeout;
+
 void setup()
 {
+    powerTimeout = millis();
     initPins();
     digitalWrite(POWER, HIGH); // set high to retain power
 
@@ -209,6 +215,10 @@ void setup()
 
 void loop()
 {
+    if ((millis() - powerTimeout) >= TIME_LIMIT)
+    {
+        shutdown();
+    }
     if (WiFi.status() != WL_CONNECTED)
     {
         digitalWrite(CONNECTION, LOW); // turn off connection LED
@@ -306,6 +316,19 @@ bool connectToNetwork(bool asAccessPoint)
     return true;
 }
 
+void shutdown()
+{
+    save_rotations();
+
+    // turn off all LEDs to indicate shutdown
+    digitalWrite(CONNECTION, LOW);
+    digitalWrite(RUNNING, LOW);
+    digitalWrite(UPLOADING, LOW);
+    digitalWrite(POWER, LOW); // turn off power to shut down device
+
+    ESP.restart(); // restart m4 3aref leih
+}
+
 void setMessageOnCallBack()
 {
     MqttManager.setCallbackOnMessage([](const std::string &topic, const std::string &payload)
@@ -321,15 +344,8 @@ void setMessageOnCallBack()
             if (!strcmp(payload.c_str(), "shutdown"))
             {
                 Serial.println("Received shutdown command. Ending run...");
-                save_rotations();
+                shutdown();
                 
-                // turn off all LEDs to indicate shutdown
-                digitalWrite(CONNECTION, LOW);
-                digitalWrite(RUNNING, LOW);
-                digitalWrite(UPLOADING, LOW);
-                digitalWrite(POWER, LOW); // turn off power to shut down device
-
-                ESP.restart(); // restart m4 3aref leih
             }
             else
             {
