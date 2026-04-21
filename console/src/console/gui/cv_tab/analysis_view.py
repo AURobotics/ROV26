@@ -16,7 +16,6 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtCore import Qt
-from ultralytics import YOLO
 import numpy as np
 import cv2
 
@@ -27,6 +26,7 @@ class ModelManager:
         self._model = None
 
     def set_model(self, model_path: str) -> None:
+        from ultralytics import YOLO
         self._model = YOLO(model_path)
 
     def unload_model(self) -> None:

@@ -192,7 +192,6 @@ class CommunicationManager:
             pitch=self._input_deadzone(pitch),
             yaw=self._input_deadzone(yaw),
         )
-        print(payload)
         return payload
 
     def __del__(self):
