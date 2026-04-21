@@ -67,29 +67,27 @@ class ThrusterStatus(QObject):
         return self._h_angle
 
     def calc_direction(self):
-        x_total = self._h_thrust1 / math.sqrt(2)
-        y_total = self._h_thrust1 / math.sqrt(2)
-        x_total = x_total - self._h_thrust2 / math.sqrt(2)
-        y_total = y_total + self._h_thrust2 / math.sqrt(2)
-        x_total = x_total - self._h_thrust3 / math.sqrt(2)
-        y_total = y_total + self._h_thrust3 / math.sqrt(2)
-        x_total = x_total + self._h_thrust4 / math.sqrt(2)
-        y_total = y_total + self._h_thrust4 / math.sqrt(2)
+        K = 1 / math.sqrt(2) # 0.707
+        
+        x_total = (self._h_thrust2 + self._h_thrust3 - self._h_thrust1 - self._h_thrust4) * K
+        
+        y_total = (self._h_thrust1 + self._h_thrust2 - self._h_thrust3 - self._h_thrust4) * K
 
         self._total_h_thrust = math.sqrt(x_total**2 + y_total**2)
+        
         self._h_angle = math.atan2(y_total, x_total) * 180 / math.pi
 
     @Slot()
     def update_thrust(self):
         model = self._comms.sensor_cache
-        new_thrust1 = model.thrusters[0]
-        new_thrust2 = model.thrusters[1]
-        new_thrust3 = model.thrusters[2]
-        new_thrust4 = model.thrusters[3]
-        new_thrust5 = model.thrusters[4]
-        new_thrust6 = model.thrusters[5]
-        new_thrust7 = model.thrusters[6]
-        new_thrust8 = model.thrusters[7]
+        new_thrust1 = model.thrusters[1]
+        new_thrust2 = model.thrusters[0]
+        new_thrust3 = model.thrusters[3]
+        new_thrust4 = model.thrusters[2]
+        new_thrust5 = model.thrusters[5]
+        new_thrust6 = model.thrusters[4]
+        new_thrust7 = model.thrusters[7]
+        new_thrust8 = model.thrusters[6]
 
         changed = False
         if self._h_thrust1 != new_thrust1:
