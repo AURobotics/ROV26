@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from console.comms.manager import CommunicationManager
-from console.gui.common.camera_display import CameraDisplay
+from console.gui.common.camera_display import CameraDisplay, CameraWidgetPosition
 from console.gui.common.tab import GuiTab
 from console.gui.pilot_tab.leakage_display import LeakageDisplay
 from console.gui.model.orientation_data import OrientationData
@@ -44,10 +44,15 @@ class PilotTab(GuiTab):
         self._cam_layout = QHBoxLayout(self.camera_container)
 
         self.camera1 = CameraDisplay(cam1)
-        self.camera2 = CameraDisplay(cam2)
-        self.camera3 = CameraDisplay(cam3)
+        self.camera2 = CameraDisplay(cam2, parent=None, position=CameraWidgetPosition.LEFT, main_widget_ref=self.camera1)
+        self.camera3 = CameraDisplay(
+            cam3,
+            parent=None,
+            position=CameraWidgetPosition.RIGHT,
+            main_widget_ref=self.camera1,
+        )
 
-        for cam in [self.camera1, self.camera2, self.camera3]:
+        for cam in [self.camera2, self.camera1, self.camera3]:
             cam.setSizePolicy(
                 QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
             )

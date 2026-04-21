@@ -1,3 +1,6 @@
+from __future__ import annotations
+import enum
+
 from PySide6.QtWidgets import QWidget, QLabel, QPushButton
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QImage, QPixmap
@@ -174,6 +177,11 @@ class CameraSelection(QToolButton):
             self._change_cam(text)
 
 
+class CameraWidgetPosition(enum.Enum):
+    RIGHT = enum.auto()
+    LEFT = enum.auto()
+
+
 class CaptureSignal(QObject):
     signal = Signal()
 
@@ -188,11 +196,14 @@ class CameraDisplay(QWidget):
     _camera_selector: CameraSelection
     _popup_view: Optional[CameraPopupWindow]
     _toolbar_buttons: dict[str, QPushButton]
+    _position: CameraWidgetPosition | None
 
     def __init__(
         self,
         descriptor: int | str | None = None,
         parent: QWidget | None = None,
+        position: CameraWidgetPosition | None = None,
+        main_widget_ref: CameraDisplay | None = None,
     ):
         super().__init__(parent)
         self._stream = VideoStream(descriptor)
@@ -252,6 +263,23 @@ class CameraDisplay(QWidget):
             self._grid.addWidget(pb, 9, col, 1, 1)
             col += 1
 
+        self._position = position
+
+        if self._position:
+            self._swap_button = QPushButton(QIcon(get_asset("swap.svg")), "")
+            self._swap_button.setVisible(False)
+            self._swap_button.setIconSize(QSize(24, 24))
+            self._swap_button.clicked.connect(self._swap)
+            self._swap_button.setSizePolicy(
+                QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Expanding
+            )
+            if self._position == CameraWidgetPosition.RIGHT:
+                self._grid.addWidget(self._swap_button, 4, 0, 1, 1)
+            if self._position == CameraWidgetPosition.LEFT:
+                self._grid.addWidget(
+                    self._swap_button, 4, 10, 1, 1, Qt.AlignmentFlag.AlignRight
+                )
+
         self._camera_selector = CameraSelection(descriptor, self.change_cam)
         self._camera_selector.setVisible(False)
 
@@ -265,6 +293,16 @@ class CameraDisplay(QWidget):
         self._camera_timer.timeout.connect(self._update)
         self._camera_timer.setInterval(15)
         self._camera_timer.start()
+        self._main_widget_ref = main_widget_ref
+
+    def _swap(self):
+        if self._main_widget_ref:
+            main_src = self._main_widget_ref._stream.source
+            my_src = self._stream.source
+            if main_src == my_src:
+                return
+            self._main_widget_ref._stream.source = my_src
+            self._stream.source = main_src
 
     def _rotate(self, deg: int):
         self._rotation += deg
