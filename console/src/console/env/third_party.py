@@ -314,15 +314,15 @@ class VirtualHereClientDownloader(ThirdPartyDownloader):
 
     @staticmethod
     def _get_url_and_size() -> tuple[str, int]:
-        system = platform.system()
-        arch = platform.machine()
+        system = platform.system().lower()
+        arch = platform.machine().lower()
         match system:
-            case "Darwin":
+            case "darwin":
                 return (
                     "https://www.virtualhere.com/sites/default/files/usbclient/VirtualHereUniversal.dmg",
                     0,
                 )
-            case "Linux":
+            case "linux":
                 if arch in ["x86_64", "amd64"]:
                     return (
                         "https://www.virtualhere.com/sites/default/files/usbclient/vhuit64",
@@ -333,7 +333,7 @@ class VirtualHereClientDownloader(ThirdPartyDownloader):
                         "https://www.virtualhere.com/sites/default/files/usbclient/vhuitarm64",
                         0,
                     )
-            case "Windows":
+            case "windows":
                 if arch in ["x86_64", "amd64"]:
                     return (
                         "https://www.virtualhere.com/sites/default/files/usbclient/vhui64.exe",
