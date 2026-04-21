@@ -120,7 +120,7 @@ class data_chunk_message(MQTTMessageHandeler):
         else:
             self.set_variable("data", received)  # Store the base64 string as is
         
-        index = message.topic.split("/")[-1]  # assuming Topic format is "MAIN_Topic_NAME/chunk/{index}"
+        index = message.topic.split("/")[-1]  # assuming Topic format is "MAIN_topic_NAME/chunk/{index}"
         self.set_variable("chunk_index", int(index))  # Store the chunk index as an integer
         
         self._file_receiver.add_data_chunk(self)  # Add the decoded data chunk to the data manager
@@ -138,7 +138,7 @@ class file_receiver:
     - messages sent in base64 encoding to handle binary data
     - expects a meta data message that describes the file and how many chunks to expect.
     """
-    def __init__(self, MQTTClient_client: MQTTClient, Topic_name: str, crc32: bool = False):
+    def start(self, MQTTClient_client: MQTTClient, topic_name: str, crc32: bool = False):
         self._lock = threading.Lock()
 
         self.data_chunks: dict[int, bytes] = {} # each chunck received will be stored here
@@ -148,8 +148,8 @@ class file_receiver:
         self.crc32 = crc32
         self.chunk_msg: list[data_chunk_message] = []
 
-        self.meta_Topic = Topic(f"{Topic_name}/meta", MQTTClient_client)
-        self.Topic = Topic_name
+        self.meta_Topic = Topic(f"{topic_name}/meta", MQTTClient_client)
+        self.topic = topic_name
         self.client = MQTTClient_client
         self.chunk_Topic: list[Topic] = []
 
@@ -160,7 +160,7 @@ class file_receiver:
     def _sub_to_chunk_Topics(self):
         """Subscribe to the chunk Topics based on the number of chunks specified in the meta data"""    
         for i in range(self.meta_data.chunks): # type: ignore
-            self.chunk_Topic.append(Topic(f"{self.Topic}/chunk/{i}", self.client))
+            self.chunk_Topic.append(Topic(f"{self.topic}/chunk/{i}", self.client))
             self.chunk_msg.append(data_chunk_message(self, self.crc32))
             self.chunk_Topic[-1].subscribe(self.chunk_msg[-1])
 
