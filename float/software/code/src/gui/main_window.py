@@ -104,11 +104,11 @@ class MainWindow(QMainWindow):
         self._load_btn.clicked.connect(self._on_load_clicked)
         layout.addWidget(self._load_btn)
 
-        self._clear_btn = self._tool_btn("Clear", PALETTE["msg_err"])
+        self._clear_btn = self._tool_btn("Clear", PALETTE["accent2"])
         self._clear_btn.clicked.connect(self._on_clear_clicked)
         layout.addWidget(self._clear_btn)
 
-        self._send_file_now_btn = self._tool_btn("send file now", PALETTE["msg_info"])
+        self._send_file_now_btn = self._tool_btn("send file now", PALETTE["accent3"])
         self._send_file_now_btn.clicked.connect(self._on_send_file_clicked)
         layout.addWidget(self._send_file_now_btn)
 
