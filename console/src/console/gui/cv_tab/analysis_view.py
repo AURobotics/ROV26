@@ -69,15 +69,30 @@ class ModelManager:
 class AnalysisView(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+
+
+        # model_strip = QWidget()
+        # model_layout = QHBoxLayout(model_strip)
+        
+        # button_strip = QWidget()
+        # button_layout = QHBoxLayout(button_strip)
+
+        self.display = QLabel()
+
+        # layout.addWidget(model_strip)
+        # layout.addWidget(button_strip)
+
         self._original_pixmap: QPixmap | None = None
         self._displayed_pixmap: QPixmap | None = None
         self._last_counts = (0, 0, 0)
         self._build()
         self._model = ModelManager()
-        self.setVisible(False)
 
-    def load_model(self, model: str | os.PathLike[str]) -> None:
-        self._model.set_model(str(model))
+    def load_model(self, model_path: str | os.PathLike[str]) -> None:
+        try:
+            self._model.set_model(str(model_path))
+        except:
+            self._model.unload_model()
 
     def _build(self):
         root = QHBoxLayout(self)

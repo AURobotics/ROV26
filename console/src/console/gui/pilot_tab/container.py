@@ -52,6 +52,7 @@ class PilotTab(GuiTab):
                 QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
             )
             self._cam_layout.addWidget(cam, stretch=1)
+            cam._view.setScaledContents(True)
 
         self.dock_host.setCentralWidget(self.camera_container)
 

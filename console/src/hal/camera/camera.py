@@ -9,7 +9,7 @@ from os import name as os_name
 from pathlib import Path
 from threading import Thread
 from time import sleep
-from typing import TypedDict, Optional, Union
+from typing import TypedDict, Optional, Union, cast
 from console.assets import get_asset
 
 import cv2
@@ -49,7 +49,7 @@ _ENUM_API = _ENUMERATION_APIS[os_name]
 
 
 class VideoStream:
-    EMPTY_FRAME = cv2.imread(get_asset("novideo.png"))
+    EMPTY_FRAME = cast(cv2.Mat, cv2.imread(get_asset("novideo.png")))
 
     _cap: cv2.VideoCapture
     _connection_status: ConnectionStatus

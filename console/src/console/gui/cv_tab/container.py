@@ -56,17 +56,30 @@ class CvTab(GuiTab):
             Qt.DockWidgetArea.BottomDockWidgetArea, self._analysis_dock
         )
 
-        self._screenshot_manager = ScreenshotView()  # Placeholder for screenshot manager
-        self._screenshot_manager.setSizePolicy(
+        self._screenshot_view = ScreenshotView()
+        self._screenshot_view.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        self._screenshot_dock = self._create_dock("Screenshots", self._screenshot_manager)
+        self._screenshot_dock = self._create_dock("Screenshots", self._screenshot_view)
         self.dock_host.addDockWidget(
-            Qt.DockWidgetArea.RightDockWidgetArea, self._screenshot_dock
+            Qt.DockWidgetArea.RightDockWidgetArea,
+            self._screenshot_dock,
+        )
+        self._accepted_screenshot_view = ScreenshotView()
+        self._accepted_screenshot_view.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        self._accepted_screenshot_dock = self._create_dock("Accepted Screenshots", self._accepted_screenshot_view)
+        self.dock_host.addDockWidget(
+            Qt.DockWidgetArea.RightDockWidgetArea,
+            self._accepted_screenshot_dock,
         )
 
-        self._cam.captureClicked.connect(self._screenshot_manager.setPixmap)
-        self._screenshot_manager.analysisClicked.connect(self._analysis_view.receive_from_screenshot)
+        self._cam.captureClicked.connect(self._screenshot_view.add_screenshot)
+        self._screenshot_view.analysis_clicked.connect(
+            self._analysis_view.receive_from_screenshot
+        )
+        self._analysis_view._on_accept
         model_path = Path(Settings().get("cv/model"))
         if model_path.exists():
             self._analysis_view.load_model(model_path)
@@ -84,5 +97,4 @@ class CvTab(GuiTab):
         if key != "cv/model":
             return
         path = Path(value)
-        if path.exists():
-            self._analysis_view.load_model(path)
+        self._analysis_view.load_model(path)

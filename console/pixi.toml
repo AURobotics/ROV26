@@ -1,6 +1,6 @@
 [workspace]
 authors = ["Youssef Samy <office.youssefkassem@gmail.com>"]
-channels = ["https://prefix.dev/aurobotics","conda-forge"]
+channels = ["conda-forge"]
 name = "console"
 platforms = ["linux-64","win-64"]
 version = "0.1.0"

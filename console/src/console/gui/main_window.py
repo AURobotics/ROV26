@@ -28,28 +28,14 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("ROV Console")
-        ports = [5000, 5002, 5004]
-        pipelines = [
-            f"udpsrc address=239.1.1.1 port={port} ! "
-            "application/x-rtp, payload=96 ! "
-            "rtph264depay ! "
-            "h264parse ! "
-            "avdec_h264 ! "
-            "videoconvert ! "
-            "appsink"
-            for port in ports
+        cams = [
+            f"http://192.168.1.100:{port}/stream" for port in [8080, 8082, 8084]
         ]
-        ustreamer_pipelines = [
-            f"http://192.168.1.104:{port}/stream" for port in [8080, 8082, 8084]
-        ]
-        cam1 = VideoStream(pipelines[0])
-        cam2 = VideoStream(pipelines[1])
-        cam3 = VideoStream(pipelines[2])
 
         self.stack = QStackedWidget()
 
-        pilot_tab = PilotTab(cam1, cam2, cam3, comms)
-        cv_tab = CvTab(cam1, cam2, cam3)
+        pilot_tab = PilotTab(cams[0], cams[1], cams[2], comms)
+        cv_tab = CvTab(pilot_tab.camera1, pilot_tab.camera2, pilot_tab.camera3)
         serial_tab = SerialTab(stm)
         joystick_tab = JoystickTab(active_joystick)
         settings_tab = SettingsTab()

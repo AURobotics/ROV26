@@ -1,93 +1,115 @@
-from PySide6.QtWidgets import QHBoxLayout, QWidget, QVBoxLayout, QLabel, QPushButton
-from PySide6.QtGui import QPixmap, Qt
-from PySide6.QtCore import QSize, Signal
+import time
+from typing import cast
 
-aspect_ratio = 16/9
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QHBoxLayout,
+    QListWidget,
+    QListWidgetItem,
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QPushButton,
+)
+from PySide6.QtGui import QPixmap, Qt
+from PySide6.QtCore import Qt, Signal
+
+from console.env import pathing
+
+
+class ScreenshotItemWidget(QWidget):
+    def __init__(self, pixmap: QPixmap, parent=None):
+        super().__init__(parent)
+        layout = QHBoxLayout(self)
+
+        self.thumbnail = QLabel()
+        self.pixmap = pixmap
+        pixmap = pixmap.scaled(
+            120,
+            80,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        self.thumbnail.setPixmap(pixmap)
+        self.thumbnail.setFixedSize(120, 80)
+        self.thumbnail.setStyleSheet("border: 1px solid #555; border-radius: 4px;")
+
+        self.info_layout = QVBoxLayout()
+        self.name_label = QLabel(f"Screenshot-{time.time_ns() // 1_000_000}")
+        self.name_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+
+        self.info_layout.addWidget(self.name_label)
+
+        layout.addWidget(self.thumbnail)
+        layout.addLayout(self.info_layout)
+        layout.addStretch()
+
 
 class ScreenshotView(QWidget):
-    analysisClicked = Signal(QPixmap)
+    analysis_clicked = Signal(QPixmap)
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
-        self._screenshot_label = QLabel(self)
-        self._screenshot_label.setScaledContents(True)
-        self._screenshot_label.setMinimumSize(1, 1)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
 
-        self._overlay = QWidget(self)
+        self.list_view = QListWidget()
+        self.list_view.itemSelectionChanged.connect(
+            lambda: self.button_strip.setEnabled(bool(self.list_view.selectedItems()))
+        )
 
-        self._analyse_btn = QPushButton("Analyse")
-        self._discard_btn = QPushButton("Discard")
-        self._analyse_btn.clicked.connect(self._analysis_clicked)
-        self._discard_btn.clicked.connect(self.hide)
+        self.button_strip = QWidget()
+        self.button_strip.setEnabled(False)
+        strip_layout = QHBoxLayout(self.button_strip)
+        strip_layout.setContentsMargins(5, 2, 5, 5)
+        self.analysis_button = QPushButton("Analyze")
+        self.save_button = QPushButton("Save")
+        self.delete_button = QPushButton("Delete")
+        self.analysis_button.clicked.connect(
+            lambda: self.analysis_clicked.emit(self.get_selected_pixmap())
+        )
+        self.delete_button.clicked.connect(self.delete_selected)
+        self.save_button.clicked.connect(self.save_selected)
+        strip_layout.addWidget(self.analysis_button)
+        strip_layout.addWidget(self.save_button)
+        strip_layout.addWidget(self.delete_button)
 
-        self._h_btn_layout = QHBoxLayout(self._overlay)
-        self._h_btn_layout.addStretch(1) # Horizontal Spacer
-        self._v_btn_layout = QVBoxLayout()
-        self._v_btn_layout.addStretch(1) # Vertical Spacer
-        self._v_btn_layout.addWidget(self._analyse_btn)
-        self._v_btn_layout.addWidget(self._discard_btn)
-        self._h_btn_layout.addLayout(self._v_btn_layout)
+        layout.addWidget(self.list_view)
+        layout.addWidget(self.button_strip)
 
-        self.hide()
+    def add_screenshot(self, pixmap: QPixmap):
+        item = QListWidgetItem(self.list_view)
+        item_wigdet = ScreenshotItemWidget(pixmap)
+        item.setSizeHint(item_wigdet.sizeHint())
+        self.list_view.setItemWidget(item, item_wigdet)
 
-    def _analysis_clicked(self):
-        self.analysisClicked.emit(self.getPixmap())
-        self.hide()
+    def get_selected_pixmap(self) -> QPixmap | None:
+        selected = self.list_view.selectedItems()
+        if len(selected) == 0:
+            return None
+        widget = cast(ScreenshotItemWidget, self.list_view.itemWidget(selected[0]))
+        return widget.pixmap.copy()
 
-    def setPixmap(self, pixmap: QPixmap):
-        self._screenshot_label.setPixmap(pixmap)
-        self.updateGeometry()
-        self.show()
-        self._overlay.show()
-        self._overlay.raise_()
+    def delete_selected(self) -> None:
+        selected = self.list_view.currentRow()
+        if selected == -1:
+            return
+        self.list_view.takeItem(selected)
 
-    def getPixmap(self) -> QPixmap | None:
-        pixmap = self._screenshot_label.pixmap()
-        if pixmap is not None:
-            return pixmap.copy()
-        return None
+    def save_selected(self) -> None:
+        selected = self.list_view.selectedItems()
+        if len(selected) == 0:
+            return None
+        widget = cast(ScreenshotItemWidget, self.list_view.itemWidget(selected[0]))
+        pixmap = widget.pixmap.copy()
+        file_path = QFileDialog.getSaveFileName(
+            self,
+            "Save Image",
+            str(pathing.get_base_path()),
+            "PNG Files (*.png)",
+        )[0]
 
-    def hide(self):
-        super().hide()
-        self._overlay.hide()
-        self._screenshot_label.clear()
-
-#    def sizeHint(self):
-#        if self._screenshot_label.pixmap() is not None:
-#            pixmap_size = self._screenshot_label.pixmap().size()
-#            pixmap_width = pixmap_size.width()
-#            pixmap_height = pixmap_size.height()
-#
-#            if pixmap_width > pixmap_height*aspect_ratio:
-#                scaled_width = int(pixmap_height*aspect_ratio)
-#            else:
-#                scaled_height = int(pixmap_width/aspect_ratio)
-#
-#            return QSize(scaled_width, scaled_height)
-#        else:
-#            return super().sizeHint()
-    
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self._resize_widgets()
-
-    def _resize_widgets(self):
-        if self._screenshot_label.pixmap() is not None:
-            total_size = self.size()
-
-            total_width = total_size.width()
-            total_height = total_size.height()
-
-            if total_width > total_height*aspect_ratio:
-                new_width = int(total_height*aspect_ratio)
-                new_height = total_height
-            else:
-                new_width = total_width
-                new_height = int(total_width/aspect_ratio)
-
-            x_offset = (total_width - new_width)//2
-            y_offset = (total_height - new_height)//2
-
-            self._screenshot_label.setGeometry(x_offset, y_offset, new_width, new_height)
-            self._overlay.setGeometry(x_offset, y_offset, new_width, new_height)
+        if file_path:
+            pixmap.save(file_path, "PNG")

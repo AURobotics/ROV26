@@ -31,13 +31,18 @@ class Settings:
     def is_fresh(self) -> bool:
         return self._fresh_start
 
-    def get(self, key: str) -> Any:
-        if self._user_settings.contains(key):
-            return self._user_settings.value(key)
-        elif self._platform_settings.contains(key):
+    def get_default(self, key: str) -> Any:
+        if self._platform_settings.contains(key):
             return self._platform_settings.value(key)
         else:
             return self._default_settings.value(key)
+
+
+    def get(self, key: str) -> Any:
+        if self._user_settings.contains(key):
+            return self._user_settings.value(key)
+        else:
+            return self.get_default(key)
 
     def set(self, key: str, value: Any) -> None:
         self._user_settings.setValue(key, value)

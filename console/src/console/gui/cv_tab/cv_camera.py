@@ -2,17 +2,19 @@ from PySide6.QtWidgets import QPushButton, QWidget, QComboBox
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Signal
 from console.gui.common.camera_display import CameraDisplay
-from hal.camera.camera import VideoStream
 
 aspect_ratio = 16/9
 
 class CVCamera(QWidget):
     captureClicked = Signal(QPixmap)
 
-    def __init__(self, cam_stream1: VideoStream, cam_stream2: VideoStream, cam_stream3: VideoStream, parent: QWidget | None = None):
+    def __init__(self, *cams: CameraDisplay, parent: QWidget | None = None):
         super().__init__(parent)
 
-        self._cams = [CameraDisplay(cam_stream1), CameraDisplay(cam_stream2), CameraDisplay(cam_stream3)]
+        self._cams = [CameraDisplay(), CameraDisplay(), CameraDisplay()]
+        for i, cam in enumerate(self._cams):
+            cam._stream = cams[i]._stream
+            cam._camera_selector._last_known_url = cams[i]._camera_selector._last_known_url
         self._frame_view = self._cams[0]
         self._frame_view.setParent(self)
 

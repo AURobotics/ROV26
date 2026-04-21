@@ -1,81 +1,70 @@
-from pathlib import Path
-from typing import Any
-
 from PySide6.QtWidgets import (
-    QButtonGroup,
-    QFormLayout,
     QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
     QScrollArea,
     QVBoxLayout,
+    QWidget,
 )
 
 from console.env import Settings
+from console.env.third_party import (
+    CrabDetectionModelDownloader,
+    StmProgrammerDownloader,
+    VirtualHereClientDownloader,
+)
+from console.gui.common.combobox import QShowEvent
 from console.gui.common.tab import GuiTab
+from console.gui.settings_tab.file_setting import FileSetting
 
 
 class SettingsTab(GuiTab):
     def __init__(self):
         super().__init__()
 
-        # self.settings = Settings()
+        self.settings = Settings()
+        main_layout = QVBoxLayout(self)
 
-        # main_layout = QVBoxLayout(self)
-        # scrollable = QScrollArea()
-        # scrollable.setWidgetResizable(True)
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        main_layout.addWidget(container)
 
-        # serial_group = QGroupBox()
-        # serial_group.setTitle("Serial Tools")
-        # serial_layout = QVBoxLayout(serial_group)
-        # self.vhusb_label = QLabel(f"VirtualHere Client Status")
-        # self.vhusb
-        # self.
-        # self.vhusb_dlbtn = QPushButton()
-        # serial_layout.addWidget(self.vhusb_label)
+        scrollable = QScrollArea()
+        scrollable.setWidgetResizable(True)
 
-        # main_layout.addWidget(scrollable)
+        vh_grp = QGroupBox()
+        vh_grp.setTitle("VirtualHere Client")
+        vh_layout = QVBoxLayout(vh_grp)
+        self.vh_widget = FileSetting(VirtualHereClientDownloader, "stm/vhusb", "exe")
+        vh_layout.addWidget(self.vh_widget)
 
-        # port_group = QGroupBox()
-        # port_group.setTitle("Manage Connection")
-        # port_form = QFormLayout(port_group)
+        prog_grp = QGroupBox()
+        prog_grp.setTitle("STM Programmer")
+        prog_layout = QVBoxLayout(prog_grp)
+        self.prog_widget = FileSetting(StmProgrammerDownloader, "stm/programmer", "exe")
+        prog_layout.addWidget(self.prog_widget)
 
-        # port_form.addRow("Port:", self.port_selector)
-        # self.dfu_button = QPushButton("Enter DFU Mode")
-        # self.dfu_button.clicked.connect(self.enter_dfu)
-        # self.disconnect_button = QPushButton("Disconnect")
-        # self.disconnect_button.pressed.connect(self.deselect_port)
-        # self.dfu_button.setFixedWidth(120)
-        # self.disconnect_button.setFixedWidth(120)
-        # port_form.addWidget(self.dfu_button)
-        # port_form.addWidget(self.disconnect_button)
-        # utils_hbox.addWidget(port_group)
+        crab_grp = QGroupBox()
+        crab_grp.setTitle("Crab Detection Model")
+        crab_layout = QVBoxLayout(crab_grp)
+        self.crab_widget = FileSetting(
+            CrabDetectionModelDownloader, "cv/model", ["YOLO model files (*.pt)"]
+        )
+        crab_layout.addWidget(self.crab_widget)
 
-        # flash_group = QGroupBox()
-        # flash_group.setTitle("STM32 Programmer")
-        # flash_form = QFormLayout(flash_group)
-        # self.programmer_status = QLabel(
-        #     self._PROGRAMMER_STATUS_YES
-        #     if self.stm.programmer_present
-        #     else self._PROGRAMMER_STATUS_NO
-        # )
-        # self.usb_selector = ClickableComboBox()
-        # self.usb_selector.triggered.connect(self.refresh_usb)
-        # self.reset_button = QPushButton("Reset Device")
-        # self.reset_button.clicked.connect(self.reset_usb)
-        # self.flash_button = QPushButton("Flash Firmware")
-        # self.flash_button.clicked.connect(self.flash_usb)
-        # flash_form.addRow("Programmer status:", self.programmer_status)
-        # flash_form.addRow("Target:", self.usb_selector)
-        # flash_form.addWidget(self.reset_button)
-        # flash_form.addWidget(self.flash_button)
-        # utils_hbox.addWidget(flash_group)
-        # self.refresh_timer = QTimer()
-        # self.refresh_timer.timeout.connect(self.refresh_all)
-        # self.refresh_timer.setInterval(100)
-        # self.refresh_timer.start()
+        container_layout.addWidget(vh_grp)
+        container_layout.addWidget(prog_grp)
+        container_layout.addWidget(crab_grp)
 
-        # self._needs_attention = False
+        container_layout.addStretch()
+        scrollable.setWidget(container)
+        main_layout.addWidget(scrollable)
 
-        # self.main_layout.addLayout(utils_hbox)
+        self.refresh_all()
+
+    def refresh_all(self) -> None:
+        self.vh_widget.refresh()
+        self.prog_widget.refresh()
+        self.crab_widget.refresh()
+
+    def showEvent(self, event: QShowEvent) -> None:
+        self.refresh_all()
+        return super().showEvent(event)

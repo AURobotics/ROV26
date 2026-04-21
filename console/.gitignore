@@ -24,3 +24,4 @@ settings.ini
 *.elf
 models/
 vhusb/
+.tmp/
