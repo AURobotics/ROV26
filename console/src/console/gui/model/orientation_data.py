@@ -6,12 +6,7 @@ from console.comms.manager import CommunicationManager
 
 
 class OrientationData(QObject):
-    bearingChanged = Signal()
-    pitchChanged = Signal()
-    rollChanged = Signal()
-    depthChanged = Signal()
-    maxDepthChanged = Signal()
-    pitchFOVChanged = Signal()
+    orientation_changed = Signal()
 
     def __init__(self, comms: CommunicationManager):
         super().__init__()
@@ -27,30 +22,30 @@ class OrientationData(QObject):
 
         self._timer = QTimer()
         self._timer.timeout.connect(self.update_orientation)
-        self._timer.start(40)
+        self._timer.start(15)
 
     # This 'Property' is what QML "binds" to
-    @Property(float, notify=bearingChanged)
+    @Property(float, notify=orientation_changed)
     def bearing(self):
         return self._bearing
 
-    @Property(float, notify=pitchChanged)
+    @Property(float, notify=orientation_changed)
     def pitch(self):
         return self._pitch
 
-    @Property(float, notify=rollChanged)
+    @Property(float, notify=orientation_changed)
     def roll(self):
         return self._roll
 
-    @Property(float, notify=depthChanged)
+    @Property(float, notify=orientation_changed)
     def depth(self):
         return self._depth
 
-    @Property(float, notify=maxDepthChanged)
+    @Property(float, notify=orientation_changed)
     def max_depth(self):
         return self._max_depth
 
-    @Property(float, notify=pitchFOVChanged)
+    @Property(float, notify=orientation_changed)
     def pitchFOV(self):
         return self._pitchFOV
 
@@ -60,19 +55,16 @@ class OrientationData(QObject):
         new_bearing = model.yaw
         if self._bearing != new_bearing:
             self._bearing = new_bearing
-            self.bearingChanged.emit()  # This tells QML to refresh!
         new_pitch = model.pitch
         if self._pitch != new_pitch:
             self._pitch = new_pitch
-            self.pitchChanged.emit()
         new_roll = model.roll
         if self._roll != new_roll:
             self._roll = new_roll
-            self.rollChanged.emit()
         new_depth = model.depth
         if self._depth != new_depth:
             self._depth = new_depth
-            self.depthChanged.emit()
+        self.orientation_changed.emit()
 
     def stop_timer(self):
         self._timer.stop()

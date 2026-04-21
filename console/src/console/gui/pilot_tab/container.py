@@ -74,12 +74,13 @@ class PilotTab(GuiTab):
         self.thruster_layout_widget = StatusWidget(
             ThrusterStatus(self._comms), "thrusterLayout.qml"
         )
-        self.depth_widget = StatusWidget(OrientationData(self._comms), "depth.qml")
+        orientation_data = OrientationData(self._comms)
+        self.depth_widget = StatusWidget(orientation_data, "depth.qml")
         self.compass_widget = StatusWidget(
-            OrientationData(self._comms), "compassWidget.qml"
+            orientation_data, "compassWidget.qml"
         )
         self.pitch_roll_widget = StatusWidget(
-            OrientationData(self._comms), "pitchRoll.qml"
+            orientation_data, "pitchRoll.qml"
         )
         self.auto_input_widget = AutoControlInput(self._comms)
 

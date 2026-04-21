@@ -117,7 +117,7 @@ class CommunicationManager:
 
     def _incoming_loop(self):
         while not self._killswitch:
-            sleep(0.015)
+            sleep(0.005)
             try:
                 if not self._stm.connected:
                     self._sensor_cache = _empty_sensors

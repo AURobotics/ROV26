@@ -24,7 +24,7 @@ class ThrusterStatus(QObject):
 
         self._timer = QTimer()
         self._timer.timeout.connect(self.update_thrust)
-        self._timer.start(40)
+        self._timer.start(15)
 
     @Property(float, notify=thrustLevelChanged)
     def h_thrust1(self):
