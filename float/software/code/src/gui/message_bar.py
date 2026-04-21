@@ -14,6 +14,7 @@ class MessageEntry:
     LEVEL_COLORS = {
         "INFO":    PALETTE["msg_info"],
         "OK":      PALETTE["msg_ok"],
+        "RECEIVED": PALETTE["msg_ok"],
         "WARN":    PALETTE["msg_warn"],
         "ERROR":   PALETTE["msg_err"],
     }

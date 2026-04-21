@@ -23,6 +23,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Float")
         self.resize(1000, 680)
         self.setStyleSheet(f"background: {PALETTE['bg']};")
+        self.loaded_csv = False
 
         self.comms = Comms()
 
@@ -103,14 +104,17 @@ class MainWindow(QMainWindow):
         self._load_btn.clicked.connect(self._on_load_clicked)
         layout.addWidget(self._load_btn)
 
-        self._clear_btn = self._tool_btn("Clear", PALETTE["msg_err"])
+        self._clear_btn = self._tool_btn("Clear", PALETTE["accent2"])
         self._clear_btn.clicked.connect(self._on_clear_clicked)
         layout.addWidget(self._clear_btn)
+
+        self._send_file_now_btn = self._tool_btn("send file now", PALETTE["accent3"])
+        self._send_file_now_btn.clicked.connect(self._on_send_file_clicked)
+        layout.addWidget(self._send_file_now_btn)
 
         self._end_comms_btn = self._tool_btn("End Comms", PALETTE["msg_warn"])
         self._end_comms_btn.clicked.connect(self._on_end_comms_clicked)
         layout.addWidget(self._end_comms_btn)
-
 
         return bar
 
@@ -165,6 +169,7 @@ class MainWindow(QMainWindow):
                 f"Loaded {len(data)} rows × {len(columns)} columns from '{os.path.basename(path)}'", "OK"
             )
             self._setup_column_selector(columns)
+            self.loaded_csv = True
         except Exception as e:
             self.post_message(f"Failed to load CSV: {e}", "ERROR")
 
@@ -206,6 +211,11 @@ class MainWindow(QMainWindow):
             self._col_selector = None
             
         self.post_message("Data cleared.", "INFO")
+
+    def _on_send_file_clicked(self):
+        self.comms.send_file_now()
+        if self.loaded_csv:
+            self.comms.float_communication_setup(self) # if there is a loaded window re subscribe
 
     def _on_end_comms_clicked(self):
         self.comms.end_comms()
