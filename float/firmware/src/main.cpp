@@ -14,11 +14,11 @@
 #define COMPANY_NUMBER "AU Robotics"
 
 // WiFi credentials
-const char *WIFI_SSID = "aurobotics-ap";
-const char *WIFI_PASSWORD = "12345678";
+const char *WIFI_SSID = "Vodafone_VDSL_3BE7";
+const char *WIFI_PASSWORD = "Ee0123608241@";
 
 // MQTT broker settings
-const char *MQTT_BROKER = "192.168.1.146";
+const char *MQTT_BROKER = "192.168.1.9";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optionalf
@@ -79,7 +79,6 @@ void initPins()
     pinMode(BLINKING_LED, OUTPUT);
 }
 
-unsigned long captureDepthTime;
 void setup()
 {
     initPins();
@@ -206,7 +205,6 @@ void setup()
     Serial.println("sending: \"Device started and about to collect data\"");
     MqttManager.publish("float/status", "Device started and about to collect data");
     Serial.println("sent initial status message to MQTT broker");
-    captureDepthTime = millis();
 }
 
 void loop()
@@ -235,10 +233,10 @@ void loop()
 
         // buoyancy loop
         buoyancy_loop(depth);
+#endif
 
         // To store depth per time
         store_data_loop(depth);
-#endif
 
 #ifdef DRY_TEST // For testing depth changes without sensor
         if (abs(depth - getCurrentTarget()) < 0.05)
@@ -254,7 +252,6 @@ void loop()
             depth += 0.1;
         }
 #endif
-        captureDepthTime = millis(); // Reset timer for next target
 
 #ifdef PRESSURE_SENSOR_TEST
         MqttManager.publish("float/depth", String(depth).c_str());
@@ -339,10 +336,13 @@ void setMessageOnCallBack()
                 Serial.println("Received unknown command on float/end topic");
             }
         }
-        else if (!strcmp(topic.c_str(), "float/send_now"))
+
+        if (!strcmp(topic.c_str(), "float/send_now"))
         {
+            if(!payload.empty()){
             Serial.println("I need to send data now, 27eih yala wa nekamel b3dein");
             yala_beina_nUpload();
+            }
         } });
 }
 
