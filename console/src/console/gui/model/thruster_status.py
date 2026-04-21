@@ -69,7 +69,7 @@ class ThrusterStatus(QObject):
     def calc_direction(self):
         K = 1 / math.sqrt(2) # 0.707
         
-        x_total = (self._h_thrust2 + self._h_thrust3 - self._h_thrust1 - self._h_thrust4) * K
+        x_total = (self._h_thrust1 + self._h_thrust4 - self._h_thrust2 - self._h_thrust3) * K
         
         y_total = (self._h_thrust1 + self._h_thrust2 - self._h_thrust3 - self._h_thrust4) * K
 
