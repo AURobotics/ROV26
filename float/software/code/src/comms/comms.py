@@ -88,7 +88,7 @@ class Comms:
 
     def send_file_now(self):
         self.send_now_topic.publish("YALA 2B3AT DELWA2TY 7ALAN")
+        print("send file now")
 
     def end_comms(self):
         self.end_Topic.publish("shutdown")
-        print("sending to shutdown")
