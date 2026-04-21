@@ -230,6 +230,7 @@ class ThirdPartyDownloader(ABC):
             if not self._dl_handle.done:
                 return
             if not self._extract:
+                self._destination.parent.mkdir(parents=True,exist_ok=True)
                 shutil.move(dl_dest, self._destination)
                 return
             extract_dest.mkdir(exist_ok=True)
@@ -283,7 +284,10 @@ class StmProgrammerDownloader(ThirdPartyDownloader):
                 )
         else:
             raise ConnectionError("Could not reach STM Cube bundle index")
-        current_platform = platform.machine() + "-" + platform.system().lower()
+        arch = platform.machine().lower()
+        if arch == "amd64":
+            arch = "x86_64"
+        current_platform = arch + "-" + platform.system().lower()
         bundles: list[dict] = idx["bundles"]
         try:
             programmer_bundles = list(
