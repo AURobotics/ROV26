@@ -13,7 +13,7 @@
 
 #define COMPANY_NUMBER "AU Robotics"
 
-constexpr unsigned long TIME_LIMIT(20UL * 60UL * 1000UL); // 20 mins
+constexpr unsigned long TIME_LIMIT(19UL * 60UL * 1000UL); // 19 mins + 1 min in delay for shutdown
 
 // WiFi credentials
 const char *WIFI_SSID = "Vodafone_VDSL_3BE7";
@@ -28,10 +28,20 @@ const char *MQTT_PASSWORD = nullptr; // Optionalf
 // network settings
 bool AS_ACCESS_POINT = false;
 
+// mqtt topics
+constexpr char *STATUS_TOPIC = "float/status";
+constexpr char *DATA_TOPIC = "float/data";
+constexpr char *DEPTH_TOPIC = "float/depth";
+constexpr char *END_TOPIC = "float/end";
+constexpr char *SEND_NOW_TOPIC = "float/send_now";
+constexpr char *CREDENTIAL_TOPIC = "float/data/credential";
+constexpr char *ERROR_TOPIC = "float/error";
+
 void yala_beina_nUpload();
 bool connectToNetwork(bool asAccessPoint = false);
 void setMessageOnCallBack();
 void shutdown();
+void mqttSetup();
 
 // ArduinoMqttManager MqttManager;
 IDFMQTTManager MqttManager;
@@ -50,6 +60,11 @@ Led currentState;
 constexpr int POWER = 23; // pin set high to retain power, set low to shut down
 
 #define MAX_WIFI_RETRY_COUNT 5
+
+#ifdef DRY_TEST
+float test_depths[] = {2, 0.4, 2, 0.4, 0};
+int current_target_index = 0;
+#endif
 
 // // timer to trigger if otaupdate stopped from being called
 // hw_timer_t *otaWatchdogTimer = NULL;
@@ -136,6 +151,8 @@ void setup()
     }
     digitalWrite(RUNNING, HIGH); // turn on running LED to indicate device is running and connected to network
 
+    mqttSetup();
+
 #ifndef DRY_TEST
     Wire.begin();
     // setup and calibrate pressure sensor only if NOT testing
@@ -144,13 +161,16 @@ void setup()
         Serial.println("Failed to initialize MS5611 sensor!, if failed after 60 seconds, restarting...");
         // Absoute ERROR - all LEDs on
         digitalWrite(UPLOADING, HIGH);
+        MqttManager.publish(ERROR_TOPIC, "Failed to initialize MS5611 sensor");
         myDelay(60000);              // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
         if (!pressureSensor.begin()) // try again before restarting
         {
+            MqttManager.publish(ERROR_TOPIC, "Failed to initialize MS5611 sensor on second attempt, restarting...");
             ESP.restart();
         }
         else
         {
+            MqttManager.publish(STATUS_TOPIC, "MS5611 sensor initialized successfully on second attempt");
             Serial.println("MS5611 sensor initialized successfully on second attempt");
         }
     }
@@ -161,14 +181,18 @@ void setup()
         Serial.println("Failed to setup buoyancy logic!, if failed after 60 seconds, restarting...");
         // Absoute ERROR - all LEDs on
         digitalWrite(UPLOADING, HIGH);
+        MqttManager.publish(ERROR_TOPIC, "Failed to setup buoyancy logic");
         myDelay(60000);             // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
         if (!buoyancy_setup(false)) // try again before restarting
         {
+            MqttManager.publish(ERROR_TOPIC, "Failed to setup buoyancy logic on second attempt, restarting...");
+            Serial.println("Failed to setup buoyancy logic on second attempt, restarting...");
             ESP.restart();
         }
         else
         {
             Serial.println("Buoyancy logic setup successfully on second attempt");
+            MqttManager.publish(STATUS_TOPIC, "Buoyancy logic setup successfully on second attempt");
         }
     }
 
@@ -180,13 +204,17 @@ void setup()
         Serial.println("Failed to setup data storage!, if failed after 60 seconds, restarting...");
         // Absoute ERROR - all LEDs on
         digitalWrite(UPLOADING, HIGH);
+        MqttManager.publish(ERROR_TOPIC, "Failed to setup data storage");
         myDelay(60000);
         if (!store_data_setup()) // try again before restarting
         {
+            MqttManager.publish(ERROR_TOPIC, "Failed to setup data storage on second attempt, restarting...");
+            Serial.println("Failed to setup data storage on second attempt, restarting...");
             ESP.restart();
         }
         else
         {
+            MqttManager.publish(STATUS_TOPIC, "Data storage setup successful on second attempt");
             Serial.println("Data storage setup successful on second attempt");
         }
     }
@@ -194,22 +222,8 @@ void setup()
     digitalWrite(UPLOADING, LOW);   // turn on uploading LED to indicate device is collecting data and doing operations
     currentState = RUNNING;
 
-    IDFMQTTManager::setupState mqtt_state = MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
-    while (!MqttManager.isConnected())
-    {
-        Serial.println("Error in connection to mqtt delaying in a while loop");
-        myDelay(1000);
-    }
-
-    MqttManager.loop(); // checks for mqtt connection and reconnects if needed
-
-    // subscribe to topic that ends run and that sends instant file
-    MqttManager.subscribe("float/end", 1);
-    MqttManager.subscribe("float/send_now", 1);
-    setMessageOnCallBack();
-
     Serial.println("sending: \"Device started and about to collect data\"");
-    MqttManager.publish("float/status", "Device started and about to collect data");
+    MqttManager.publish(STATUS_TOPIC, "Device started and about to collect data");
     Serial.println("sent initial status message to MQTT broker");
 }
 
@@ -217,6 +231,8 @@ void loop()
 {
     if ((millis() - powerTimeout) >= TIME_LIMIT)
     {
+        MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
+        myDelay(60000);
         shutdown();
     }
     if (WiFi.status() != WL_CONNECTED)
@@ -240,20 +256,26 @@ void loop()
 
 #ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
         depth = pressureSensor.getDepth();
-
+#endif
         // buoyancy loop
         buoyancy_loop(depth);
-#endif
 
         // To store depth per time
         store_data_loop(depth);
 
 #ifdef DRY_TEST // For testing depth changes without sensor
-        if (abs(depth - getCurrentTarget()) < 0.05)
+        if (abs(depth - test_depths[current_target_index]) < 0.05)
         {
             Serial.println("At target depth, holding...");
+            myDelay(1000); // hold at target depth for 5 seconds
+            current_target_index++;
+            if (current_target_index >= 4)
+            {
+                currentState = UPLOADING;
+                Serial.println("Test complete. Transitioning to UPLOADING state...");
+            }
         }
-        else if (depth > getCurrentTarget())
+        else if (depth > test_depths[current_target_index])
         {
             depth -= 0.1; // Move slightly below target
         }
@@ -264,7 +286,7 @@ void loop()
 #endif
 
 #ifdef PRESSURE_SENSOR_TEST
-        MqttManager.publish("float/depth", String(depth).c_str());
+        MqttManager.publish(DEPTH_TOPIC, String(depth).c_str());
         Serial.print("Current Depth: ");
         Serial.println(depth);
 #endif
@@ -273,7 +295,7 @@ void loop()
         Serial.println(getCurrentTarget());
         Serial.print("Current Depth: ");
         Serial.println(depth);
-        MqttManager.publish("float/depth", String(depth).c_str());
+        MqttManager.publish(DEPTH_TOPIC, String(depth).c_str());
 
 #ifdef DRY_TEST
         digitalWrite(BLINKING_LED, HIGH);
@@ -284,7 +306,7 @@ void loop()
         if (isComplete())
         {
             Serial.println("Data collection complete. Transitioning to UPLOADING state...");
-            MqttManager.publish("float/data", "run ended, complete file ready for receive");
+            MqttManager.publish(STATUS_TOPIC, "2bset, run ended, complete file ready for receive");
             currentState = UPLOADING;
         }
     }
@@ -339,7 +361,7 @@ void setMessageOnCallBack()
         Serial.print(payload.c_str());
         Serial.println("]");
 
-        if (!strcmp(topic.c_str(),"float/end"))
+        if (!strcmp(topic.c_str(), END_TOPIC))
         {
             if (!strcmp(payload.c_str(), "shutdown"))
             {
@@ -353,7 +375,7 @@ void setMessageOnCallBack()
             }
         }
 
-        if (!strcmp(topic.c_str(), "float/send_now"))
+        if (!strcmp(topic.c_str(), SEND_NOW_TOPIC))
         {
             if(!payload.empty()){
             Serial.println("I need to send data now, 27eih yala wa nekamel b3dein");
@@ -413,8 +435,25 @@ void yala_beina_nUpload()
     Serial.print("Mqtt connection is: ");
     Serial.println(MqttManager.isConnected() ? "Connected" : "Not Connected");
 
-    MqttManager.publish("float/data/credential", COMPANY_NUMBER);
-    MqttManager.publishFileChunkedOverTopics("float/data", "/littlefs/log.csv", "log.csv");
+    MqttManager.publish(CREDENTIAL_TOPIC, COMPANY_NUMBER);
+    MqttManager.publishFileChunkedOverTopics(DATA_TOPIC, "/littlefs/log.csv", "log.csv");
     // Serial.println(millis() - t);
     myDelay(5000); // Send data every 5 seconds
+}
+
+void mqttSetup()
+{
+    IDFMQTTManager::setupState mqtt_state = MqttManager.setup(MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+    while (!MqttManager.isConnected())
+    {
+        Serial.println("Error in connection to mqtt delaying in a while loop");
+        myDelay(1000);
+    }
+
+    MqttManager.loop(); // checks for mqtt connection and reconnects if needed
+
+    // subscribe to topic that ends run and that sends instant file
+    MqttManager.subscribe(END_TOPIC, 1);
+    MqttManager.subscribe(SEND_NOW_TOPIC, 1);
+    setMessageOnCallBack();
 }
