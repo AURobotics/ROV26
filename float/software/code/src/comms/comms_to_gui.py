@@ -28,9 +28,6 @@ class Comms:
         # to end comms and close esp
         self.end_Topic = Topic(END, self._mqtt_client)
 
-        # to receive error messages from esp
-
-
         # to get depth values online
         self._debug_get_depth()
 
@@ -92,3 +89,8 @@ class Comms:
     def end_comms(self):
         self.end_Topic.publish("shutdown")
         print("sent shutdown command")
+
+    def send_start_message(self):
+        start_topic = self.topics_and_handlers[STATUS][0] # reuse status topic to send start message
+        start_topic.publish("start")
+        print("sent start message")
