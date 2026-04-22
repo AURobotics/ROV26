@@ -18,7 +18,8 @@ const char *WIFI_SSID = "aurobotics-ap";
 const char *WIFI_PASSWORD = "12345678";
 
 // MQTT broker settings
-const char *MQTT_BROKER = "192.168.1.146";
+// const char *MQTT_BROKER = "192.168.1.146";
+const char *MQTT_BROKER = "192.168.1.101";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optionalf
@@ -79,7 +80,6 @@ void initPins()
     pinMode(BLINKING_LED, OUTPUT);
 }
 
-unsigned long captureDepthTime;
 void setup()
 {
     initPins();
@@ -150,23 +150,6 @@ void setup()
         }
     }
 
-    // setting up buoyancy logic
-    if (!buoyancy_setup(false))
-    {
-        Serial.println("Failed to setup buoyancy logic!, if failed after 60 seconds, restarting...");
-        // Absoute ERROR - all LEDs on
-        digitalWrite(UPLOADING, HIGH);
-        myDelay(60000);             // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
-        if (!buoyancy_setup(false)) // try again before restarting
-        {
-            ESP.restart();
-        }
-        else
-        {
-            Serial.println("Buoyancy logic setup successfully on second attempt");
-        }
-    }
-
 #endif
 
     // Start the sequence
@@ -206,7 +189,25 @@ void setup()
     Serial.println("sending: \"Device started and about to collect data\"");
     MqttManager.publish("float/status", "Device started and about to collect data");
     Serial.println("sent initial status message to MQTT broker");
-    captureDepthTime = millis();
+
+    #ifndef DRY_TEST
+    // setting up buoyancy logic
+    if (!buoyancy_setup(false))
+    {
+        Serial.println("Failed to setup buoyancy logic!, if failed after 60 seconds, restarting...");
+        // Absoute ERROR - all LEDs on
+        digitalWrite(UPLOADING, HIGH);
+        myDelay(60000);             // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
+        if (!buoyancy_setup(false)) // try again before restarting
+        {
+            ESP.restart();
+        }
+        else
+        {
+            Serial.println("Buoyancy logic setup successfully on second attempt");
+        }
+    }
+    #endif
 }
 
 void loop()
@@ -232,8 +233,9 @@ void loop()
 
 #ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
         depth = pressureSensor.getDepth();
+        // depth = getDepth();
 
-        // buoyancy loop
+        // buoyancy loop        
         buoyancy_loop(depth);
 
         // To store depth per time
@@ -254,7 +256,6 @@ void loop()
             depth += 0.1;
         }
 #endif
-        captureDepthTime = millis(); // Reset timer for next target
 
 #ifdef PRESSURE_SENSOR_TEST
         MqttManager.publish("float/depth", String(depth).c_str());
