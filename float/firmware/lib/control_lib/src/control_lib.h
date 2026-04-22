@@ -17,7 +17,7 @@ class PID{
         float prev_error = 0;
         unsigned long prev_time = 0;
         float prev_D = 0;
-        int holding_time = 5 * 1000; //hold position for 30 seconds
+        int holding_time = 30 * 1000; //hold position for 30 seconds
         unsigned long sampling_time = 50;
         bool sequence_done = false;
         float PID_output;

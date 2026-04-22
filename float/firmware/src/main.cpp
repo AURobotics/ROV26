@@ -204,24 +204,28 @@ void setup()
     MqttManager.publish(STATUS_TOPIC, "Device started and about to collect data");
     Serial.println("sent initial status message to MQTT broker");
 
-    #ifndef DRY_TEST
+#ifndef DRY_TEST
     // setting up buoyancy logic
     if (!buoyancy_setup(false))
     {
         Serial.println("Failed to setup buoyancy logic!, if failed after 60 seconds, restarting...");
         // Absoute ERROR - all LEDs on
         digitalWrite(UPLOADING, HIGH);
+        MqttManager.publish(ERROR_TOPIC, "Failed to setup buoyancy logic");
         myDelay(60000);             // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
         if (!buoyancy_setup(false)) // try again before restarting
         {
+            MqttManager.publish(ERROR_TOPIC, "Failed to setup buoyancy logic on second attempt, restarting...");
+            Serial.println("Failed to setup buoyancy logic on second attempt, restarting...");
             ESP.restart();
         }
         else
         {
             Serial.println("Buoyancy logic setup successfully on second attempt");
+            MqttManager.publish(STATUS_TOPIC, "Buoyancy logic setup successfully on second attempt");
         }
     }
-    #endif
+#endif
 }
 
 void loop()
