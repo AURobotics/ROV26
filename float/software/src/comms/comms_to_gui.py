@@ -29,7 +29,7 @@ class Comms:
         self.end_Topic = Topic(END, self._mqtt_client)
 
         # to get depth values online
-        self._debug_get_depth()
+        # self._debug_get_depth()
 
         # to send to esp to send current file
         self.send_now_topic = Topic(SEND_NOW, self._mqtt_client)

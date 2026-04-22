@@ -16,7 +16,7 @@ bool connectToWiFi(const char *ssid, const char *password, int maxRetries)
 
         while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts)
         {
-            myDelay(500);
+            delay(500);
             Serial.print(".");
             attempts++;
         }
@@ -72,7 +72,7 @@ bool initAccessPoint(const char *ssid, const char *password, int maxRetries)
         Serial.println("FAILED!");
         if (attempt < maxRetries)
         {
-            myDelay(1000);
+            delay(1000);
         }
     }
 
