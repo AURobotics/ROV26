@@ -1,64 +1,28 @@
 #include <buoyancy_lib.h>
-#include <EEPROM.h>
 
 const int setpoints_num = 5;
 float setpoints[setpoints_num] = {2.5 - FLOAT_HEIGHT, 0.4, 2.5 - FLOAT_HEIGHT, 0.4, 0};
+// float setpoints[setpoints_num] = {0.5, 0.1, 0.5, 0.1, 0};
+
 
 TMC_interfacer driver = TMC_interfacer(MS, MAX_ROTATIONS, MAX_MOTOR_VEL);
 PID pid = PID(K_P, K_I, K_D, MAX_DISTANCE, setpoints, setpoints_num);
 bool buoyancy_setup(bool read_EEPROM)
 {
   // Serial.begin(115200);
-  bool res = EEPROM.begin(EEPROM_SIZE);
-  if (read_EEPROM)
-  {
-    float stored_rotations = EEPROM.readFloat(0);
-    driver.rotations = stored_rotations;
-  }
   Serial2.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN);
-  while (!Serial2)
-  {
-    delay(1);
-  }
   delay(500);
+  if(!driver.driver.GCONF())
+    return false;
 
   driver.normal_setup(RMS_CURRENT, 0);
   pid.set_reference_time(millis());
 
-  return res;
+  return true;
 }
 
-void save_rotations()
-{
-  EEPROM.writeFloat(0, driver.rotations);
-  EEPROM.writeBool(sizeof(float), true);
-  EEPROM.commit();
-}
 
-void buoyancy_loop(float depth)
-{
-
-  int target_position = pid.control_loop(depth) + 1300;
-  driver.adjust_velocity(target_position);
-  driver.measure_position();
-
-  driver.readSerialAndRespond();
-
-  if (Serial.available() > 0)
-  {                                    // Check if data is available
-    char receivedChar = Serial.read(); // Read a single character
-    if (receivedChar == 's')
-    { // Check if it matches 'h'
-      save_rotations();
-      driver.driver.VACTUAL(0);
-      delay(10000);
-    }
-    else if (receivedChar == 'h')
-    {
-      driver.driver.toff(0);
-      delay(10000);
-    }
-  }
+void debugging_prints(float depth, int target_position){
   Serial.print("D:");
   Serial.println(depth);
   Serial.print("V:");
@@ -68,11 +32,52 @@ void buoyancy_loop(float depth)
   Serial.print("S:");
   int SPS = driver.VACTUAL2SPS(driver.driver.VACTUAL());
   Serial.println(SPS);
-  Serial.print("T:");
+  long curr = millis();
+  Serial.print("t:");
+  Serial.println(curr);
+  Serial.print("dT:");
   if (pid.hold_position)
-    Serial.println(millis() - pid.Time);
+    Serial.println(curr - pid.Time);
   else
     Serial.println(-1);
+}
+
+void save_rotations()
+{
+  while(driver.rotations > 1.1){
+    driver.adjust_velocity(200, false);
+    debugging_prints(0,200);
+    driver.measure_position();
+  }
+  driver.driver.VACTUAL(0);
+  driver.driver.toff(0);
+}
+
+void buoyancy_loop(float depth)
+{
+
+  int target_position = pid.control_loop(depth) + 1300;
+  driver.adjust_velocity(target_position, true);
+  driver.measure_position();
+
+  driver.readSerialAndRespond();
+
+  // if (Serial.available() > 0)
+  // {                                    // Check if data is available
+  //   char receivedChar = Serial.read(); // Read a single character
+  //   if (receivedChar == 's')
+  //   { // Check if it matches 'h'
+  //     save_rotations();
+  //     driver.driver.VACTUAL(0);
+  //     delay(10000);
+  //   }
+  //   else if (receivedChar == 'h')
+  //   {
+  //     driver.driver.toff(0);
+  //     delay(10000);
+  //   }
+  // }
+  debugging_prints(depth, target_position);
 }
 
 float getCurrentTarget()
