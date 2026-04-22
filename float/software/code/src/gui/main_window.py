@@ -113,6 +113,10 @@ class MainWindow(QMainWindow):
         self._end_comms_btn.clicked.connect(self._on_end_comms_clicked)
         layout.addWidget(self._end_comms_btn)
 
+        self._start_btn = self._tool_btn("Start Comms", PALETTE["accent"])
+        self._start_btn.clicked.connect(lambda: self._send_start_message())
+        layout.addWidget(self._start_btn)
+
         return bar
 
     def _tool_btn(self, text: str, color: str) -> QPushButton:
@@ -216,6 +220,9 @@ class MainWindow(QMainWindow):
 
     def _on_end_comms_clicked(self):
         self.comms.end_comms()
+
+    def _send_start_message(self):
+        self.comms.send_start_message()
 
     # ── Message API ───────────────────────────────────────────────────────────
     @Slot(str, str)
