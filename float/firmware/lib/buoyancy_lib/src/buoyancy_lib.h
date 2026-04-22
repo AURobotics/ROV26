@@ -10,7 +10,7 @@
 #define MAX_MOTOR_SPS 100 //make motor steps per second
 // #define MAX_MOTOR_VEL MAX_MOTOR_SPS / 200 * POWER_SCREW_SIZE
 #define MAX_MOTOR_VEL 101
-#define MAX_ROTATIONS 13
+#define MAX_ROTATIONS 12.5
 // #define MAX_DISTANCE 8 * MAX_ROTATIONS //96mm
 #define MAX_DISTANCE 1300 //1300 steps up and down
 #define FLOAT_HEIGHT 0.5
