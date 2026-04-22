@@ -56,7 +56,7 @@ enum Led
     UPLOADING = 5,  // blue // Collecting data and doing operations
     CONNECTION = 18 // green // Uploading data to MQTT broker
 };
-Led currentState;
+Led currentState = CONNECTION;
 constexpr int POWER = 23; // pin set high to retain power, set low to shut down
 
 #define MAX_WIFI_RETRY_COUNT 5
@@ -220,7 +220,6 @@ void setup()
     }
     digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
     digitalWrite(UPLOADING, LOW);   // turn on uploading LED to indicate device is collecting data and doing operations
-    currentState = RUNNING;
 
     Serial.println("sending: \"Device started and about to collect data\"");
     MqttManager.publish(STATUS_TOPIC, "Device started and about to collect data");
@@ -381,6 +380,15 @@ void setMessageOnCallBack()
             Serial.println("I need to send data now, 27eih yala wa nekamel b3dein");
             yala_beina_nUpload();
             }
+        } 
+        
+        if (!strcmp(topic.c_str(), STATUS_TOPIC))
+        {
+            if(!strcmp(payload.c_str(), "start"))
+            {
+                Serial.println("Received command to start data collection");
+                currentState = RUNNING;
+            }
         } });
 }
 
@@ -455,5 +463,6 @@ void mqttSetup()
     // subscribe to topic that ends run and that sends instant file
     MqttManager.subscribe(END_TOPIC, 1);
     MqttManager.subscribe(SEND_NOW_TOPIC, 1);
+    MqttManager.subscribe(STATUS_TOPIC, 1);
     setMessageOnCallBack();
 }
