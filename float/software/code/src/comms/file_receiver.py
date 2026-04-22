@@ -3,10 +3,10 @@ import os
 import threading
 import base64
 
-from comms.mqtt import MQTTClient, Topic, MQTTMessageHandeler
+from comms.mqtt import MQTTClient, Topic, MQTTMessageHandler
 from comms.crc32 import compare_crc32
 
-class meta_data_message(MQTTMessageHandeler):
+class meta_data_message(MQTTMessageHandler):
     """
     represents the meta data message for a file transfer, which includes:
         - filename: the name of the file being transferred
@@ -75,7 +75,7 @@ class meta_data_message(MQTTMessageHandeler):
     def __str__(self):
         return f"meta_data(filename={self.args['filename']}, size={self.args['size']}, chunks={self.args['chunks']}, encoding={self.args['encoding']})"
 
-class data_chunk_message(MQTTMessageHandeler):
+class data_chunk_message(MQTTMessageHandler):
     """
     represents a data chunk message for a file transfer, which includes:
         - chunk_index: the index of the chunk in the file (starting from 0)

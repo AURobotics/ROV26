@@ -3,7 +3,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from gui.main_window import MainWindow
-from comms.comms import Comms
+from comms.comms_to_gui import Comms
 
 
 app = QApplication(sys.argv)

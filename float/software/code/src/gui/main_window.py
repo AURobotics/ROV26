@@ -7,17 +7,14 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal, Slot
 
-from comms.comms import Comms
+from comms.comms_to_gui import Comms
 from gui.pallete import PALETTE
-from gui.message_bar import MessageBarWidget
+from gui.message_bar import MessageBarWidget, MessageLevel
 from gui.graph_viewer import GraphWidget
 from gui.column_selector import ColumnSelector
 
 # for testing the float tab
 class MainWindow(QMainWindow):
-    _sig_post_message = Signal(str, str)
-    _sig_load_csv     = Signal(str)
-
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Float")
@@ -32,7 +29,7 @@ class MainWindow(QMainWindow):
         self._col_selector: ColumnSelector | None = None
         self._build_ui()
 
-        QTimer.singleShot(800,  lambda: self.post_message("System initialised.", "INFO"))
+        QTimer.singleShot(800,  lambda: self.post_message("System initialised.", MessageLevel.INFO))
         self.comms.float_communication_setup(self)
         
     # ── UI construction ───────────────────────────────────────────────────────
@@ -158,7 +155,7 @@ class MainWindow(QMainWindow):
                 reader = csv.DictReader(f)
                 data = list(reader)
                 if not data:
-                    self.post_message(f"CSV is empty: {path}", "WARN")
+                    self.post_message(f"CSV is empty: {path}", MessageLevel.WARN)
                     return
                 columns = list(data[0].keys())
 
@@ -166,12 +163,12 @@ class MainWindow(QMainWindow):
             self._columns = columns
             self._file_label.setText(os.path.basename(path))
             self.post_message(
-                f"Loaded {len(data)} rows × {len(columns)} columns from '{os.path.basename(path)}'", "OK"
+                f"Loaded {len(data)} rows × {len(columns)} columns from '{os.path.basename(path)}'", MessageLevel.OK
             )
             self._setup_column_selector(columns)
             self.loaded_csv = True
         except Exception as e:
-            self.post_message(f"Failed to load CSV: {e}", "ERROR")
+            self.post_message(f"Failed to load CSV: {e}", MessageLevel.ERROR)
 
     def _setup_column_selector(self, columns: list[str]):
         # Clear existing selector widget from the layout
@@ -189,15 +186,15 @@ class MainWindow(QMainWindow):
         x_key = columns[0]
         y_keys = columns[1:]
         self._graph.load(self._csv_data, x_key, y_keys)
-        self.post_message(f"Plotting: x={x_key} y={', '.join(y_keys)}", "INFO")
+        self.post_message(f"Plotting: x={x_key} y={', '.join(y_keys)}", MessageLevel.INFO)
 
     def _on_selection_changed(self, x_key: str, y_keys: list[str]):
         if not y_keys:
-            self.post_message("Select at least one Y column to plot.", "WARN")
+            self.post_message("Select at least one Y column to plot.", MessageLevel.WARN)
             self._graph.clear()
             return
         self._graph.load(self._csv_data, x_key, y_keys)
-        self.post_message(f"Re-plotted: x={x_key}  y={', '.join(y_keys)}", "INFO")
+        self.post_message(f"Re-plotted: x={x_key}  y={', '.join(y_keys)}", MessageLevel.INFO)
 
     def _on_clear_clicked(self):
         self._csv_data = []
@@ -210,7 +207,7 @@ class MainWindow(QMainWindow):
             self._col_selector.deleteLater()
             self._col_selector = None
             
-        self.post_message("Data cleared.", "INFO")
+        self.post_message("Data cleared.", MessageLevel.INFO)
 
     def _on_send_file_clicked(self):
         self.comms.send_file_now()
@@ -222,7 +219,7 @@ class MainWindow(QMainWindow):
 
     # ── Message API ───────────────────────────────────────────────────────────
     @Slot(str, str)
-    def post_message(self, text: str, level: str = "INFO"):
+    def post_message(self, text: str, level: MessageLevel = MessageLevel.INFO):
         """Public API: push a message into the message bar."""
         self._msg_bar.post(text, level)
 

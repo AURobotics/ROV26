@@ -11,7 +11,7 @@ from paho.mqtt import client as mqtt_client
 from paho.mqtt.enums import CallbackAPIVersion
 from paho.mqtt.client import MQTTMessage
 
-class MQTTMessageHandeler(ABC):
+class MQTTMessageHandler(ABC):
     def __init__(self):
         self.args: Dict[str, Any] = {}
 
@@ -48,8 +48,8 @@ class MQTTClient():
         self.password = password
         self.unacked_publish = set()
         self._lock = threading.Lock()
-        # Registry mapping topic string -> list of MQTTMessageHandeler handlers
-        self._topic_handlers: dict[str, list[MQTTMessageHandeler]] = {} # for subscribed topics
+        # Registry mapping topic string -> list of MQTTMessageHandler handlers
+        self._topic_handlers: dict[str, list[MQTTMessageHandler]] = {} # for subscribed topics
         self._connect()
 
     def _connect(self):
@@ -88,7 +88,7 @@ class MQTTClient():
             except Exception as e:
                 print(f"Error in message handler for {message.topic}: {e}")
 
-    def register_handler(self, topic: str, handler: MQTTMessageHandeler):
+    def register_handler(self, topic: str, handler: MQTTMessageHandler):
         """register a message handler for a topic. subscribes if not already subscribed."""
         if topic not in self._topic_handlers:
             self._topic_handlers[topic] = []
@@ -154,11 +154,11 @@ class Topic():
 
         msg.wait_for_publish()
 
-    def subscribe(self, message_handler: MQTTMessageHandeler):
+    def subscribe(self, message_handler: MQTTMessageHandler):
         """Register a handler for this topic via the shared mqtt connection."""
         self.mqtt.register_handler(self.topic, message_handler)
 
-    def unsubscribe(self, message_handler: MQTTMessageHandeler):
+    def unsubscribe(self, message_handler: MQTTMessageHandler):
         """Unregister a handler for this topic."""
         handlers = self.mqtt._topic_handlers.get(self.topic, [])
         if message_handler in handlers:
@@ -172,7 +172,7 @@ class Topic():
 """
     How does this work?
     1. We create an mqtt connection object (mqtt_connection).
-    2. We create a concrete implementation of MQTTMessageHandeler (e.g. sensor_data_message).
+    2. We create a concrete implementation of MQTTMessageHandler (e.g. sensor_data_message).
     3. We create a topic object with the topic name and the mqtt_connection.
     4. To subscribe to a topic: topic.subscribe(message_handler).
        Multiple handlers can be registered for the same topic, and multiple topics
@@ -184,7 +184,7 @@ class Topic():
 
 
 if __name__ == "__main__":
-    class sensor_data_message(MQTTMessageHandeler):
+    class sensor_data_message(MQTTMessageHandler):
         def __init__(self):
             super().__init__()
             self.add_variable("temperature", 0.0)
@@ -203,7 +203,7 @@ if __name__ == "__main__":
             return f"SensorData: temp={self.args['temperature']}°C, humidity={self.args['humidity']}%, pressure={self.args['pressure']}hPa"
 
 
-    class device_status_message(MQTTMessageHandeler):
+    class device_status_message(MQTTMessageHandler):
         def __init__(self):
             super().__init__()
             self.add_variable("device_id", "")

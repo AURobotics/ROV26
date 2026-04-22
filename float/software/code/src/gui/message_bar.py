@@ -9,21 +9,20 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 
 from .pallete import PALETTE
+from enum import Enum
 
+class MessageLevel(Enum):
+    INFO = PALETTE["msg_info"]
+    OK = PALETTE["msg_ok"]
+    RECEIVED = PALETTE["msg_ok"]
+    WARN = PALETTE["msg_warn"]
+    ERROR = PALETTE["msg_err"]
 class MessageEntry:
-    LEVEL_COLORS = {
-        "INFO":    PALETTE["msg_info"],
-        "OK":      PALETTE["msg_ok"],
-        "RECEIVED": PALETTE["msg_ok"],
-        "WARN":    PALETTE["msg_warn"],
-        "ERROR":   PALETTE["msg_err"],
-    }
-
-    def __init__(self, text: str, level: str = "INFO"):
+    def __init__(self, text: str, level: MessageLevel = MessageLevel.INFO):
         self.text = text
-        self.level = level.upper()
+        self.level: MessageLevel = level
         self.ts = datetime.now().strftime("%H:%M:%S")
-        self.color = self.LEVEL_COLORS.get(self.level, PALETTE["msg_info"])
+        self.color = self.level.value
 
 
 class MessageBarWidget(QWidget):
@@ -103,7 +102,7 @@ class MessageBarWidget(QWidget):
         self._scroll = scroll
 
     # public API ---------------------------------------------------------------
-    def post(self, text: str, level: str = "INFO"):
+    def post(self, text: str, level: MessageLevel = MessageLevel.INFO):
         entry = MessageEntry(text, level)
         self._messages.append(entry)
         self._add_label(entry)
@@ -121,7 +120,7 @@ class MessageBarWidget(QWidget):
 
     # internal -----------------------------------------------------------------
     def _add_label(self, entry: MessageEntry):
-        lbl = QLabel(f"[{entry.ts}] [{entry.level:<5}] {entry.text}")
+        lbl = QLabel(f"[{entry.ts}] [{entry.level.name:<5}] {entry.text}")
         lbl.setStyleSheet(f"""
             color: {entry.color};
             font: 10px 'Courier New';
