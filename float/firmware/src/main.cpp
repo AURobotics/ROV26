@@ -42,6 +42,7 @@ bool connectToNetwork(bool asAccessPoint = false);
 void setMessageOnCallBack();
 void shutdown();
 void mqttSetup();
+void always_handle_OTA_updates();
 
 // ArduinoMqttManager MqttManager;
 IDFMQTTManager MqttManager;
@@ -200,6 +201,12 @@ void setup()
     digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
     digitalWrite(UPLOADING, LOW);   // turn on uploading LED to indicate device is collecting data and doing operations
 
+    while (currentState != RUNNING)
+    {
+        always_handle_OTA_updates(); // Handle OTA updates in every loop iteration
+        myDelay(100);               // Short delay to prevent watchdog timer reset
+    }
+    
     Serial.println("sending: \"Device started and about to collect data\"");
     MqttManager.publish(STATUS_TOPIC, "Device started and about to collect data");
     Serial.println("sent initial status message to MQTT broker");
@@ -230,26 +237,7 @@ void setup()
 
 void loop()
 {
-    if ((millis() - powerTimeout) >= TIME_LIMIT)
-    {
-        MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
-        myDelay(60000);
-        shutdown();
-    }
-    if (WiFi.status() != WL_CONNECTED)
-    {
-        digitalWrite(CONNECTION, LOW); // turn off connection LED
-        Serial.println("WiFi connection lost. Reconnecting...");
-        WiFi.reconnect();
-    }
-    else
-    {
-        digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
-        MqttManager.loop();             // if internet then reconnect to mqtt if not connected - non blocking
-    }
-
-    // Handle OTA updates
-    otaupdate();
+    always_handle_OTA_updates(); // Handle OTA updates in every loop iteration
 
     if (currentState == RUNNING)
     {
@@ -342,6 +330,8 @@ bool connectToNetwork(bool asAccessPoint)
 void shutdown()
 {
     save_rotations();
+
+    MqttManager.publish(STATUS_TOPIC, "Device shutting down");
 
     // turn off all LEDs to indicate shutdown
     digitalWrite(CONNECTION, LOW);
@@ -467,4 +457,28 @@ void mqttSetup()
     MqttManager.subscribe(SEND_NOW_TOPIC, 1);
     MqttManager.subscribe(STATUS_TOPIC, 1);
     setMessageOnCallBack();
+}
+
+void always_handle_OTA_updates()
+{
+    if ((millis() - powerTimeout) >= TIME_LIMIT)
+    {
+        MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
+        myDelay(60000);
+        shutdown();
+    }
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        digitalWrite(CONNECTION, LOW); // turn off connection LED
+        Serial.println("WiFi connection lost. Reconnecting...");
+        WiFi.reconnect();
+    }
+    else
+    {
+        // Handle OTA updates
+        otaupdate();
+
+        digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
+        MqttManager.loop();             // if internet then reconnect to mqtt if not connected - non blocking
+    }
 }
