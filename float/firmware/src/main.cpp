@@ -42,7 +42,8 @@ bool connectToNetwork(bool asAccessPoint = false);
 void setMessageOnCallBack();
 void shutdown();
 void mqttSetup();
-void always_handle_OTA_updates();
+void always_handle_network_ota_mqtt();
+void myDelay(unsigned long ms);
 
 // ArduinoMqttManager MqttManager;
 IDFMQTTManager MqttManager;
@@ -203,10 +204,9 @@ void setup()
 
     while (currentState != RUNNING)
     {
-        always_handle_OTA_updates(); // Handle OTA updates in every loop iteration
-        myDelay(100);               // Short delay to prevent watchdog timer reset
+        myDelay(100); // wait for command to start data collection
     }
-    
+
     Serial.println("sending: \"Device started and about to collect data\"");
     MqttManager.publish(STATUS_TOPIC, "Device started and about to collect data");
     Serial.println("sent initial status message to MQTT broker");
@@ -237,7 +237,7 @@ void setup()
 
 void loop()
 {
-    always_handle_OTA_updates(); // Handle OTA updates in every loop iteration
+    always_handle_network_ota_mqtt(); // Handle OTA updates in every loop iteration
 
     if (currentState == RUNNING)
     {
@@ -459,7 +459,7 @@ void mqttSetup()
     setMessageOnCallBack();
 }
 
-void always_handle_OTA_updates()
+void always_handle_network_ota_mqtt()
 {
     if ((millis() - powerTimeout) >= TIME_LIMIT)
     {
@@ -480,5 +480,15 @@ void always_handle_OTA_updates()
 
         digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
         MqttManager.loop();             // if internet then reconnect to mqtt if not connected - non blocking
+    }
+}
+
+void myDelay(unsigned long ms)
+{
+    unsigned long start = millis();
+    while (millis() - start < ms)
+    {
+        always_handle_network_ota_mqtt();
+        delay(100); // Short delay to prevent watchdog timer reset
     }
 }
