@@ -204,6 +204,12 @@ void setup()
 
     while (currentState != RUNNING)
     {
+        if ((millis() - powerTimeout) >= TIME_LIMIT)
+        {
+            MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
+            myDelay(60000);
+            shutdown();
+        }
         myDelay(100); // wait for command to start data collection
     }
 
@@ -237,6 +243,12 @@ void setup()
 
 void loop()
 {
+    if ((millis() - powerTimeout) >= TIME_LIMIT)
+    {
+        MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
+        myDelay(60000);
+        shutdown();
+    }
     always_handle_network_ota_mqtt(); // Handle OTA updates in every loop iteration
 
     if (currentState == RUNNING)
@@ -447,6 +459,7 @@ void mqttSetup()
     while (!MqttManager.isConnected())
     {
         Serial.println("Error in connection to mqtt delaying in a while loop");
+        delay(1000); // wait before retrying
         myDelay(1000);
     }
 
@@ -461,12 +474,6 @@ void mqttSetup()
 
 void always_handle_network_ota_mqtt()
 {
-    if ((millis() - powerTimeout) >= TIME_LIMIT)
-    {
-        MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
-        myDelay(60000);
-        shutdown();
-    }
     if (WiFi.status() != WL_CONNECTED)
     {
         digitalWrite(CONNECTION, LOW); // turn off connection LED
