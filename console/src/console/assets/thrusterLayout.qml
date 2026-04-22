@@ -81,6 +81,7 @@ Rectangle {
         id: directionArrow
         anchors.centerIn: parent
         rotation: 90 - root.horizontalAngle
-        totalMagnitude: root.totalHorizontalThrust / (2 * Math.sqrt(2)) // Normalize to max possible thrust
+        totalMagnitude: root.totalHorizontalThrust / (2 * Math.sqrt(2))
+        visible: root.totalHorizontalThrust > 0
     }
 }
