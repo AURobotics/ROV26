@@ -16,11 +16,11 @@
 constexpr unsigned long TIME_LIMIT(19UL * 60UL * 1000UL); // 19 mins + 1 min in delay for shutdown
 
 // WiFi credentials
-const char *WIFI_SSID = "Vodafone_VDSL_3BE7";
-const char *WIFI_PASSWORD = "Ee0123608241@";
+const char *WIFI_SSID = "aurobotics-ap";
+const char *WIFI_PASSWORD = "12345678";
 
 // MQTT broker settings
-const char *MQTT_BROKER = "192.168.1.9";
+const char *MQTT_BROKER = "192.168.1.101";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optionalf
@@ -103,6 +103,7 @@ unsigned long powerTimeout;
 
 void setup()
 {
+    delay(100);
     powerTimeout = millis();
     initPins();
     digitalWrite(POWER, HIGH); // set high to retain power
