@@ -5,10 +5,10 @@
 #include <HardwareSerial.h>
 
 #define R_SENSE 0.11f
-#define RX_PIN 16 
-#define TX_PIN 17
-// #define RX_PIN 18
+// #define RX_PIN 16 
 // #define TX_PIN 17
+#define RX_PIN 4
+#define TX_PIN 16
 #define STEPS 200
 #define POWER_SCREW_SIZE 8 //mm
 // #define DIR_PIN 23

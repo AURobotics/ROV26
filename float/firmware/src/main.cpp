@@ -94,11 +94,11 @@ int current_target_index = 0;
 
 void initPins()
 {
-    pinMode(RUNNING, OUTPUT);
-    pinMode(UPLOADING, OUTPUT);
-    pinMode(CONNECTION, OUTPUT);
+    // pinMode(RUNNING, OUTPUT);
+    // pinMode(UPLOADING, OUTPUT);
+    // pinMode(CONNECTION, OUTPUT);
     pinMode(POWER, OUTPUT);
-    pinMode(BLINKING_LED, OUTPUT);
+    // pinMode(BLINKING_LED, OUTPUT);
 }
 
 unsigned long powerTimeout;
@@ -114,20 +114,20 @@ void setup()
 
     if (!connectToNetwork())
     {
-        digitalWrite(CONNECTION, LOW); // turn off connection LED
+        // digitalWrite(CONNECTION, LOW); // turn off connection LED
         Serial.println("Failed to connect to network");
 
         // extreme error - all LEDs on
-        digitalWrite(UPLOADING, HIGH);
-        digitalWrite(RUNNING, HIGH);
-        digitalWrite(CONNECTION, HIGH);
+        // digitalWrite(UPLOADING, HIGH);
+        // digitalWrite(RUNNING, HIGH);
+        // digitalWrite(CONNECTION, HIGH);
 
         delay(1000);
         ESP.restart();
     }
-    digitalWrite(UPLOADING, LOW);
-    digitalWrite(RUNNING, LOW);
-    digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
+    // digitalWrite(UPLOADING, LOW);
+    // digitalWrite(RUNNING, LOW);
+    // digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
 
     // OTA
     setupOTA();
@@ -145,27 +145,28 @@ void setup()
         otaupdate(); // Handle OTA updates
 
         // flucctualting led if AP
-        digitalWrite(CONNECTION, HIGH);
+        // digitalWrite(CONNECTION, HIGH);
         myDelay(1000);
-        digitalWrite(CONNECTION, LOW);
+        // digitalWrite(CONNECTION, LOW);
 
         if (connectToWiFi(WIFI_SSID, WIFI_PASSWORD)) // try to connect to WiFi once than pass through otupdate if false
         {
             break;
         }
     }
-    digitalWrite(RUNNING, HIGH); // turn on running LED to indicate device is running and connected to network
+    // digitalWrite(RUNNING, HIGH); // turn on running LED to indicate device is running and connected to network
 
     mqttSetup();
 
 #ifndef DRY_TEST
+    // Wire.begin();
     Wire.begin();
     // setup and calibrate pressure sensor only if NOT testing
     if (!pressureSensor.begin())
     {
         Serial.println("Failed to initialize MS5611 sensor!, if failed after 60 seconds, restarting...");
         // Absoute ERROR - all LEDs on
-        digitalWrite(UPLOADING, HIGH);
+        // digitalWrite(UPLOADING, HIGH);
         MqttManager.publish(ERROR_TOPIC, "Failed to initialize MS5611 sensor");
         myDelay(60000);              // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
         if (!pressureSensor.begin()) // try again before restarting
@@ -187,7 +188,7 @@ void setup()
     {
         Serial.println("Failed to setup data storage!, if failed after 60 seconds, restarting...");
         // Absoute ERROR - all LEDs on
-        digitalWrite(UPLOADING, HIGH);
+        // digitalWrite(UPLOADING, HIGH);
         MqttManager.publish(ERROR_TOPIC, "Failed to setup data storage");
         myDelay(60000);
         if (!store_data_setup()) // try again before restarting
@@ -202,8 +203,8 @@ void setup()
             Serial.println("Data storage setup successful on second attempt");
         }
     }
-    digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
-    digitalWrite(UPLOADING, LOW);   // turn on uploading LED to indicate device is collecting data and doing operations
+    // digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
+    // digitalWrite(UPLOADING, LOW);   // turn on uploading LED to indicate device is collecting data and doing operations
 
     while (currentState != RUNNING)
     {
@@ -226,7 +227,7 @@ void setup()
     {
         Serial.println("Failed to setup buoyancy logic!, if failed after 60 seconds, restarting...");
         // Absoute ERROR - all LEDs on
-        digitalWrite(UPLOADING, HIGH);
+        // digitalWrite(UPLOADING, HIGH);
         MqttManager.publish(ERROR_TOPIC, "Failed to setup buoyancy logic");
         myDelay(60000);             // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
         if (!buoyancy_setup(false)) // try again before restarting
@@ -310,9 +311,9 @@ void loop()
             MqttManager.publish(DEPTH_TOPIC, String(depth).c_str());
 
 #ifdef DRY_TEST
-        digitalWrite(BLINKING_LED, HIGH);
+        // digitalWrite(BLINKING_LED, HIGH);
         myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency
-        digitalWrite(BLINKING_LED, LOW);
+        // digitalWrite(BLINKING_LED, LOW);
 #endif
 
         if (isComplete())
@@ -358,9 +359,9 @@ void shutdown()
     MqttManager.publish(STATUS_TOPIC, "Device shutting down");
 
     // turn off all LEDs to indicate shutdown
-    digitalWrite(CONNECTION, LOW);
-    digitalWrite(RUNNING, LOW);
-    digitalWrite(UPLOADING, LOW);
+    // digitalWrite(CONNECTION, LOW);
+    // digitalWrite(RUNNING, LOW);
+    // digitalWrite(UPLOADING, LOW);
     digitalWrite(POWER, LOW); // turn off power to shut down device
 
     ESP.restart(); // restart m4 3aref leih
@@ -410,15 +411,15 @@ void setMessageOnCallBack()
 
 void yala_beina_nUpload()
 {
-    digitalWrite(UPLOADING, HIGH); // turn on uploading LED to indicate device is uploading data to MQTT broker
-    digitalWrite(RUNNING, LOW);
+    // digitalWrite(UPLOADING, HIGH); // turn on uploading LED to indicate device is uploading data to MQTT broker
+    // digitalWrite(RUNNING, LOW);
     // MQTT setup
     Serial.println("Connecting to MQTT broker...");
 
     // Ensure WiFi is still connected before checking MQTT state
     if (WiFi.status() != WL_CONNECTED)
     {
-        digitalWrite(CONNECTION, LOW); // turn off connection LED
+        // digitalWrite(CONNECTION, LOW); // turn off connection LED
         if (!WiFi.reconnect())
         {
             WiFi.disconnect();
@@ -430,7 +431,7 @@ void yala_beina_nUpload()
             }
         }
 
-        digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
+        // digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
 
         // if mode is AP and AS_ACCESS_POINT is false then there is a problem
         while (!AS_ACCESS_POINT && WiFi.getMode() == WIFI_AP)
@@ -439,9 +440,9 @@ void yala_beina_nUpload()
             otaupdate(); // Handle OTA updates
 
             // flucctualting led if AP
-            digitalWrite(CONNECTION, HIGH);
+            // digitalWrite(CONNECTION, HIGH);
             myDelay(1000);
-            digitalWrite(CONNECTION, LOW);
+            // digitalWrite(CONNECTION, LOW);
 
             if (connectToWiFi(WIFI_SSID, WIFI_PASSWORD)) // try to connect to WiFi once than pass through otupdate if false
             {
@@ -449,7 +450,7 @@ void yala_beina_nUpload()
             }
         }
     }
-    digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
+    // digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
 
     // Handle MQTT communication
     MqttManager.loop(); // checks for mqtt connection and reconnects if needed
@@ -488,7 +489,7 @@ void always_handle_network_ota_mqtt()
 {
     if (WiFi.status() != WL_CONNECTED)
     {
-        digitalWrite(CONNECTION, LOW); // turn off connection LED
+        // digitalWrite(CONNECTION, LOW); // turn off connection LED
         Serial.println("WiFi connection lost. Reconnecting...");
         WiFi.reconnect();
     }
@@ -496,7 +497,7 @@ void always_handle_network_ota_mqtt()
     {
         // Handle OTA updates
         otaupdate();
-        digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
+        // digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
     }
 
     MqttManager.loop();             // if internet then reconnect to mqtt if not connected - non blocking
