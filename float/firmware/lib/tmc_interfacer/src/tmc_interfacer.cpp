@@ -116,9 +116,9 @@ void TMC_interfacer::measure_position(){
             prev_sequencer = (current_sequencer - remainder + 1024) % 1024;
         }
         else{
-            total_steps -= step_difference;
+            // total_steps -= step_difference;
             rotations -= (step_difference/(float)STEPS); 
-            // prev_sequencer = (current_sequencer + remainder) % 1024;
+            prev_sequencer = (current_sequencer + remainder) % 1024;
 
         }
         // rotations = total_steps / (float) STEPS;

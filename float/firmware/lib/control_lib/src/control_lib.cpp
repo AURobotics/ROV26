@@ -59,49 +59,49 @@ int PID::calculate_PID(float error, unsigned long time_stamp){
 int PID::control_loop(float height) {
     switch(current_setpoint_idx){
         case 0:
-            if(millis() - Time > 15 * 1000){
+            if(millis() - Time >  50*1000){
                 current_setpoint_idx += 1;
                 Time = millis();
             }
             return 1200;
         case 1:
-            if(millis() - Time > 35* 1000){
+            if(millis() - Time > 50* 1000){
                 current_setpoint_idx += 1;
                 Time = millis();
             }
             return 0;
         case 2:
-            if(millis() - Time > 10* 1000){
+            if(millis() - Time > 25 * 1000){
                 current_setpoint_idx += 1;
                 Time = millis();
             }
             return -1200;
         case 3:
-            if(millis() - Time > 35* 1000){
+            if(millis() - Time > 50 * 1000){
                 current_setpoint_idx += 1;
                 Time = millis();
             }
             return 0;
         case 4:
-            if(millis() - Time > 10* 1000){
+            if(millis() - Time > 25* 1000){
                 current_setpoint_idx += 1;
                 Time = millis();
             }
             return 1300;
         case 5:
-            if(millis() - Time > 35* 1000){
+            if(millis() - Time > 50* 1000){
                 current_setpoint_idx += 1;
                 Time = millis();
             }
             return 0;
         case 6:
-           if(millis() - Time > 10* 1000){
+           if(millis() - Time > 25* 1000){
                 current_setpoint_idx += 1;
                 Time = millis();
             }
             return -1200;
         case 7:
-            if(millis() - Time > 35* 1000){
+            if(millis() - Time > 50 * 1000){
                 current_setpoint_idx += 1;
                 Time = millis();
             }
