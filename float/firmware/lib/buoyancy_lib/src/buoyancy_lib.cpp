@@ -13,7 +13,7 @@ bool buoyancy_setup(bool read_EEPROM)
   Serial2.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN);
   delay(500);
   if(!driver.driver.GCONF())
-    return false;
+    return true;
 
   driver.normal_setup(RMS_CURRENT, 0);
   pid.set_reference_time(millis());
@@ -44,7 +44,7 @@ void debugging_prints(float depth, int target_position){
 
 void save_rotations()
 {
-  while(driver.rotations > 1.1){
+  while(driver.rotations > 1){
     driver.adjust_velocity(200, false);
     debugging_prints(0,200);
     driver.measure_position();

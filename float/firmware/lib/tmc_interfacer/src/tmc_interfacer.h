@@ -18,7 +18,7 @@ class TMC_interfacer{
     public:
         TMC_interfacer(int ms, float max_rotations, float max_motor_velocity);
         uint16_t micro_steps = 0;
-        float rotations = 0.95;
+        float rotations = 1;
         float prev_rotations = 0;
         int current_sequencer = 0;
         int prev_sequencer = 0;
