@@ -51,7 +51,7 @@ class GraphWidget(QWidget):
         self._fade_timer.timeout.connect(self._tick_fade)
 
         self._style_axes()
-        # self._draw_placeholder()
+        self._draw_placeholder()
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -72,7 +72,7 @@ class GraphWidget(QWidget):
         self._fade_timer.stop()
         self._ax.cla()
         self._style_axes()
-        # self._draw_placeholder()
+        self._draw_placeholder()
         self._canvas.draw()
 
     # ── Internal helpers ──────────────────────────────────────────────────────

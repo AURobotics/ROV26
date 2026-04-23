@@ -212,15 +212,14 @@ void setup()
 
     while (currentState != RUNNING)
     {
-        if ((millis() - powerTimeout) >= TIME_LIMIT)
-        {
-            MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
-            myDelay(60000);
-            shutdown();
-        }
+        // if ((millis() - powerTimeout) >= TIME_LIMIT)
+        // {
+        //     MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
+        //     myDelay(60000);
+        //     shutdown();
+        // }
         myDelay(100); // wait for command to start data collection
     }
-
 
 #ifndef DRY_TEST
     // setting up buoyancy logic
@@ -248,13 +247,13 @@ void setup()
 
 void loop()
 {
-    if ((millis() - powerTimeout) >= TIME_LIMIT)
-    {
-        if(on_surface)
-            MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
-        myDelay(60000);
-        shutdown();
-    }
+    // if ((millis() - powerTimeout) >= TIME_LIMIT)
+    // {
+    //     if (on_surface)
+    //         MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
+    //     myDelay(60000);
+    //     shutdown();
+    // }
 
     if (currentState == RUNNING)
     {
@@ -263,14 +262,14 @@ void loop()
 #ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
         // depth = pressureSensor.getDepth();
         depth = getDepth();
-        if(depth  < 0.02)
+        if (depth < 0.02)
             on_surface = true;
         else
             on_surface = false;
-        if(on_surface)
+        if (on_surface)
             always_handle_network_ota_mqtt(); // Handle OTA updates in every loop iteration
 
-        // buoyancy loop        
+        // buoyancy loop
         buoyancy_loop(depth);
 
         // To store depth per time
@@ -308,19 +307,19 @@ void loop()
         Serial.println(getCurrentTarget());
         Serial.print("Current Depth: ");
         Serial.println(depth);
-        if(on_surface)
+        if (on_surface)
             MqttManager.publish(DEPTH_TOPIC, String(depth).c_str());
 
 #ifdef DRY_TEST
         // digitalWrite(BLINKING_LED, HIGH);
         myDelay(500); // for testing, in real scenario this would be based on sensor reading frequency
-        // digitalWrite(BLINKING_LED, LOW);
+                      // digitalWrite(BLINKING_LED, LOW);
 #endif
 
         if (isComplete())
         {
             Serial.println("Data collection complete. Transitioning to UPLOADING state...");
-            if(on_surface)
+            if (on_surface)
                 MqttManager.publish(STATUS_TOPIC, "2bset, run ended, complete file ready for receive");
             currentState = UPLOADING;
         }
@@ -359,6 +358,7 @@ void shutdown()
 
     MqttManager.publish(STATUS_TOPIC, "Device shutting down");
 
+    delay(100);
     // turn off all LEDs to indicate shutdown
     // digitalWrite(CONNECTION, LOW);
     // digitalWrite(RUNNING, LOW);
@@ -498,10 +498,9 @@ void always_handle_network_ota_mqtt()
     {
         // Handle OTA updates
         otaupdate();
+        MqttManager.loop(); // if internet then reconnect to mqtt if not connected - non blocking
         // digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
     }
-
-    MqttManager.loop();             // if internet then reconnect to mqtt if not connected - non blocking
     yield();
 }
 
@@ -511,7 +510,7 @@ void myDelay(unsigned long ms)
     while (millis() - start < ms)
     {
         always_handle_network_ota_mqtt();
-        yield(); // Short delay to prevent watchdog timer reset
+        delay(100); // Short delay to prevent watchdog timer reset
     }
 }
 
