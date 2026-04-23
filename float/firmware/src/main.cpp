@@ -37,6 +37,8 @@ constexpr char *SEND_NOW_TOPIC = "float/send_now";
 constexpr char *CREDENTIAL_TOPIC = "float/data/credential";
 constexpr char *ERROR_TOPIC = "float/error";
 
+bool on_surface = true;
+
 void yala_beina_nUpload();
 bool connectToNetwork(bool asAccessPoint = false);
 void setMessageOnCallBack();
@@ -246,25 +248,32 @@ void loop()
 {
     if ((millis() - powerTimeout) >= TIME_LIMIT)
     {
-        MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
+        if(on_surface)
+            MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
         myDelay(60000);
         shutdown();
     }
-    always_handle_network_ota_mqtt(); // Handle OTA updates in every loop iteration
 
     if (currentState == RUNNING)
     {
         Serial.println("Collecting data...");
 
 #ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
-        depth = pressureSensor.getDepth();
-#endif
-        // buoyancy loop
+        // depth = pressureSensor.getDepth();
+        depth = getDepth();
+        if(depth  < 0.02)
+            on_surface = true;
+        else
+            on_surface = false;
+        if(on_surface)
+            always_handle_network_ota_mqtt(); // Handle OTA updates in every loop iteration
+
+        // buoyancy loop        
         buoyancy_loop(depth);
 
         // To store depth per time
         store_data_loop(depth);
-
+#endif
 #ifdef DRY_TEST // For testing depth changes without sensor
         if (abs(depth - test_depths[current_target_index]) < 0.05)
         {
@@ -297,7 +306,8 @@ void loop()
         Serial.println(getCurrentTarget());
         Serial.print("Current Depth: ");
         Serial.println(depth);
-        MqttManager.publish(DEPTH_TOPIC, String(depth).c_str());
+        if(on_surface)
+            MqttManager.publish(DEPTH_TOPIC, String(depth).c_str());
 
 #ifdef DRY_TEST
         digitalWrite(BLINKING_LED, HIGH);
@@ -308,7 +318,8 @@ void loop()
         if (isComplete())
         {
             Serial.println("Data collection complete. Transitioning to UPLOADING state...");
-            MqttManager.publish(STATUS_TOPIC, "2bset, run ended, complete file ready for receive");
+            if(on_surface)
+                MqttManager.publish(STATUS_TOPIC, "2bset, run ended, complete file ready for receive");
             currentState = UPLOADING;
         }
     }
@@ -485,10 +496,11 @@ void always_handle_network_ota_mqtt()
     {
         // Handle OTA updates
         otaupdate();
-
         digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
-        MqttManager.loop();             // if internet then reconnect to mqtt if not connected - non blocking
     }
+
+    MqttManager.loop();             // if internet then reconnect to mqtt if not connected - non blocking
+    yield();
 }
 
 void myDelay(unsigned long ms)
@@ -497,6 +509,16 @@ void myDelay(unsigned long ms)
     while (millis() - start < ms)
     {
         always_handle_network_ota_mqtt();
-        delay(100); // Short delay to prevent watchdog timer reset
+        yield(); // Short delay to prevent watchdog timer reset
     }
 }
+
+// #include <Arduino.h>
+// void setup(){
+//     pinMode(23, OUTPUT);
+//     digitalWrite(23, HIGH);
+// }
+
+// void loop(){
+//     delay(1000);
+// }

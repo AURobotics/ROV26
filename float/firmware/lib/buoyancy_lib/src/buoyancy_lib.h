@@ -23,5 +23,6 @@ void buoyancy_loop(float depth);
 void save_rotations();
 float getCurrentTarget();
 bool isComplete();
+void stop_motor();
 
 #endif

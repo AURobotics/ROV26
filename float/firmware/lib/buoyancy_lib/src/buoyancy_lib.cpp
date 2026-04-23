@@ -13,7 +13,7 @@ bool buoyancy_setup(bool read_EEPROM)
   Serial2.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN);
   delay(500);
   if(!driver.driver.GCONF())
-    return true;
+    return true; //TODO
 
   driver.normal_setup(RMS_CURRENT, 0);
   pid.set_reference_time(millis());
@@ -51,6 +51,7 @@ void save_rotations()
   }
   driver.driver.VACTUAL(0);
   driver.driver.toff(0);
+
 }
 
 void buoyancy_loop(float depth)

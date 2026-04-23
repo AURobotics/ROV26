@@ -31,6 +31,7 @@ class TMC_interfacer{
         float oscillator_multiplier = 0.715;
         bool going_forward = true; //false if rotating the other direction
         bool motor_stopped = false;
+        long total_steps = 0;
         // TMC2208Stepper driver = TMC2208Stepper(&Serial2, R_SENSE);
         TMC2208Stepper driver = TMC2208Stepper(&Serial2, R_SENSE);
         void normal_setup(int rms_current, int steps_per_second);
