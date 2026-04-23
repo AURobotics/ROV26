@@ -13,7 +13,7 @@
 #define MAX_ROTATIONS 12.5
 // #define MAX_DISTANCE 8 * MAX_ROTATIONS //96mm
 #define MAX_DISTANCE 1300 //1300 steps up and down
-#define FLOAT_HEIGHT 0.5
+#define FLOAT_HEIGHT 0.7
 
 const int EEPROM_SIZE = sizeof(float);
 

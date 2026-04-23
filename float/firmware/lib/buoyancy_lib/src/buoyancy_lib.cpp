@@ -1,7 +1,9 @@
 #include <buoyancy_lib.h>
 
-const int setpoints_num = 5;
-float setpoints[setpoints_num] = {2.5 - FLOAT_HEIGHT, 0.4, 2.5 - FLOAT_HEIGHT, 0.4, 0};
+const int setpoints_num = 9;
+// float setpoints[setpoints_num] = {2.5 - FLOAT_HEIGHT, 0.4, 2.5 - FLOAT_HEIGHT, 0.4, 0};
+float setpoints[setpoints_num] = {2.5 - FLOAT_HEIGHT, 0, 0.4, 2.5 - FLOAT_HEIGHT, 0.4, 0, 0, 0};
+
 // float setpoints[setpoints_num] = {0.5, 0.1, 0.5, 0.1, 0};
 
 
@@ -13,7 +15,7 @@ bool buoyancy_setup(bool read_EEPROM)
   Serial2.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN);
   delay(500);
   if(!driver.driver.GCONF())
-    return true; //TODO
+    return false; //TODO
 
   driver.normal_setup(RMS_CURRENT, 0);
   pid.set_reference_time(millis());
@@ -62,22 +64,6 @@ void buoyancy_loop(float depth)
   driver.measure_position();
 
   driver.readSerialAndRespond();
-
-  // if (Serial.available() > 0)
-  // {                                    // Check if data is available
-  //   char receivedChar = Serial.read(); // Read a single character
-  //   if (receivedChar == 's')
-  //   { // Check if it matches 'h'
-  //     save_rotations();
-  //     driver.driver.VACTUAL(0);
-  //     delay(10000);
-  //   }
-  //   else if (receivedChar == 'h')
-  //   {
-  //     driver.driver.toff(0);
-  //     delay(10000);
-  //   }
-  // }
   debugging_prints(depth, target_position);
 }
 

@@ -11,7 +11,7 @@
 
 #define BLINKING_LED 2 // to make sure esp is ok :|
 
-#define COMPANY_NUMBER "AU Robotics"
+#define COMPANY_NUMBER "PN 04"
 
 constexpr unsigned long TIME_LIMIT(19UL * 60UL * 1000UL); // 19 mins + 1 min in delay for shutdown
 
@@ -20,7 +20,7 @@ const char *WIFI_SSID = "aurobotics-ap";
 const char *WIFI_PASSWORD = "12345678";
 
 // MQTT broker settings
-const char *MQTT_BROKER = "192.168.1.101";
+const char *MQTT_BROKER = "192.168.1.103";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optionalf
@@ -206,6 +206,10 @@ void setup()
     // digitalWrite(CONNECTION, HIGH); // turn on connection LED if it was on
     // digitalWrite(UPLOADING, LOW);   // turn on uploading LED to indicate device is collecting data and doing operations
 
+    Serial.println("sending: \"Device started and about to collect data\"");
+    MqttManager.publish(STATUS_TOPIC, "Device started and about to collect data");
+    Serial.println("sent initial status message to MQTT broker");
+
     while (currentState != RUNNING)
     {
         if ((millis() - powerTimeout) >= TIME_LIMIT)
@@ -217,9 +221,6 @@ void setup()
         myDelay(100); // wait for command to start data collection
     }
 
-    Serial.println("sending: \"Device started and about to collect data\"");
-    MqttManager.publish(STATUS_TOPIC, "Device started and about to collect data");
-    Serial.println("sent initial status message to MQTT broker");
 
 #ifndef DRY_TEST
     // setting up buoyancy logic

@@ -23,6 +23,7 @@ class PID{
         float PID_output;
         unsigned long Time = millis();
         bool hold_position = false;
+        long time = 0;
         float calculate_error(float current_reading);
         int calculate_PID(float error, unsigned long time_stamp);
         int control_loop(float height);
