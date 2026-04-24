@@ -5,7 +5,7 @@
 #include "store_data.h"
 #include "idf_mqtt_manager.h"
 #include <ms5611.h>
-#include <buoyancy_lib.h>
+// #include <buoyancy_lib.h>
 
 #include "lan.h"
 
@@ -16,11 +16,11 @@
 constexpr unsigned long TIME_LIMIT(19UL * 60UL * 1000UL); // 19 mins + 1 min in delay for shutdown
 
 // WiFi credentials
-const char *WIFI_SSID = "aurobotics";
+const char *WIFI_SSID = "aurobotics-ap";
 const char *WIFI_PASSWORD = "12345678";
 
 // MQTT broker settings
-const char *MQTT_BROKER = "192.168.1.3";
+const char *MQTT_BROKER = "192.168.1.101";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optionalf
@@ -49,7 +49,7 @@ void myDelay(unsigned long ms);
 IDFMQTTManager MqttManager;
 
 // pressure sensor
-MS5611 pressureSensor = MS5611();
+// MS5611 pressureSensor = MS5611();
 float depth = 0.0f;
 
 enum Led
@@ -160,24 +160,24 @@ void setup()
     // Wire.begin();
     Wire.begin();
     // setup and calibrate pressure sensor only if NOT testing
-    if (!pressureSensor.begin())
-    {
-        Serial.println("Failed to initialize MS5611 sensor!, if failed after 60 seconds, restarting...");
-        // Absoute ERROR - all LEDs on
-        // digitalWrite(UPLOADING, HIGH);
-        MqttManager.publish(ERROR_TOPIC, "Failed to initialize MS5611 sensor");
-        myDelay(60000);              // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
-        if (!pressureSensor.begin()) // try again before restarting
-        {
-            MqttManager.publish(ERROR_TOPIC, "Failed to initialize MS5611 sensor on second attempt, restarting...");
-            ESP.restart();
-        }
-        else
-        {
-            MqttManager.publish(STATUS_TOPIC, "MS5611 sensor initialized successfully on second attempt");
-            Serial.println("MS5611 sensor initialized successfully on second attempt");
-        }
-    }
+    // if (!pressureSensor.begin())
+    // {
+    //     Serial.println("Failed to initialize MS5611 sensor!, if failed after 60 seconds, restarting...");
+    //     // Absoute ERROR - all LEDs on
+    //     // digitalWrite(UPLOADING, HIGH);
+    //     MqttManager.publish(ERROR_TOPIC, "Failed to initialize MS5611 sensor");
+    //     myDelay(60000);              // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
+    //     if (!pressureSensor.begin()) // try again before restarting
+    //     {
+    //         MqttManager.publish(ERROR_TOPIC, "Failed to initialize MS5611 sensor on second attempt, restarting...");
+    //         ESP.restart();
+    //     }
+    //     else
+    //     {
+    //         MqttManager.publish(STATUS_TOPIC, "MS5611 sensor initialized successfully on second attempt");
+    //         Serial.println("MS5611 sensor initialized successfully on second attempt");
+    //     }
+    // }
 
 #endif
 
@@ -221,30 +221,31 @@ void setup()
 
 #ifndef DRY_TEST
     // setting up buoyancy logic
-    if (!buoyancy_setup(false))
-    {
-        Serial.println("Failed to setup buoyancy logic!, if failed after 60 seconds, restarting...");
-        // Absoute ERROR - all LEDs on
-        // digitalWrite(UPLOADING, HIGH);
-        MqttManager.publish(ERROR_TOPIC, "Failed to setup buoyancy logic");
-        myDelay(60000);             // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
-        if (!buoyancy_setup(false)) // try again before restarting
-        {
-            MqttManager.publish(ERROR_TOPIC, "Failed to setup buoyancy logic on second attempt, restarting...");
-            Serial.println("Failed to setup buoyancy logic on second attempt, restarting...");
-            ESP.restart();
-        }
-        else
-        {
-            Serial.println("Buoyancy logic setup successfully on second attempt");
-            MqttManager.publish(STATUS_TOPIC, "Buoyancy logic setup successfully on second attempt");
-        }
-    }
+    // if (!buoyancy_setup(false))
+    // {
+    //     Serial.println("Failed to setup buoyancy logic!, if failed after 60 seconds, restarting...");
+    //     // Absoute ERROR - all LEDs on
+    //     // digitalWrite(UPLOADING, HIGH);
+    //     MqttManager.publish(ERROR_TOPIC, "Failed to setup buoyancy logic");
+    //     myDelay(60000);             // wait for 60 seconds to allow for OTA update if that was the issue, then try again and restart if it still fails
+    //     if (!buoyancy_setup(false)) // try again before restarting
+    //     {
+    //         MqttManager.publish(ERROR_TOPIC, "Failed to setup buoyancy logic on second attempt, restarting...");
+    //         Serial.println("Failed to setup buoyancy logic on second attempt, restarting...");
+    //         ESP.restart();
+    //     }
+    //     else
+    //     {
+    //         Serial.println("Buoyancy logic setup successfully on second attempt");
+    //         MqttManager.publish(STATUS_TOPIC, "Buoyancy logic setup successfully on second attempt");
+    //     }
+    // }
 #endif
 }
 
 void loop()
 {
+    // unsigned long temp = millis();
     // if ((millis() - powerTimeout) >= TIME_LIMIT)
     // {
     //     if (WiFi.status() != WL_CONNECTED)
@@ -252,18 +253,18 @@ void loop()
     //     myDelay(60000);
     //     shutdown();
     // }
+    always_handle_network_ota_mqtt(); // Handle OTA updates in every loop iteration
 
     if (currentState == RUNNING)
     {
         Serial.println("Collecting data...");
 
 #ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
-        depth = pressureSensor.getDepth();
+        // depth = pressureSensor.getDepth();
         // depth = getDepth();
-        always_handle_network_ota_mqtt(); // Handle OTA updates in every loop iteration
 
         // buoyancy loop
-        buoyancy_loop(depth);
+        // buoyancy_loop(depth);
 
         // To store depth per time
         store_data_loop(depth);
@@ -291,7 +292,7 @@ void loop()
 #endif
 
         Serial.print("Current Target: ");
-        Serial.println(getCurrentTarget());
+        // Serial.println(getCurrentTarget());
         Serial.print("Current Depth: ");
         Serial.println(depth);
         if (WiFi.status() != WL_CONNECTED)
@@ -303,18 +304,24 @@ void loop()
                       // digitalWrite(BLINKING_LED, LOW);
 #endif
 
-        if (isComplete())
-        {
-            Serial.println("Data collection complete. Transitioning to UPLOADING state...");
-            if (WiFi.status() != WL_CONNECTED)
-                MqttManager.publish(STATUS_TOPIC, "2bset, run ended, complete file ready for receive");
-            currentState = UPLOADING;
-        }
+        // if (isComplete())
+        // {
+        //     Serial.println("Data collection complete. Transitioning to UPLOADING state...");
+        //     if (WiFi.status() != WL_CONNECTED)
+        //         MqttManager.publish(STATUS_TOPIC, "2bset, run ended, complete file ready for receive");
+        //     currentState = UPLOADING;
+        // }
     }
     else if (currentState == UPLOADING) // keep sending data to MQTT broker every 5 seconds till shutdown
     {
         yala_beina_nUpload();
     }
+
+    // char buffer[100];
+    // sprintf(buffer, "%lu", millis() - temp);
+
+    // MqttManager.publish(STATUS_TOPIC, buffer);
+    // myDelay(500);
 }
 
 bool connectToNetwork(bool asAccessPoint)
@@ -341,7 +348,7 @@ bool connectToNetwork(bool asAccessPoint)
 
 void shutdown()
 {
-    save_rotations();
+    // save_rotations();
 
     MqttManager.publish(STATUS_TOPIC, "Device shutting down");
 
@@ -416,7 +423,7 @@ void yala_beina_nUpload()
             {
                 Serial.println("Failed to connect to network");
                 delay(1000);
-                ESP.restart(); // mothing we can do if we can't connect to network, restart and try again
+                return;
             }
         }
 
@@ -480,7 +487,15 @@ void always_handle_network_ota_mqtt()
     {
         // digitalWrite(CONNECTION, LOW); // turn off connection LED
         Serial.println("WiFi connection lost. Reconnecting...");
-        WiFi.reconnect();
+        if (!WiFi.reconnect())
+        {
+            WiFi.disconnect();
+            if (!connectToNetwork())
+            {
+                Serial.println("Failed to connect to network");
+                return;
+            }
+        }
     }
     else
     {
