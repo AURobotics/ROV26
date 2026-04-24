@@ -1,8 +1,10 @@
 #include <buoyancy_lib.h>
 
-const int setpoints_num = 9;
+const int setpoints_num = 2;
 // float setpoints[setpoints_num] = {2.5 - FLOAT_HEIGHT, 0.4, 2.5 - FLOAT_HEIGHT, 0.4, 0};
-float setpoints[setpoints_num] = {2.5 - FLOAT_HEIGHT, 0, 0.4, 2.5 - FLOAT_HEIGHT, 0.4, 0, 0, 0};
+float setpoints[setpoints_num] = {0.5, 0};
+
+// float setpoints[setpoints_num] = {2.5 - FLOAT_HEIGHT, 0, 0.4, 2.5 - FLOAT_HEIGHT, 0.4, 0, 0, 0};
 
 // float setpoints[setpoints_num] = {0.5, 0.1, 0.5, 0.1, 0};
 
@@ -16,8 +18,11 @@ bool buoyancy_setup(bool read_EEPROM)
   delay(500);
   if(!driver.driver.GCONF())
     return false; //TODO
-
+  #ifdef ADJUST_POS
+  driver.normal_setup(RMS_CURRENT, -15);
+  #else
   driver.normal_setup(RMS_CURRENT, 0);
+  #endif
   pid.set_reference_time(millis());
 
   return true;
@@ -46,16 +51,24 @@ void debugging_prints(float depth, int target_position){
 
 void save_rotations()
 {
+  #ifndef ADJUST_POS
   while(driver.rotations > 1){
     driver.adjust_velocity(200, false);
     debugging_prints(0,200);
     driver.measure_position();
   }
+  #endif
   driver.driver.VACTUAL(0);
   driver.driver.toff(0);
 
 }
 
+#ifdef ADJUST_POS
+void buoyancy_loop(float depth)
+{
+  return;
+}
+#else
 void buoyancy_loop(float depth)
 {
 
@@ -66,6 +79,7 @@ void buoyancy_loop(float depth)
   driver.readSerialAndRespond();
   debugging_prints(depth, target_position);
 }
+#endif
 
 float getCurrentTarget()
 {
