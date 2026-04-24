@@ -20,7 +20,7 @@ const char *WIFI_SSID = "aurobotics-ap";
 const char *WIFI_PASSWORD = "12345678";
 
 // MQTT broker settings
-const char *MQTT_BROKER = "192.168.1.103";
+const char *MQTT_BROKER = "192.168.1.101";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = nullptr;     // Optional
 const char *MQTT_PASSWORD = nullptr; // Optionalf
@@ -36,8 +36,6 @@ constexpr char *END_TOPIC = "float/end";
 constexpr char *SEND_NOW_TOPIC = "float/send_now";
 constexpr char *CREDENTIAL_TOPIC = "float/data/credential";
 constexpr char *ERROR_TOPIC = "float/error";
-
-bool on_surface = true;
 
 void yala_beina_nUpload();
 bool connectToNetwork(bool asAccessPoint = false);
@@ -249,7 +247,7 @@ void loop()
 {
     // if ((millis() - powerTimeout) >= TIME_LIMIT)
     // {
-    //     if (on_surface)
+    //     if (WiFi.status() != WL_CONNECTED)
     //         MqttManager.publish(ERROR_TOPIC, "Power timeout reached, shutting down in 60 seconds...");
     //     myDelay(60000);
     //     shutdown();
@@ -260,14 +258,9 @@ void loop()
         Serial.println("Collecting data...");
 
 #ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
-        // depth = pressureSensor.getDepth();
-        depth = getDepth();
-        if (depth < 0.02)
-            on_surface = true;
-        else
-            on_surface = false;
-        if (on_surface)
-            always_handle_network_ota_mqtt(); // Handle OTA updates in every loop iteration
+        depth = pressureSensor.getDepth();
+        // depth = getDepth();
+        always_handle_network_ota_mqtt(); // Handle OTA updates in every loop iteration
 
         // buoyancy loop
         buoyancy_loop(depth);
@@ -297,17 +290,11 @@ void loop()
         }
 #endif
 
-#ifdef PRESSURE_SENSOR_TEST
-        MqttManager.publish(DEPTH_TOPIC, String(depth).c_str());
-        Serial.print("Current Depth: ");
-        Serial.println(depth);
-#endif
-
         Serial.print("Current Target: ");
         Serial.println(getCurrentTarget());
         Serial.print("Current Depth: ");
         Serial.println(depth);
-        if (on_surface)
+        if (WiFi.status() != WL_CONNECTED)
             MqttManager.publish(DEPTH_TOPIC, String(depth).c_str());
 
 #ifdef DRY_TEST
@@ -319,7 +306,7 @@ void loop()
         if (isComplete())
         {
             Serial.println("Data collection complete. Transitioning to UPLOADING state...");
-            if (on_surface)
+            if (WiFi.status() != WL_CONNECTED)
                 MqttManager.publish(STATUS_TOPIC, "2bset, run ended, complete file ready for receive");
             currentState = UPLOADING;
         }
@@ -383,6 +370,7 @@ void setMessageOnCallBack()
             if (!strcmp(payload.c_str(), "shutdown"))
             {
                 Serial.println("Received shutdown command. Ending run...");
+                MqttManager.publish(STATUS_TOPIC, "removing water...");
                 shutdown();
                 
             }
