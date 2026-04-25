@@ -65,7 +65,7 @@ bool TMC_interfacer::adjust_velocity(int target_position, bool use_deadzone){
     const int slow_zone = 100;
     // const int slow_velocity = 30;
     // const int fast_velocity = 100;
-    const int slow_velocity = 20;
+    const int slow_velocity = 45;
     const int fast_velocity = 45;
     if(abs(displacement) < dead_zone)
         velocity_SPS = 0;

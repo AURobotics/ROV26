@@ -245,6 +245,7 @@ void setup()
 
 void loop()
 {
+    // unsigned long temp = millis();
     // if ((millis() - powerTimeout) >= TIME_LIMIT)
     // {
     //     if (WiFi.status() != WL_CONNECTED)
@@ -252,6 +253,7 @@ void loop()
     //     myDelay(60000);
     //     shutdown();
     // }
+    always_handle_network_ota_mqtt(); // Handle OTA updates in every loop iteration
 
     if (currentState == RUNNING)
     {
@@ -260,7 +262,6 @@ void loop()
 #ifndef DRY_TEST // get depth from pressure sensor only if NOT dry testing
         depth = pressureSensor.getDepth();
         // depth = getDepth();
-        always_handle_network_ota_mqtt(); // Handle OTA updates in every loop iteration
 
         // buoyancy loop
         buoyancy_loop(depth);
@@ -315,6 +316,12 @@ void loop()
     {
         yala_beina_nUpload();
     }
+
+    // char buffer[100];
+    // sprintf(buffer, "%lu", millis() - temp);
+
+    // MqttManager.publish(STATUS_TOPIC, buffer);
+    // myDelay(500);
 }
 
 bool connectToNetwork(bool asAccessPoint)
@@ -416,7 +423,7 @@ void yala_beina_nUpload()
             {
                 Serial.println("Failed to connect to network");
                 delay(1000);
-                ESP.restart(); // mothing we can do if we can't connect to network, restart and try again
+                return;
             }
         }
 
@@ -480,7 +487,15 @@ void always_handle_network_ota_mqtt()
     {
         // digitalWrite(CONNECTION, LOW); // turn off connection LED
         Serial.println("WiFi connection lost. Reconnecting...");
-        WiFi.reconnect();
+        if (!WiFi.reconnect())
+        {
+            WiFi.disconnect();
+            if (!connectToNetwork())
+            {
+                Serial.println("Failed to connect to network");
+                return;
+            }
+        }
     }
     else
     {
