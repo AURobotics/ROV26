@@ -1,7 +1,3 @@
-[tool.uv]
-find-links = ["wheels"]
-
-
 [project]
 name = "console"
 version = "0.1.0"
@@ -12,19 +8,11 @@ authors = [
 ]
 requires-python = ">=3.11,<=3.14"
 dependencies = [
-    "annotated-types>=0.7.0",
-    "build>=1.4.0",
-    "cv2-enumerate-cameras>=1.3.3",
-    "nuitka>=4.0.1",
-    "pygame-ce>=2.5.7",
-    "pyinstaller>=6.19.0",
-    "pyserial>=3.5",
-    "pyside6>=6.11.0",
-    "requests>=2.32.5",
-    "opencv-python>=4.13.0.92 ; sys_platform != 'linux'",
-    "gstreamer-libs>=1.28.1 ; sys_platform != 'linux'",
-    "gstreamer-plugins>=1.28.1 ; sys_platform != 'linux'",
-    "gstreamer-plugins-restricted>=1.28.1 ; sys_platform != 'linux'",
+    "annotated-types",
+    "cv2-enumerate-cameras",
+    "pygame-ce",
+    "pyserial",
+    "requests",
 ]
 
 
@@ -33,4 +21,4 @@ requires = ["uv_build>=0.10.2,<0.11.0"]
 build-backend = "uv_build"
 
 [project.scripts]
-console = "console.app:run"
+console = "console.app:start_console"

@@ -7,7 +7,7 @@ Item {
     width: 40
     height: 60
 
-    property real totalMagnitude: 0.3 // Range from 0 to 1, controls the fill level of the arrow
+    property real totalMagnitude: 0 // Range from 0 to 1, controls the fill level of the arrow
 
     Item {
         id: arrowShape

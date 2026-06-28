@@ -1,6 +1,7 @@
 [Unit]
 Description=vhusbd startup script
-After=network.target
+BindsTo=sys-subsystem-net-devices-eth0.device
+After=sys-subsystem-net-devices-eth0.device
 
 [Service]
 Type=simple

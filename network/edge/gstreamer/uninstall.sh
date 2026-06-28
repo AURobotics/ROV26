@@ -8,7 +8,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 OPT_DIR="/opt/gstreamer"
-UDEV_RULE_FILE="/etc/udev/rules.d/99-camera-gst.rules"
+UDEV_RULE_FILE="/etc/udev/rules.d/99-camera-stream.rules"
 SERVICE_FILE="/etc/systemd/system/gst-stream@.service"
 TOGGLE_SCRIPT="/usr/bin/toggle-gstreamer-service"
 
