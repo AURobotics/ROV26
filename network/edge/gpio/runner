@@ -1,0 +1,38 @@
+#!/bin/bash
+
+if [ "$EUID" -ne 0 ]; then
+    echo "Starting the script with administrator privileges.."
+    exec sudo "$0" "$@"
+    echo "Failed to start with administrator privileges, exiting.."
+    exit 1
+fi
+
+LOCK_FILE="/opt/gpio/gpio.lock"
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 ; pwd -P)
+PRESET_DIR="/opt/gpio/presets/"
+if [ -f "$LOCK_FILE" ]; then
+    if [ $(find "$LOCK_FILE" -mtime +0 -mmin +0.5 2>/dev/null) ]; then
+        echo "Removing stale lock"
+        rm -f "$LOCK_FILE"
+    else
+        echo "Busy"
+        exit 1
+    fi
+fi
+
+touch "$LOCK_FILE"
+trap "rm -f '$LOCK_FILE'" EXIT
+
+echo "Listening to command"
+
+read cmd
+
+if [ -f "$PRESET_DIR/$cmd" ]; then
+    bash "$PRESET_DIR/$cmd"
+else
+    pin=$(echo "$cmd" | cut -d',' -f1)
+    value=$(echo "$cmd" | cut -d',' -f2)
+    gpioset gpiochip0 "$pin"="$value"
+fi
+
+exit 0

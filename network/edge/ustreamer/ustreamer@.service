@@ -1,0 +1,22 @@
+[Unit]
+Description=uStreamer Dynamic Port Stream for /dev/%i
+
+BindsTo=dev-%i.device
+After=dev-%i.device
+BindsTo=sys-subsystem-net-devices-eth0.device
+After=sys-subsystem-net-devices-eth0.device
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/fuser -k /dev/%i
+ExecStartPre=/usr/bin/sleep 1
+
+ExecStart=/opt/ustreamer/runner %i
+
+Restart=on-failure
+RestartSec=3
+StartLimitIntervalSec=0
+
+
+[Install]
+WantedBy=multi-user.targets

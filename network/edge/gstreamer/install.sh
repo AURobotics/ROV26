@@ -10,7 +10,7 @@ fi
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 ; pwd -P)
 OPT_DIR="/opt/gstreamer"
-UDEV_RULE_FILE="/etc/udev/rules.d/99-camera-gst.rules"
+UDEV_RULE_FILE="/etc/udev/rules.d/99-camera-stream.rules"
 UDEV_RULE='ACTION=="add", SUBSYSTEM=="video4linux", ENV{ID_V4L_CAPABILITIES}=="*:capture:*", ENV{ID_V4L_IS_HW_NODE}!="1", TAG+="systemd", ENV{SYSTEMD_WANTS}+="gst-stream@%k.service"'
 SERVICE_FILE="/etc/systemd/system/gst-stream@.service"
 TOGGLE_SCRIPT="/usr/bin/toggle-gstreamer-service"
@@ -34,6 +34,7 @@ if ! check_gst_requirements; then
     else
         echo "Please install the equivalent packages using your system's package manager: ${GST_PACKAGES_UBUNTU[@]}"
         exit 1
+    fi
 fi
 
 echo "Setting up /opt/gstreamer..."

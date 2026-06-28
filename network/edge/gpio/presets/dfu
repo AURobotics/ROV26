@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if [ "$EUID" -ne 0 ]; then
+    echo "Starting the script with administrator privileges.."
+    exec sudo "$0" "$@"
+    echo "Failed to start with administrator privileges, exiting.."
+    exit 1
+fi
+
+BOOT_PIN=5
+RESET_PIN=6
+
+gpioset gpiochip0 $BOOT_PIN=1
+sleep 0.5
+gpioset gpiochip0 $RESET_PIN=0
+sleep 0.5
+gpioset gpiochip0 $RESET_PIN=1
+sleep 0.5
+gpioset gpiochip0 $BOOT_PIN=0
